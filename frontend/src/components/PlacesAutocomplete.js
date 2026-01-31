@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "./ui/input";
 
 const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
@@ -6,25 +6,51 @@ const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
 // Load Google Maps script
 const loadGoogleMapsScript = () => {
   return new Promise((resolve, reject) => {
-    if (window.google && window.google.maps) {
+    if (window.google && window.google.maps && window.google.maps.places) {
       resolve(window.google);
       return;
     }
 
     const existingScript = document.getElementById("google-maps-script");
     if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(window.google));
+      existingScript.addEventListener("load", () => {
+        if (window.google && window.google.maps) {
+          resolve(window.google);
+        } else {
+          reject(new Error("Google Maps failed to initialize"));
+        }
+      });
       return;
     }
 
     const script = document.createElement("script");
     script.id = "google-maps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve(window.google);
-    script.onerror = (error) => reject(error);
+    
+    // Create callback
+    window.initGoogleMaps = () => {
+      if (window.google && window.google.maps) {
+        resolve(window.google);
+      } else {
+        reject(new Error("Google Maps failed to initialize"));
+      }
+    };
+    
+    script.onerror = (error) => {
+      console.error("Google Maps script load error:", error);
+      reject(error);
+    };
+    
     document.head.appendChild(script);
+    
+    // Timeout fallback
+    setTimeout(() => {
+      if (!window.google || !window.google.maps) {
+        reject(new Error("Google Maps load timeout"));
+      }
+    }, 10000);
   });
 };
 
@@ -40,46 +66,67 @@ const PlacesAutocomplete = ({
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const handlePlaceSelect = useCallback(() => {
+    if (!autocompleteRef.current) return;
+    
+    const place = autocompleteRef.current.getPlace();
+    if (place && place.geometry) {
+      const location = {
+        address: place.formatted_address || place.name,
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+        placeId: place.place_id
+      };
+      onPlaceSelect(location);
+    }
+  }, [onPlaceSelect]);
 
   useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.warn("Google Maps API key not configured");
+      setLoadError(true);
+      return;
+    }
+
     loadGoogleMapsScript()
       .then(() => {
         setIsLoaded(true);
+        setLoadError(false);
       })
       .catch((error) => {
         console.error("Failed to load Google Maps:", error);
+        setLoadError(true);
       });
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !inputRef.current || autocompleteRef.current) return;
+    if (!isLoaded || !inputRef.current || autocompleteRef.current || loadError) return;
 
-    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      types: ["geocode", "establishment"],
-      fields: ["formatted_address", "geometry", "name", "place_id"]
-    });
+    try {
+      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+        types: ["geocode", "establishment"],
+        fields: ["formatted_address", "geometry", "name", "place_id"]
+      });
 
-    autocomplete.addListener("place_changed", () => {
-      const place = autocomplete.getPlace();
-      if (place && place.geometry) {
-        const location = {
-          address: place.formatted_address || place.name,
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-          placeId: place.place_id
-        };
-        onPlaceSelect(location);
-      }
-    });
-
-    autocompleteRef.current = autocomplete;
+      autocomplete.addListener("place_changed", handlePlaceSelect);
+      autocompleteRef.current = autocomplete;
+    } catch (error) {
+      console.error("Failed to initialize autocomplete:", error);
+      setLoadError(true);
+    }
 
     return () => {
-      if (autocompleteRef.current) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      if (autocompleteRef.current && window.google && window.google.maps) {
+        try {
+          window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
     };
-  }, [isLoaded, onPlaceSelect]);
+  }, [isLoaded, loadError, handlePlaceSelect]);
 
   return (
     <Input
@@ -100,7 +147,20 @@ const PlacesAutocomplete = ({
 export const calculateDistance = async (origin, destination) => {
   return new Promise((resolve, reject) => {
     if (!window.google || !window.google.maps) {
-      reject(new Error("Google Maps not loaded"));
+      // Fallback to Haversine formula for estimation
+      const R = 6371; // Earth's radius in km
+      const dLat = (destination.lat - origin.lat) * Math.PI / 180;
+      const dLon = (destination.lng - origin.lng) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(origin.lat * Math.PI / 180) * Math.cos(destination.lat * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c * 1.3; // 1.3x factor for road distance vs straight line
+      
+      resolve({
+        distance_km: Math.round(distance * 10) / 10,
+        duration_minutes: Math.ceil(distance * 1.5) // Rough estimate
+      });
       return;
     }
 
@@ -108,20 +168,33 @@ export const calculateDistance = async (origin, destination) => {
     
     service.getDistanceMatrix(
       {
-        origins: [origin],
-        destinations: [destination],
+        origins: [new window.google.maps.LatLng(origin.lat, origin.lng)],
+        destinations: [new window.google.maps.LatLng(destination.lat, destination.lng)],
         travelMode: window.google.maps.TravelMode.DRIVING,
         unitSystem: window.google.maps.UnitSystem.METRIC
       },
       (response, status) => {
-        if (status === "OK" && response.rows[0].elements[0].status === "OK") {
+        if (status === "OK" && response.rows[0] && response.rows[0].elements[0].status === "OK") {
           const element = response.rows[0].elements[0];
           resolve({
-            distance_km: element.distance.value / 1000, // Convert meters to km
+            distance_km: Math.round(element.distance.value / 100) / 10, // Convert meters to km with 1 decimal
             duration_minutes: Math.ceil(element.duration.value / 60) // Convert seconds to minutes
           });
         } else {
-          reject(new Error("Could not calculate distance"));
+          // Fallback calculation
+          const R = 6371;
+          const dLat = (destination.lat - origin.lat) * Math.PI / 180;
+          const dLon = (destination.lng - origin.lng) * Math.PI / 180;
+          const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(origin.lat * Math.PI / 180) * Math.cos(destination.lat * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const distance = R * c * 1.3;
+          
+          resolve({
+            distance_km: Math.round(distance * 10) / 10,
+            duration_minutes: Math.ceil(distance * 1.5)
+          });
         }
       }
     );
