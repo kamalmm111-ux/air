@@ -233,6 +233,28 @@ const FleetDashboard = () => {
                         data-testid={`start-job-${job.id}`}
                       >
                         <Play className="w-4 h-4 mr-2" />
+                        En Route
+                      </Button>
+                    )}
+                    
+                    {job.status === "en_route" && (
+                      <Button
+                        onClick={() => updateJobStatus(job.id, "arrived")}
+                        className="bg-teal-600 hover:bg-teal-700"
+                        data-testid={`arrived-job-${job.id}`}
+                      >
+                        <MapPin className="w-4 h-4 mr-2" />
+                        Arrived
+                      </Button>
+                    )}
+
+                    {job.status === "arrived" && (
+                      <Button
+                        onClick={() => updateJobStatus(job.id, "in_progress")}
+                        className="bg-purple-600 hover:bg-purple-700"
+                        data-testid={`start-trip-${job.id}`}
+                      >
+                        <Play className="w-4 h-4 mr-2" />
                         Start Trip
                       </Button>
                     )}
