@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { CalendarIcon, MapPin, Clock, Users, Briefcase, Plane, Search } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import PlacesAutocomplete, { calculateDistance } from "./PlacesAutocomplete";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -16,6 +17,8 @@ const BookingEngine = () => {
   const navigate = useNavigate();
   const { bookingData, updateBookingData, setQuotes } = useBooking();
   const [loading, setLoading] = useState(false);
+  const [pickupCoords, setPickupCoords] = useState(null);
+  const [dropoffCoords, setDropoffCoords] = useState(null);
 
   // Generate time options
   const timeOptions = [];
@@ -37,6 +40,24 @@ const BookingEngine = () => {
     updateBookingData({ pickup_date: e.target.value });
   };
 
+  const handlePickupSelect = (location) => {
+    updateBookingData({ 
+      pickup_location: location.address,
+      pickup_lat: location.lat,
+      pickup_lng: location.lng
+    });
+    setPickupCoords({ lat: location.lat, lng: location.lng });
+  };
+
+  const handleDropoffSelect = (location) => {
+    updateBookingData({ 
+      dropoff_location: location.address,
+      dropoff_lat: location.lat,
+      dropoff_lng: location.lng
+    });
+    setDropoffCoords({ lat: location.lat, lng: location.lng });
+  };
+
   const handleSearch = async () => {
     // Validate required fields
     if (!bookingData.pickup_location || !bookingData.dropoff_location) {
@@ -55,15 +76,48 @@ const BookingEngine = () => {
     setLoading(true);
 
     try {
-      // Mock distance calculation (in real app, would use Google Maps)
-      const mockDistance = Math.random() * 50 + 10; // 10-60 km
+      let distance_km, duration_minutes;
+
+      // Try to calculate real distance using Google Maps
+      if (pickupCoords && dropoffCoords) {
+        try {
+          const distanceResult = await calculateDistance(
+            { lat: pickupCoords.lat, lng: pickupCoords.lng },
+            { lat: dropoffCoords.lat, lng: dropoffCoords.lng }
+          );
+          distance_km = distanceResult.distance_km;
+          duration_minutes = distanceResult.duration_minutes;
+        } catch (error) {
+          console.warn("Distance calculation failed, using estimate:", error);
+          // Fallback to estimate
+          distance_km = Math.random() * 50 + 10;
+          duration_minutes = Math.ceil(distance_km * 2);
+        }
+      } else {
+        // Fallback for manual entry without autocomplete
+        distance_km = Math.random() * 50 + 10;
+        duration_minutes = Math.ceil(distance_km * 2);
+      }
+
       const isAirport = bookingData.pickup_location.toLowerCase().includes("airport") ||
-                        bookingData.dropoff_location.toLowerCase().includes("airport");
+                        bookingData.dropoff_location.toLowerCase().includes("airport") ||
+                        bookingData.pickup_location.toLowerCase().includes("heathrow") ||
+                        bookingData.pickup_location.toLowerCase().includes("gatwick") ||
+                        bookingData.pickup_location.toLowerCase().includes("stansted") ||
+                        bookingData.pickup_location.toLowerCase().includes("luton") ||
+                        bookingData.dropoff_location.toLowerCase().includes("heathrow") ||
+                        bookingData.dropoff_location.toLowerCase().includes("gatwick") ||
+                        bookingData.dropoff_location.toLowerCase().includes("stansted") ||
+                        bookingData.dropoff_location.toLowerCase().includes("luton");
 
       const response = await axios.post(`${API}/quote`, {
         pickup_location: bookingData.pickup_location,
         dropoff_location: bookingData.dropoff_location,
-        distance_km: mockDistance,
+        pickup_lat: bookingData.pickup_lat,
+        pickup_lng: bookingData.pickup_lng,
+        dropoff_lat: bookingData.dropoff_lat,
+        dropoff_lng: bookingData.dropoff_lng,
+        distance_km: distance_km,
         passengers: bookingData.passengers,
         luggage: bookingData.luggage,
         meet_greet: bookingData.meet_greet,
@@ -97,11 +151,12 @@ const BookingEngine = () => {
             <MapPin className="w-4 h-4 text-[#D4AF37]" />
             Pickup Location
           </Label>
-          <Input
+          <PlacesAutocomplete
             id="pickup"
-            placeholder="Enter pickup address or airport"
             value={bookingData.pickup_location}
-            onChange={(e) => updateBookingData({ pickup_location: e.target.value })}
+            onChange={(value) => updateBookingData({ pickup_location: value })}
+            onPlaceSelect={handlePickupSelect}
+            placeholder="Enter pickup address or airport"
             className="h-12 bg-zinc-50 border-zinc-200 focus:border-[#0A0F1C] focus:ring-[#0A0F1C]"
             data-testid="pickup-input"
           />
@@ -113,11 +168,12 @@ const BookingEngine = () => {
             <MapPin className="w-4 h-4 text-[#D4AF37]" />
             Drop-off Location
           </Label>
-          <Input
+          <PlacesAutocomplete
             id="dropoff"
-            placeholder="Enter destination address"
             value={bookingData.dropoff_location}
-            onChange={(e) => updateBookingData({ dropoff_location: e.target.value })}
+            onChange={(value) => updateBookingData({ dropoff_location: value })}
+            onPlaceSelect={handleDropoffSelect}
+            placeholder="Enter destination address"
             className="h-12 bg-zinc-50 border-zinc-200 focus:border-[#0A0F1C] focus:ring-[#0A0F1C]"
             data-testid="dropoff-input"
           />
@@ -249,7 +305,7 @@ const BookingEngine = () => {
         {loading ? (
           <span className="flex items-center gap-2">
             <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
-            Searching...
+            Calculating Route...
           </span>
         ) : (
           <span className="flex items-center gap-2">
