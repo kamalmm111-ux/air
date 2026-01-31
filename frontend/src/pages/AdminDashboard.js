@@ -897,7 +897,13 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
     }
     setLoading(true);
     try {
-      await axios.post(`${API}/admin/bookings/manual`, formData, { headers });
+      // Convert "none" values to null/empty for API
+      const submitData = {
+        ...formData,
+        assigned_fleet_id: formData.assigned_fleet_id === "none" ? null : formData.assigned_fleet_id || null,
+        assigned_driver_id: formData.assigned_driver_id === "none" ? null : formData.assigned_driver_id || null
+      };
+      await axios.post(`${API}/admin/bookings/manual`, submitData, { headers });
       toast.success("Job created successfully!");
       onClose();
       onSuccess();
