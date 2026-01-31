@@ -1,0 +1,170 @@
+{
+  "identity": {
+    "persona": "E1 - The Anti-AI Designer",
+    "philosophy": "Fusion over Imitation. Emotion First. Content is King.",
+    "anti_patterns": [
+      "Purple/Teal primary buttons",
+      "Inter font for headings",
+      "Center-aligned everything",
+      "Generic full-screen gradients",
+      "Default Vercel/Stripe look"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Chivo, sans-serif",
+      "body": "Inter, sans-serif",
+      "accent": "Playfair Display, serif"
+    },
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-black tracking-tight leading-none",
+      "h2": "text-4xl md:text-5xl font-bold tracking-tight",
+      "h3": "text-2xl md:text-3xl font-bold tracking-tight",
+      "body_large": "text-lg md:text-xl leading-relaxed text-muted-foreground",
+      "body_base": "text-base leading-relaxed",
+      "caption": "text-xs uppercase tracking-widest font-semibold text-muted-foreground"
+    },
+    "imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;700;900&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');"
+    ]
+  },
+  "colors": {
+    "theme": "light",
+    "palette": {
+      "primary": {
+        "DEFAULT": "#0A0F1C",
+        "foreground": "#FFFFFF",
+        "description": "Deep Midnight Navy - The 'Black Car' Authority"
+      },
+      "secondary": {
+        "DEFAULT": "#F4F4F5",
+        "foreground": "#0A0F1C",
+        "description": "Zinc 100 - Clean, technical background"
+      },
+      "accent": {
+        "DEFAULT": "#D4AF37",
+        "foreground": "#000000",
+        "description": "Metallic Gold - Luxury status (Use sparingly)"
+      },
+      "functional": {
+        "blue": "#0066FF",
+        "success": "#10B981",
+        "error": "#EF4444",
+        "warning": "#F59E0B"
+      },
+      "background": "#FFFFFF",
+      "surface": "#FAFAFA",
+      "border": "#E4E4E7"
+    },
+    "gradients": {
+      "hero_overlay": "linear-gradient(to bottom, rgba(10,15,28,0.4), rgba(10,15,28,0.9))",
+      "gold_sheen": "linear-gradient(135deg, #D4AF37 0%, #F3E5AB 50%, #D4AF37 100%)"
+    }
+  },
+  "visual_enhancers": {
+    "radius": "rounded-none md:rounded-sm",
+    "shadows": {
+      "card": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+      "floating": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+      "glow": "0 0 15px rgba(212, 175, 55, 0.3)"
+    },
+    "textures": {
+      "noise": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E\")"
+    },
+    "glassmorphism": {
+      "default": "bg-white/80 backdrop-blur-md border border-white/20 shadow-lg",
+      "dark": "bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl"
+    }
+  },
+  "layout_strategies": {
+    "marketing": {
+      "grid": "Tetris Grid (Mode A)",
+      "spacing": "Generous (p-12 to p-32)",
+      "alignment": "Asymmetrical, tension-based"
+    },
+    "dashboard": {
+      "grid": "Bento Grid (Mode B)",
+      "spacing": "Dense (p-4 to p-6)",
+      "alignment": "Strict hierarchy, data-first"
+    },
+    "booking_engine": {
+      "style": "Floating Card over Hero",
+      "width": "max-w-4xl mx-auto",
+      "elevation": "High (shadow-2xl)"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8 rounded-sm font-bold tracking-wide uppercase text-sm transition-all duration-300",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 h-12 px-8 rounded-sm font-medium",
+      "outline": "border-2 border-primary text-primary hover:bg-primary hover:text-white h-12 px-8 rounded-sm font-bold uppercase tracking-wide transition-all"
+    },
+    "cards": {
+      "feature": "bg-white border border-border p-8 hover:border-primary/50 transition-colors duration-300 group relative overflow-hidden",
+      "vehicle": "bg-zinc-50 border-none p-0 overflow-hidden group hover:shadow-xl transition-all duration-500"
+    },
+    "inputs": {
+      "default": "h-12 bg-white border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-sm transition-all"
+    }
+  },
+  "image_urls": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1641736950490-ebb6533422d9?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "description": "Moody city street with luxury car vibe",
+      "category": "hero"
+    },
+    "fleet_sedan": {
+      "url": "https://images.unsplash.com/photo-1768967801952-72461f90a888?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "description": "Modern executive vehicle context",
+      "category": "fleet"
+    },
+    "traveler_business": {
+      "url": "https://images.unsplash.com/photo-1733965961857-99e62b0fc869?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "description": "Business traveler in backseat",
+      "category": "marketing"
+    },
+    "airport_terminal": {
+      "url": "https://images.unsplash.com/photo-1749647556283-e8df16b9e2b4?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "description": "Spacious modern airport terminal",
+      "category": "marketing"
+    }
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "Stroke width 1.5px, sharp edges where possible"
+  },
+  "motion": {
+    "page_transition": "initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.4, ease: 'easeOut' }}",
+    "hover_lift": "hover:-translate-y-1 hover:shadow-lg transition-all duration-300",
+    "stagger_children": "variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }}"
+  },
+  "accessibility": {
+    "contrast": "Ensure 4.5:1 for normal text, 3:1 for large text",
+    "focus_states": "Visible ring-2 ring-offset-2 ring-primary",
+    "aria": "Use aria-label for icon-only buttons"
+  },
+  "instructions_to_main_agent": [
+    "Use .js or .jsx extension for new files as per project constraints.",
+    "Do NOT use 'Inter' for headings. Use 'Chivo'.",
+    "Implement the 'Booking Engine' as a high-priority, visible element on the Home Hero.",
+    "Use the 'Tetris Grid' for the Fleet page to avoid boring equal-height cards.",
+    "Ensure the Admin Dashboard uses the 'Bento Grid' for high data density.",
+    "Use 'sonner' for all toast notifications.",
+    "Add 'data-testid' to all interactive elements.",
+    "Do not use generic gradients. Use the defined 'hero_overlay' or solid colors.",
+    "For the 'Executive' feel, use plenty of negative space (p-12+) in marketing sections."
+  ],
+  "universal_guidelines": {
+    "do_not": [
+      "Use purple or teal for primary actions",
+      "Center align long text blocks",
+      "Use default Tailwind shadows (use custom defined above)",
+      "Use 'transition: all'"
+    ],
+    "must_do": [
+      "Use 'lucide-react' for icons",
+      "Implement 'lenis' for smooth scrolling if possible",
+      "Use 'clsx' and 'tailwind-merge' for class management"
+    ]
+  }
+}
