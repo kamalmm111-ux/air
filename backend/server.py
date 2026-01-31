@@ -40,6 +40,24 @@ api_router = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# ==================== JOB STATUSES ====================
+JOB_STATUSES = [
+    "new",           # Just created
+    "unassigned",    # Ready but no driver/fleet
+    "assigned",      # Assigned to driver/fleet
+    "accepted",      # Driver/fleet accepted
+    "en_route",      # Driver on the way
+    "arrived",       # Driver at pickup
+    "in_progress",   # Trip in progress
+    "completed",     # Trip completed
+    "cancelled",     # Cancelled
+    "no_show",       # Generic no show
+    "driver_no_show", # Driver didn't show
+    "customer_no_show", # Customer didn't show
+    "on_hold",       # On hold
+    "rescheduled"    # Rescheduled
+]
+
 # ==================== MODELS ====================
 
 # User roles: super_admin, fleet_admin, driver, customer
@@ -68,6 +86,24 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: UserResponse
 
+# Customer Model
+class CustomerCreate(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: str
+    company: Optional[str] = None
+    notes: Optional[str] = None
+
+class Customer(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: Optional[str] = None
+    phone: str
+    company: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 # Fleet Model
 class FleetCreate(BaseModel):
     name: str
@@ -77,10 +113,11 @@ class FleetCreate(BaseModel):
     whatsapp: Optional[str] = None
     city: str
     operating_area: Optional[str] = None
-    commission_type: str = "percentage"  # percentage or fixed
-    commission_value: float = 15.0  # 15% or £15
-    payment_terms: str = "weekly"  # weekly, biweekly, monthly
+    commission_type: str = "percentage"
+    commission_value: float = 15.0
+    payment_terms: str = "weekly"
     notes: Optional[str] = None
+    password: Optional[str] = None
 
 class Fleet(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -96,8 +133,8 @@ class Fleet(BaseModel):
     commission_value: float = 15.0
     payment_terms: str = "weekly"
     notes: Optional[str] = None
-    status: str = "active"  # active, suspended
-    password: Optional[str] = None  # For fleet login
+    status: str = "active"
+    password: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -114,14 +151,16 @@ class FleetUpdate(BaseModel):
     payment_terms: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+    password: Optional[str] = None
 
 # Driver Model
 class DriverCreate(BaseModel):
     name: str
-    email: EmailStr
+    email: Optional[str] = None
     phone: str
-    license_number: str
+    license_number: Optional[str] = None
     license_expiry: Optional[str] = None
+    driver_type: str = "internal"  # internal or fleet
     fleet_id: Optional[str] = None
     vehicle_id: Optional[str] = None
     notes: Optional[str] = None
@@ -130,61 +169,253 @@ class Driver(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    email: str
+    email: Optional[str] = None
     phone: str
-    license_number: str
+    license_number: Optional[str] = None
     license_expiry: Optional[str] = None
+    driver_type: str = "internal"
     fleet_id: Optional[str] = None
     vehicle_id: Optional[str] = None
     notes: Optional[str] = None
-    status: str = "active"  # active, inactive, suspended
+    status: str = "active"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class DriverUpdate(BaseModel):
     name: Optional[str] = None
+    email: Optional[str] = None
     phone: Optional[str] = None
     license_number: Optional[str] = None
     license_expiry: Optional[str] = None
+    driver_type: Optional[str] = None
     fleet_id: Optional[str] = None
     vehicle_id: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
-# Fleet Vehicle Model
-class FleetVehicleCreate(BaseModel):
-    plate_number: str
-    category_id: str  # sedan, executive, etc.
-    make: Optional[str] = None
-    model: Optional[str] = None
-    year: Optional[int] = None
-    color: Optional[str] = None
-    fleet_id: Optional[str] = None
-    notes: Optional[str] = None
-
-class FleetVehicle(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+# Vehicle Model
+class VehicleCreate(BaseModel):
+    name: Optional[str] = None
     plate_number: str
     category_id: str
     make: Optional[str] = None
     model: Optional[str] = None
     year: Optional[int] = None
     color: Optional[str] = None
+    passenger_capacity: int = 4
+    luggage_capacity: int = 2
     fleet_id: Optional[str] = None
+    driver_id: Optional[str] = None
     notes: Optional[str] = None
-    status: str = "active"  # active, inactive, maintenance
+
+class Vehicle(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: Optional[str] = None
+    plate_number: str
+    category_id: str
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    color: Optional[str] = None
+    passenger_capacity: int = 4
+    luggage_capacity: int = 2
+    fleet_id: Optional[str] = None
+    driver_id: Optional[str] = None
+    notes: Optional[str] = None
+    status: str = "active"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+class VehicleUpdate(BaseModel):
+    name: Optional[str] = None
+    plate_number: Optional[str] = None
+    category_id: Optional[str] = None
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    color: Optional[str] = None
+    passenger_capacity: Optional[int] = None
+    luggage_capacity: Optional[int] = None
+    fleet_id: Optional[str] = None
+    driver_id: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
+# Booking Extra Model
+class BookingExtra(BaseModel):
+    name: str
+    price: float
+    notes: Optional[str] = None
+    affects_driver_cost: bool = False
+
+# Enhanced Booking Model with dual pricing
+class ManualBookingCreate(BaseModel):
+    # Customer info
+    customer_id: Optional[str] = None
+    customer_name: str
+    customer_email: Optional[str] = None
+    customer_phone: str
+    customer_reference: Optional[str] = None
+    # Trip details
+    pickup_date: str
+    pickup_time: str
+    pickup_location: str
+    pickup_postcode: Optional[str] = None
+    pickup_lat: Optional[float] = None
+    pickup_lng: Optional[float] = None
+    dropoff_location: str
+    dropoff_postcode: Optional[str] = None
+    dropoff_lat: Optional[float] = None
+    dropoff_lng: Optional[float] = None
+    # Vehicle & passengers
+    vehicle_category_id: str
+    passengers: int = 1
+    small_bags: int = 0
+    large_bags: int = 0
+    flight_number: Optional[str] = None
+    meet_greet: bool = False
+    # Pricing
+    customer_price: float
+    driver_price: float
+    # Extras
+    extras: List[BookingExtra] = []
+    # Notes
+    pickup_notes: Optional[str] = None
+    dropoff_notes: Optional[str] = None
+    admin_notes: Optional[str] = None
+    # Assignment
+    assigned_fleet_id: Optional[str] = None
+    assigned_driver_id: Optional[str] = None
+    assigned_vehicle_id: Optional[str] = None
+
+class Booking(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    booking_ref: str = Field(default_factory=lambda: f"AC{str(uuid.uuid4())[:6].upper()}")
+    # Customer info
+    customer_id: Optional[str] = None
+    customer_name: str = ""
+    customer_email: Optional[str] = None
+    customer_phone: str = ""
+    customer_reference: Optional[str] = None
+    # Trip details
+    pickup_location: str
+    pickup_postcode: Optional[str] = None
+    pickup_lat: Optional[float] = None
+    pickup_lng: Optional[float] = None
+    dropoff_location: str
+    dropoff_postcode: Optional[str] = None
+    dropoff_lat: Optional[float] = None
+    dropoff_lng: Optional[float] = None
+    pickup_date: str
+    pickup_time: str
+    # Vehicle & passengers
+    vehicle_category_id: str
+    vehicle_name: Optional[str] = None
+    passengers: int = 1
+    small_bags: int = 0
+    large_bags: int = 0
+    luggage: int = 0  # Total bags for backward compatibility
+    flight_number: Optional[str] = None
+    meet_greet: bool = False
+    # Pricing - dual pricing system
+    customer_price: float = 0.0
+    driver_price: float = 0.0
+    profit: float = 0.0
+    price: float = 0.0  # Backward compatibility (same as customer_price)
+    currency: str = "GBP"
+    # Extras
+    extras: List[Dict] = []
+    extras_total: float = 0.0
+    # Notes
+    pickup_notes: Optional[str] = None
+    dropoff_notes: Optional[str] = None
+    admin_notes: Optional[str] = None
+    # Status
+    status: str = "new"
+    payment_status: str = "pending"
+    payment_session_id: Optional[str] = None
+    # Assignment
+    assigned_fleet_id: Optional[str] = None
+    assigned_fleet_name: Optional[str] = None
+    assigned_driver_id: Optional[str] = None
+    assigned_driver_name: Optional[str] = None
+    assigned_vehicle_id: Optional[str] = None
+    assigned_vehicle_plate: Optional[str] = None
+    assigned_at: Optional[str] = None
+    accepted_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    # User/source
+    user_id: Optional[str] = None
+    customer_source: str = "manual"
+    # Invoice tracking
+    customer_invoice_id: Optional[str] = None
+    fleet_invoice_id: Optional[str] = None
+    driver_invoice_id: Optional[str] = None
+    # Distance/duration
+    distance_km: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    # Timestamps
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_by: Optional[str] = None
+
+class BookingUpdate(BaseModel):
+    customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_reference: Optional[str] = None
+    pickup_location: Optional[str] = None
+    pickup_postcode: Optional[str] = None
+    pickup_lat: Optional[float] = None
+    pickup_lng: Optional[float] = None
+    dropoff_location: Optional[str] = None
+    dropoff_postcode: Optional[str] = None
+    dropoff_lat: Optional[float] = None
+    dropoff_lng: Optional[float] = None
+    pickup_date: Optional[str] = None
+    pickup_time: Optional[str] = None
+    vehicle_category_id: Optional[str] = None
+    passengers: Optional[int] = None
+    small_bags: Optional[int] = None
+    large_bags: Optional[int] = None
+    flight_number: Optional[str] = None
+    meet_greet: Optional[bool] = None
+    customer_price: Optional[float] = None
+    driver_price: Optional[float] = None
+    extras: Optional[List[Dict]] = None
+    pickup_notes: Optional[str] = None
+    dropoff_notes: Optional[str] = None
+    admin_notes: Optional[str] = None
+    status: Optional[str] = None
+    payment_status: Optional[str] = None
+    assigned_fleet_id: Optional[str] = None
+    assigned_driver_id: Optional[str] = None
+    assigned_vehicle_id: Optional[str] = None
+
+class JobAssignment(BaseModel):
+    fleet_id: Optional[str] = None
+    driver_id: Optional[str] = None
+    vehicle_id: Optional[str] = None
+    notes: Optional[str] = None
+
 # Invoice Model
+class InvoiceLineItem(BaseModel):
+    booking_id: str
+    booking_ref: str
+    description: str
+    date: str
+    amount: float
+
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     invoice_number: str
     invoice_type: str  # customer, fleet, driver
-    entity_id: str  # customer_id, fleet_id, or driver_id
+    entity_id: str
     entity_name: str
     entity_email: str
     booking_ids: List[str] = []
+    line_items: List[Dict] = []
     subtotal: float
     commission: float = 0.0
     tax: float = 0.0
@@ -194,7 +425,6 @@ class Invoice(BaseModel):
     due_date: Optional[str] = None
     paid_date: Optional[str] = None
     notes: Optional[str] = None
-    line_items: List[Dict] = []
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -203,6 +433,11 @@ class InvoiceUpdate(BaseModel):
     notes: Optional[str] = None
     due_date: Optional[str] = None
     paid_date: Optional[str] = None
+    line_items: Optional[List[Dict]] = None
+    subtotal: Optional[float] = None
+    commission: Optional[float] = None
+    tax: Optional[float] = None
+    total: Optional[float] = None
 
 # Radius Zone for Fixed Pricing
 class RadiusZone(BaseModel):
@@ -212,7 +447,7 @@ class RadiusZone(BaseModel):
     center_lat: float
     center_lng: float
     radius_km: float
-    zone_type: str = "pickup"  # pickup or dropoff
+    zone_type: str = "pickup"
 
 class RadiusRoute(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -222,7 +457,7 @@ class RadiusRoute(BaseModel):
     dropoff_zone_id: str
     pickup_zone_name: Optional[str] = None
     dropoff_zone_name: Optional[str] = None
-    prices: Dict[str, float] = {}  # vehicle_category_id: price
+    prices: Dict[str, float] = {}
     night_surcharge_percent: float = 0.0
     airport_surcharge: float = 0.0
     meet_greet_fee: float = 0.0
@@ -261,91 +496,6 @@ class FixedRoute(BaseModel):
     dropoff_location: str
     prices: Dict[str, float] = {}
     is_active: bool = True
-
-class BookingCreate(BaseModel):
-    pickup_location: str
-    pickup_lat: Optional[float] = None
-    pickup_lng: Optional[float] = None
-    dropoff_location: str
-    dropoff_lat: Optional[float] = None
-    dropoff_lng: Optional[float] = None
-    pickup_date: str
-    pickup_time: str
-    passengers: int
-    luggage: int
-    vehicle_category_id: str
-    flight_number: Optional[str] = None
-    meet_greet: bool = False
-    pickup_notes: Optional[str] = None
-    dropoff_notes: Optional[str] = None
-    passenger_name: str
-    passenger_email: EmailStr
-    passenger_phone: str
-    distance_km: Optional[float] = None
-    duration_minutes: Optional[int] = None
-    price: float
-    currency: str = "GBP"
-    payment_method: str = "stripe"
-
-class Booking(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    booking_ref: str = Field(default_factory=lambda: f"AC{str(uuid.uuid4())[:6].upper()}")
-    pickup_location: str
-    pickup_lat: Optional[float] = None
-    pickup_lng: Optional[float] = None
-    dropoff_location: str
-    dropoff_lat: Optional[float] = None
-    dropoff_lng: Optional[float] = None
-    pickup_date: str
-    pickup_time: str
-    passengers: int
-    luggage: int
-    vehicle_category_id: str
-    vehicle_name: Optional[str] = None
-    flight_number: Optional[str] = None
-    meet_greet: bool = False
-    pickup_notes: Optional[str] = None
-    dropoff_notes: Optional[str] = None
-    passenger_name: str
-    passenger_email: str
-    passenger_phone: str
-    user_id: Optional[str] = None
-    distance_km: Optional[float] = None
-    duration_minutes: Optional[int] = None
-    price: float
-    currency: str = "GBP"
-    status: str = "pending"  # pending, confirmed, assigned, accepted, in_progress, completed, cancelled
-    payment_status: str = "pending"  # pending, paid, refunded
-    payment_session_id: Optional[str] = None
-    # Fleet assignment
-    assigned_fleet_id: Optional[str] = None
-    assigned_fleet_name: Optional[str] = None
-    assigned_driver_id: Optional[str] = None
-    assigned_driver_name: Optional[str] = None
-    assigned_vehicle_id: Optional[str] = None
-    assigned_at: Optional[str] = None
-    accepted_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    # Invoice tracking
-    customer_invoice_id: Optional[str] = None
-    fleet_invoice_id: Optional[str] = None
-    # Timestamps
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    customer_source: str = "website"
-
-class BookingUpdate(BaseModel):
-    status: Optional[str] = None
-    payment_status: Optional[str] = None
-    pickup_notes: Optional[str] = None
-    dropoff_notes: Optional[str] = None
-
-class JobAssignment(BaseModel):
-    fleet_id: str
-    driver_id: Optional[str] = None
-    vehicle_id: Optional[str] = None
-    notes: Optional[str] = None
 
 class QuoteRequest(BaseModel):
     pickup_location: str
@@ -406,7 +556,6 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         if role == "fleet_admin":
             fleet = await db.fleets.find_one({"id": user_id}, {"_id": 0, "password": 0})
             if fleet:
-                # Return fleet data in user format
                 return {
                     "id": fleet["id"],
                     "email": fleet["email"],
@@ -429,7 +578,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
 
 async def get_super_admin(authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
-    if user.get("role") not in ["super_admin", "admin"]:  # Support both for backwards compatibility
+    if user.get("role") not in ["super_admin", "admin"]:
         raise HTTPException(status_code=403, detail="Super Admin access required")
     return user
 
@@ -459,8 +608,7 @@ async def get_optional_user(authorization: Optional[str] = Header(None)):
 # ==================== HELPER FUNCTIONS ====================
 
 def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Calculate distance between two points in km"""
-    R = 6371  # Earth's radius in km
+    R = 6371
     dlat = math.radians(lat2 - lat1)
     dlng = math.radians(lng2 - lng1)
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng/2)**2
@@ -468,15 +616,18 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     return R * c
 
 def is_point_in_radius(point_lat: float, point_lng: float, center_lat: float, center_lng: float, radius_km: float) -> bool:
-    """Check if a point is within a radius zone"""
     distance = haversine_distance(point_lat, point_lng, center_lat, center_lng)
     return distance <= radius_km
 
 async def generate_invoice_number(invoice_type: str) -> str:
-    """Generate unique invoice number"""
     prefix = {"customer": "INV-C", "fleet": "INV-F", "driver": "INV-D"}.get(invoice_type, "INV")
     count = await db.invoices.count_documents({"invoice_type": invoice_type})
     return f"{prefix}-{datetime.now().strftime('%Y%m')}-{str(count + 1).zfill(4)}"
+
+def calculate_profit(customer_price: float, driver_price: float, extras: List[Dict] = []) -> float:
+    extras_customer = sum(e.get("price", 0) for e in extras)
+    extras_driver = sum(e.get("price", 0) for e in extras if e.get("affects_driver_cost", False))
+    return (customer_price + extras_customer) - (driver_price + extras_driver)
 
 # ==================== AUTH ROUTES ====================
 
@@ -522,7 +673,6 @@ async def login(credentials: UserLogin):
 
 @api_router.post("/auth/fleet/login", response_model=TokenResponse)
 async def fleet_login(credentials: UserLogin):
-    """Login endpoint for fleet admins"""
     fleet = await db.fleets.find_one({"email": credentials.email}, {"_id": 0})
     if not fleet:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -549,16 +699,35 @@ async def get_me(user: dict = Depends(get_current_user)):
         created_at=user["created_at"]
     )
 
+# ==================== CUSTOMER ROUTES ====================
+
+@api_router.get("/customers")
+async def get_customers(user: dict = Depends(get_super_admin)):
+    customers = await db.customers.find({}, {"_id": 0}).to_list(500)
+    return customers
+
+@api_router.post("/customers", response_model=Customer)
+async def create_customer(customer_data: CustomerCreate, user: dict = Depends(get_super_admin)):
+    customer = Customer(**customer_data.model_dump())
+    await db.customers.insert_one(customer.model_dump())
+    return customer
+
+@api_router.get("/customers/{customer_id}")
+async def get_customer(customer_id: str, user: dict = Depends(get_super_admin)):
+    customer = await db.customers.find_one({"id": customer_id}, {"_id": 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
 # ==================== FLEET ROUTES ====================
 
-@api_router.get("/fleets", response_model=List[Fleet])
+@api_router.get("/fleets")
 async def get_fleets(user: dict = Depends(get_super_admin)):
     fleets = await db.fleets.find({}, {"_id": 0, "password": 0}).to_list(100)
     return fleets
 
 @api_router.get("/fleets/{fleet_id}")
 async def get_fleet(fleet_id: str, user: dict = Depends(get_admin_or_fleet)):
-    # Fleet admin can only view their own fleet
     if user.get("role") == "fleet_admin" and user.get("fleet_id") != fleet_id:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -569,24 +738,34 @@ async def get_fleet(fleet_id: str, user: dict = Depends(get_admin_or_fleet)):
 
 @api_router.post("/fleets", response_model=Fleet)
 async def create_fleet(fleet_data: FleetCreate, user: dict = Depends(get_super_admin)):
-    # Generate password for fleet login
-    default_password = f"fleet{str(uuid.uuid4())[:8]}"
+    # Check if email already exists
+    existing = await db.fleets.find_one({"email": fleet_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Generate password if not provided
+    password = fleet_data.password or f"fleet{str(uuid.uuid4())[:8]}"
     
     fleet = Fleet(
-        **fleet_data.model_dump(),
-        password=hash_password(default_password)
+        **{k: v for k, v in fleet_data.model_dump().items() if k != 'password'},
+        password=hash_password(password)
     )
     await db.fleets.insert_one(fleet.model_dump())
     
     # Return fleet with temporary password (only shown once)
     fleet_response = fleet.model_dump()
-    fleet_response["temporary_password"] = default_password
+    fleet_response["temporary_password"] = password
     del fleet_response["password"]
     return fleet_response
 
 @api_router.put("/fleets/{fleet_id}")
 async def update_fleet(fleet_id: str, update: FleetUpdate, user: dict = Depends(get_super_admin)):
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    
+    # Hash password if being updated
+    if "password" in update_data and update_data["password"]:
+        update_data["password"] = hash_password(update_data["password"])
+    
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     result = await db.fleets.update_one({"id": fleet_id}, {"$set": update_data})
@@ -616,6 +795,16 @@ async def delete_fleet(fleet_id: str, user: dict = Depends(get_super_admin)):
         raise HTTPException(status_code=404, detail="Fleet not found")
     return {"message": "Fleet deleted"}
 
+@api_router.get("/fleets/{fleet_id}/jobs")
+async def get_fleet_jobs_admin(fleet_id: str, user: dict = Depends(get_super_admin)):
+    jobs = await db.bookings.find({"assigned_fleet_id": fleet_id}, {"_id": 0}).sort("pickup_date", -1).to_list(500)
+    return jobs
+
+@api_router.get("/fleets/{fleet_id}/invoices")
+async def get_fleet_invoices_admin(fleet_id: str, user: dict = Depends(get_super_admin)):
+    invoices = await db.invoices.find({"entity_id": fleet_id, "invoice_type": "fleet"}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return invoices
+
 # ==================== DRIVER ROUTES ====================
 
 @api_router.get("/drivers")
@@ -624,7 +813,6 @@ async def get_drivers(
     user: dict = Depends(get_admin_or_fleet)
 ):
     query = {}
-    # Fleet admin can only see their drivers
     if user.get("role") == "fleet_admin":
         query["fleet_id"] = user.get("fleet_id")
     elif fleet_id:
@@ -639,7 +827,6 @@ async def get_driver(driver_id: str, user: dict = Depends(get_admin_or_fleet)):
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     
-    # Fleet admin can only view their drivers
     if user.get("role") == "fleet_admin" and driver.get("fleet_id") != user.get("fleet_id"):
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -647,9 +834,9 @@ async def get_driver(driver_id: str, user: dict = Depends(get_admin_or_fleet)):
 
 @api_router.post("/drivers", response_model=Driver)
 async def create_driver(driver_data: DriverCreate, user: dict = Depends(get_admin_or_fleet)):
-    # Fleet admin can only create drivers for their fleet
     if user.get("role") == "fleet_admin":
         driver_data.fleet_id = user.get("fleet_id")
+        driver_data.driver_type = "fleet"
     
     driver = Driver(**driver_data.model_dump())
     await db.drivers.insert_one(driver.model_dump())
@@ -661,7 +848,6 @@ async def update_driver(driver_id: str, update: DriverUpdate, user: dict = Depen
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     
-    # Fleet admin can only update their drivers
     if user.get("role") == "fleet_admin" and driver.get("fleet_id") != user.get("fleet_id"):
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -677,10 +863,10 @@ async def delete_driver(driver_id: str, user: dict = Depends(get_super_admin)):
         raise HTTPException(status_code=404, detail="Driver not found")
     return {"message": "Driver deleted"}
 
-# ==================== FLEET VEHICLE ROUTES ====================
+# ==================== VEHICLE ROUTES (New Management Section) ====================
 
-@api_router.get("/fleet-vehicles")
-async def get_fleet_vehicles(
+@api_router.get("/admin/vehicles")
+async def get_all_vehicles(
     fleet_id: Optional[str] = None,
     user: dict = Depends(get_admin_or_fleet)
 ):
@@ -690,20 +876,20 @@ async def get_fleet_vehicles(
     elif fleet_id:
         query["fleet_id"] = fleet_id
     
-    vehicles = await db.fleet_vehicles.find(query, {"_id": 0}).to_list(100)
+    vehicles = await db.fleet_vehicles.find(query, {"_id": 0}).to_list(200)
     return vehicles
 
-@api_router.post("/fleet-vehicles", response_model=FleetVehicle)
-async def create_fleet_vehicle(vehicle_data: FleetVehicleCreate, user: dict = Depends(get_admin_or_fleet)):
+@api_router.post("/admin/vehicles", response_model=Vehicle)
+async def create_vehicle_admin(vehicle_data: VehicleCreate, user: dict = Depends(get_admin_or_fleet)):
     if user.get("role") == "fleet_admin":
         vehicle_data.fleet_id = user.get("fleet_id")
     
-    vehicle = FleetVehicle(**vehicle_data.model_dump())
+    vehicle = Vehicle(**vehicle_data.model_dump())
     await db.fleet_vehicles.insert_one(vehicle.model_dump())
     return vehicle
 
-@api_router.put("/fleet-vehicles/{vehicle_id}")
-async def update_fleet_vehicle(vehicle_id: str, update: dict, user: dict = Depends(get_admin_or_fleet)):
+@api_router.get("/admin/vehicles/{vehicle_id}")
+async def get_vehicle_admin(vehicle_id: str, user: dict = Depends(get_admin_or_fleet)):
     vehicle = await db.fleet_vehicles.find_one({"id": vehicle_id}, {"_id": 0})
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -711,68 +897,302 @@ async def update_fleet_vehicle(vehicle_id: str, update: dict, user: dict = Depen
     if user.get("role") == "fleet_admin" and vehicle.get("fleet_id") != user.get("fleet_id"):
         raise HTTPException(status_code=403, detail="Access denied")
     
-    await db.fleet_vehicles.update_one({"id": vehicle_id}, {"$set": update})
+    return vehicle
+
+@api_router.put("/admin/vehicles/{vehicle_id}")
+async def update_vehicle_admin(vehicle_id: str, update: VehicleUpdate, user: dict = Depends(get_admin_or_fleet)):
+    vehicle = await db.fleet_vehicles.find_one({"id": vehicle_id}, {"_id": 0})
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    if user.get("role") == "fleet_admin" and vehicle.get("fleet_id") != user.get("fleet_id"):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    await db.fleet_vehicles.update_one({"id": vehicle_id}, {"$set": update_data})
+    
     return await db.fleet_vehicles.find_one({"id": vehicle_id}, {"_id": 0})
 
-@api_router.delete("/fleet-vehicles/{vehicle_id}")
-async def delete_fleet_vehicle(vehicle_id: str, user: dict = Depends(get_super_admin)):
+@api_router.delete("/admin/vehicles/{vehicle_id}")
+async def delete_vehicle_admin(vehicle_id: str, user: dict = Depends(get_super_admin)):
     result = await db.fleet_vehicles.delete_one({"id": vehicle_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return {"message": "Vehicle deleted"}
 
+# ==================== MANUAL BOOKING CREATION ====================
+
+@api_router.post("/admin/bookings/manual")
+async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = Depends(get_super_admin)):
+    """Create a manual booking with dual pricing (customer price + driver price)"""
+    
+    # Get vehicle info
+    vehicle = await db.vehicles.find_one({"id": booking_data.vehicle_category_id}, {"_id": 0})
+    vehicle_name = vehicle["name"] if vehicle else booking_data.vehicle_category_id
+    
+    # Calculate extras total
+    extras_total = sum(e.price for e in booking_data.extras)
+    
+    # Calculate profit
+    extras_driver_total = sum(e.price for e in booking_data.extras if e.affects_driver_cost)
+    profit = (booking_data.customer_price + extras_total) - (booking_data.driver_price + extras_driver_total)
+    
+    # Get fleet/driver names if assigned
+    assigned_fleet_name = None
+    assigned_driver_name = None
+    assigned_vehicle_plate = None
+    
+    if booking_data.assigned_fleet_id:
+        fleet = await db.fleets.find_one({"id": booking_data.assigned_fleet_id}, {"_id": 0})
+        assigned_fleet_name = fleet["name"] if fleet else None
+    
+    if booking_data.assigned_driver_id:
+        driver = await db.drivers.find_one({"id": booking_data.assigned_driver_id}, {"_id": 0})
+        assigned_driver_name = driver["name"] if driver else None
+    
+    if booking_data.assigned_vehicle_id:
+        veh = await db.fleet_vehicles.find_one({"id": booking_data.assigned_vehicle_id}, {"_id": 0})
+        assigned_vehicle_plate = veh["plate_number"] if veh else None
+    
+    # Determine initial status
+    status = "new"
+    if booking_data.assigned_fleet_id or booking_data.assigned_driver_id:
+        status = "assigned"
+    else:
+        status = "unassigned"
+    
+    booking = Booking(
+        customer_id=booking_data.customer_id,
+        customer_name=booking_data.customer_name,
+        customer_email=booking_data.customer_email,
+        customer_phone=booking_data.customer_phone,
+        customer_reference=booking_data.customer_reference,
+        pickup_location=booking_data.pickup_location,
+        pickup_postcode=booking_data.pickup_postcode,
+        pickup_lat=booking_data.pickup_lat,
+        pickup_lng=booking_data.pickup_lng,
+        dropoff_location=booking_data.dropoff_location,
+        dropoff_postcode=booking_data.dropoff_postcode,
+        dropoff_lat=booking_data.dropoff_lat,
+        dropoff_lng=booking_data.dropoff_lng,
+        pickup_date=booking_data.pickup_date,
+        pickup_time=booking_data.pickup_time,
+        vehicle_category_id=booking_data.vehicle_category_id,
+        vehicle_name=vehicle_name,
+        passengers=booking_data.passengers,
+        small_bags=booking_data.small_bags,
+        large_bags=booking_data.large_bags,
+        luggage=booking_data.small_bags + booking_data.large_bags,
+        flight_number=booking_data.flight_number,
+        meet_greet=booking_data.meet_greet,
+        customer_price=booking_data.customer_price,
+        driver_price=booking_data.driver_price,
+        profit=round(profit, 2),
+        price=booking_data.customer_price,  # Backward compatibility
+        extras=[e.model_dump() for e in booking_data.extras],
+        extras_total=extras_total,
+        pickup_notes=booking_data.pickup_notes,
+        dropoff_notes=booking_data.dropoff_notes,
+        admin_notes=booking_data.admin_notes,
+        status=status,
+        payment_status="pending",
+        assigned_fleet_id=booking_data.assigned_fleet_id,
+        assigned_fleet_name=assigned_fleet_name,
+        assigned_driver_id=booking_data.assigned_driver_id,
+        assigned_driver_name=assigned_driver_name,
+        assigned_vehicle_id=booking_data.assigned_vehicle_id,
+        assigned_vehicle_plate=assigned_vehicle_plate,
+        assigned_at=datetime.now(timezone.utc).isoformat() if (booking_data.assigned_fleet_id or booking_data.assigned_driver_id) else None,
+        customer_source="manual",
+        created_by=user["id"]
+    )
+    
+    await db.bookings.insert_one(booking.model_dump())
+    
+    # Create notification for fleet if assigned
+    if booking_data.assigned_fleet_id:
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "fleet_id": booking_data.assigned_fleet_id,
+            "type": "job_assigned",
+            "booking_id": booking.id,
+            "message": f"New job assigned: {booking.pickup_location} → {booking.dropoff_location}",
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    return booking.model_dump()
+
 # ==================== JOB ASSIGNMENT ROUTES ====================
 
 @api_router.post("/bookings/{booking_id}/assign")
-async def assign_booking_to_fleet(booking_id: str, assignment: JobAssignment, user: dict = Depends(get_super_admin)):
-    """Assign a booking to a fleet"""
+async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict = Depends(get_super_admin)):
+    """Assign a booking to a fleet and/or driver"""
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    fleet = await db.fleets.find_one({"id": assignment.fleet_id}, {"_id": 0})
-    if not fleet:
-        raise HTTPException(status_code=404, detail="Fleet not found")
-    
     update_data = {
-        "assigned_fleet_id": assignment.fleet_id,
-        "assigned_fleet_name": fleet["name"],
-        "assigned_driver_id": assignment.driver_id,
-        "assigned_vehicle_id": assignment.vehicle_id,
-        "assigned_at": datetime.now(timezone.utc).isoformat(),
-        "status": "assigned",
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # Get driver name if assigned
+    if assignment.fleet_id:
+        fleet = await db.fleets.find_one({"id": assignment.fleet_id}, {"_id": 0})
+        if not fleet:
+            raise HTTPException(status_code=404, detail="Fleet not found")
+        update_data["assigned_fleet_id"] = assignment.fleet_id
+        update_data["assigned_fleet_name"] = fleet["name"]
+    
     if assignment.driver_id:
         driver = await db.drivers.find_one({"id": assignment.driver_id}, {"_id": 0})
-        if driver:
-            update_data["assigned_driver_name"] = driver["name"]
+        if not driver:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        update_data["assigned_driver_id"] = assignment.driver_id
+        update_data["assigned_driver_name"] = driver["name"]
+    
+    if assignment.vehicle_id:
+        vehicle = await db.fleet_vehicles.find_one({"id": assignment.vehicle_id}, {"_id": 0})
+        if vehicle:
+            update_data["assigned_vehicle_id"] = assignment.vehicle_id
+            update_data["assigned_vehicle_plate"] = vehicle["plate_number"]
+    
+    if assignment.fleet_id or assignment.driver_id:
+        update_data["status"] = "assigned"
+        update_data["assigned_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
     
-    # Create notification for fleet (stored in notifications collection)
-    await db.notifications.insert_one({
-        "id": str(uuid.uuid4()),
-        "fleet_id": assignment.fleet_id,
-        "type": "job_assigned",
-        "booking_id": booking_id,
-        "message": f"New job assigned: {booking['pickup_location']} → {booking['dropoff_location']}",
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
+    # Create notification for fleet
+    if assignment.fleet_id:
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "fleet_id": assignment.fleet_id,
+            "type": "job_assigned",
+            "booking_id": booking_id,
+            "message": f"New job assigned: {booking['pickup_location']} → {booking['dropoff_location']}",
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
     
-    return {"message": "Booking assigned to fleet", "fleet_name": fleet["name"]}
+    return {"message": "Booking assigned successfully"}
 
-@api_router.put("/bookings/{booking_id}/accept")
-async def accept_job(booking_id: str, user: dict = Depends(get_fleet_admin)):
-    """Fleet accepts an assigned job"""
+@api_router.put("/bookings/{booking_id}/unassign")
+async def unassign_booking(booking_id: str, user: dict = Depends(get_super_admin)):
+    """Remove assignment from a booking"""
+    result = await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "assigned_fleet_id": None,
+            "assigned_fleet_name": None,
+            "assigned_driver_id": None,
+            "assigned_driver_name": None,
+            "assigned_vehicle_id": None,
+            "assigned_vehicle_plate": None,
+            "assigned_at": None,
+            "status": "unassigned",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"message": "Booking unassigned"}
+
+@api_router.put("/bookings/{booking_id}/status")
+async def update_booking_status(booking_id: str, status: str, user: dict = Depends(get_admin_or_fleet)):
+    """Update booking status with role-based permissions"""
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    # Verify fleet owns this assignment
+    # Fleet can only update their assigned jobs
+    if user.get("role") == "fleet_admin":
+        if booking.get("assigned_fleet_id") != user.get("fleet_id"):
+            raise HTTPException(status_code=403, detail="This job is not assigned to your fleet")
+        
+        # Fleet allowed status transitions
+        allowed_transitions = {
+            "assigned": ["accepted"],
+            "accepted": ["en_route", "cancelled", "driver_no_show"],
+            "en_route": ["arrived"],
+            "arrived": ["in_progress", "customer_no_show"],
+            "in_progress": ["completed"]
+        }
+        
+        current_status = booking.get("status")
+        if current_status not in allowed_transitions or status not in allowed_transitions.get(current_status, []):
+            raise HTTPException(status_code=400, detail=f"Cannot change status from {current_status} to {status}")
+    
+    update_data = {
+        "status": status,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if status == "accepted":
+        update_data["accepted_at"] = datetime.now(timezone.utc).isoformat()
+    elif status == "completed":
+        update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    return {"message": f"Status updated to {status}"}
+
+# ==================== FLEET DASHBOARD ROUTES ====================
+
+@api_router.get("/fleet/jobs")
+async def get_fleet_jobs(
+    status: Optional[str] = None,
+    user: dict = Depends(get_fleet_admin)
+):
+    """Get jobs assigned to the fleet - WITHOUT customer price/profit"""
+    query = {"assigned_fleet_id": user.get("fleet_id")}
+    if status:
+        query["status"] = status
+    
+    jobs = await db.bookings.find(query, {"_id": 0}).sort("pickup_date", 1).to_list(500)
+    
+    # Remove sensitive pricing info for fleet view
+    for job in jobs:
+        job.pop("customer_price", None)
+        job.pop("profit", None)
+        job.pop("extras_total", None)
+        job.pop("customer_invoice_id", None)
+        # Rename driver_price to 'price' for fleet view
+        job["price"] = job.get("driver_price", 0)
+    
+    return jobs
+
+@api_router.get("/fleet/stats")
+async def get_fleet_stats(user: dict = Depends(get_fleet_admin)):
+    fleet_id = user.get("fleet_id")
+    
+    total_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id})
+    new_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "assigned"})
+    accepted_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "accepted"})
+    in_progress_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "in_progress"})
+    completed_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "completed"})
+    
+    # Calculate earnings based on driver_price only
+    completed = await db.bookings.find(
+        {"assigned_fleet_id": fleet_id, "status": "completed"},
+        {"_id": 0, "driver_price": 1}
+    ).to_list(1000)
+    total_earnings = sum(b.get("driver_price", 0) for b in completed)
+    
+    return {
+        "total_jobs": total_jobs,
+        "new_jobs": new_jobs,
+        "accepted_jobs": accepted_jobs,
+        "in_progress_jobs": in_progress_jobs,
+        "completed_jobs": completed_jobs,
+        "total_earnings": round(total_earnings, 2),
+        "net_earnings": round(total_earnings, 2)  # Same as total for fleet
+    }
+
+@api_router.put("/fleet/jobs/{booking_id}/accept")
+async def fleet_accept_job(booking_id: str, user: dict = Depends(get_fleet_admin)):
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
     if booking.get("assigned_fleet_id") != user.get("fleet_id"):
         raise HTTPException(status_code=403, detail="This job is not assigned to your fleet")
     
@@ -786,9 +1206,9 @@ async def accept_job(booking_id: str, user: dict = Depends(get_fleet_admin)):
     )
     return {"message": "Job accepted"}
 
-@api_router.put("/bookings/{booking_id}/start")
-async def start_job(booking_id: str, user: dict = Depends(get_fleet_admin)):
-    """Fleet marks job as in progress"""
+@api_router.put("/fleet/jobs/{booking_id}/assign-driver")
+async def fleet_assign_driver(booking_id: str, driver_id: str, vehicle_id: Optional[str] = None, user: dict = Depends(get_fleet_admin)):
+    """Fleet assigns their own driver to the job"""
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -796,88 +1216,28 @@ async def start_job(booking_id: str, user: dict = Depends(get_fleet_admin)):
     if booking.get("assigned_fleet_id") != user.get("fleet_id"):
         raise HTTPException(status_code=403, detail="This job is not assigned to your fleet")
     
-    await db.bookings.update_one(
-        {"id": booking_id},
-        {"$set": {"status": "in_progress", "updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
-    return {"message": "Job started"}
-
-@api_router.put("/bookings/{booking_id}/complete")
-async def complete_job(booking_id: str, user: dict = Depends(get_fleet_admin)):
-    """Fleet marks job as completed"""
-    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+    # Verify driver belongs to fleet
+    driver = await db.drivers.find_one({"id": driver_id, "fleet_id": user.get("fleet_id")}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found or not in your fleet")
     
-    if booking.get("assigned_fleet_id") != user.get("fleet_id"):
-        raise HTTPException(status_code=403, detail="This job is not assigned to your fleet")
-    
-    await db.bookings.update_one(
-        {"id": booking_id},
-        {"$set": {
-            "status": "completed",
-            "completed_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    return {"message": "Job completed"}
-
-# ==================== FLEET DASHBOARD ROUTES ====================
-
-@api_router.get("/fleet/jobs")
-async def get_fleet_jobs(
-    status: Optional[str] = None,
-    user: dict = Depends(get_fleet_admin)
-):
-    """Get jobs assigned to the fleet"""
-    query = {"assigned_fleet_id": user.get("fleet_id")}
-    if status:
-        query["status"] = status
-    
-    jobs = await db.bookings.find(query, {"_id": 0}).sort("pickup_date", 1).to_list(100)
-    return jobs
-
-@api_router.get("/fleet/stats")
-async def get_fleet_stats(user: dict = Depends(get_fleet_admin)):
-    """Get fleet dashboard statistics"""
-    fleet_id = user.get("fleet_id")
-    
-    total_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id})
-    new_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "assigned"})
-    accepted_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "accepted"})
-    in_progress_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "in_progress"})
-    completed_jobs = await db.bookings.count_documents({"assigned_fleet_id": fleet_id, "status": "completed"})
-    
-    # Calculate earnings
-    completed = await db.bookings.find(
-        {"assigned_fleet_id": fleet_id, "status": "completed"},
-        {"_id": 0, "price": 1}
-    ).to_list(1000)
-    total_earnings = sum(b.get("price", 0) for b in completed)
-    
-    # Get fleet commission info
-    fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0})
-    if fleet:
-        if fleet.get("commission_type") == "percentage":
-            net_earnings = total_earnings * (1 - fleet.get("commission_value", 15) / 100)
-        else:
-            net_earnings = total_earnings - (completed_jobs * fleet.get("commission_value", 15))
-    else:
-        net_earnings = total_earnings
-    
-    return {
-        "total_jobs": total_jobs,
-        "new_jobs": new_jobs,
-        "accepted_jobs": accepted_jobs,
-        "in_progress_jobs": in_progress_jobs,
-        "completed_jobs": completed_jobs,
-        "total_earnings": round(total_earnings, 2),
-        "net_earnings": round(net_earnings, 2)
+    update_data = {
+        "assigned_driver_id": driver_id,
+        "assigned_driver_name": driver["name"],
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
+    
+    if vehicle_id:
+        vehicle = await db.fleet_vehicles.find_one({"id": vehicle_id, "fleet_id": user.get("fleet_id")}, {"_id": 0})
+        if vehicle:
+            update_data["assigned_vehicle_id"] = vehicle_id
+            update_data["assigned_vehicle_plate"] = vehicle["plate_number"]
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    return {"message": "Driver assigned to job"}
 
 @api_router.get("/fleet/notifications")
 async def get_fleet_notifications(user: dict = Depends(get_fleet_admin)):
-    """Get fleet notifications"""
     notifications = await db.notifications.find(
         {"fleet_id": user.get("fleet_id")},
         {"_id": 0}
@@ -892,6 +1252,173 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
     )
     return {"message": "Notification marked as read"}
 
+# ==================== ADMIN BOOKING ROUTES ====================
+
+@api_router.get("/admin/bookings")
+async def get_all_bookings(
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    fleet_id: Optional[str] = None,
+    driver_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    vehicle_category: Optional[str] = None,
+    search: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    query = {}
+    
+    if status and status != "all":
+        query["status"] = status
+    
+    if date_from and date_to:
+        query["pickup_date"] = {"$gte": date_from, "$lte": date_to}
+    elif date_from:
+        query["pickup_date"] = {"$gte": date_from}
+    elif date_to:
+        query["pickup_date"] = {"$lte": date_to}
+    
+    if fleet_id:
+        query["assigned_fleet_id"] = fleet_id
+    
+    if driver_id:
+        query["assigned_driver_id"] = driver_id
+    
+    if customer_id:
+        query["customer_id"] = customer_id
+    
+    if vehicle_category:
+        query["vehicle_category_id"] = vehicle_category
+    
+    if search:
+        query["$or"] = [
+            {"booking_ref": {"$regex": search, "$options": "i"}},
+            {"customer_name": {"$regex": search, "$options": "i"}},
+            {"pickup_location": {"$regex": search, "$options": "i"}},
+            {"dropoff_location": {"$regex": search, "$options": "i"}}
+        ]
+    
+    bookings = await db.bookings.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return bookings
+
+@api_router.get("/admin/bookings/{booking_id}")
+async def get_booking_admin(booking_id: str, user: dict = Depends(get_super_admin)):
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return booking
+
+@api_router.put("/admin/bookings/{booking_id}")
+async def update_booking_admin(booking_id: str, update: BookingUpdate, user: dict = Depends(get_super_admin)):
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    
+    # Recalculate profit if prices changed
+    if "customer_price" in update_data or "driver_price" in update_data:
+        customer_price = update_data.get("customer_price", booking.get("customer_price", 0))
+        driver_price = update_data.get("driver_price", booking.get("driver_price", 0))
+        extras = update_data.get("extras", booking.get("extras", []))
+        
+        extras_total = sum(e.get("price", 0) for e in extras)
+        extras_driver = sum(e.get("price", 0) for e in extras if e.get("affects_driver_cost", False))
+        
+        update_data["profit"] = round((customer_price + extras_total) - (driver_price + extras_driver), 2)
+        update_data["price"] = customer_price  # Backward compatibility
+        update_data["extras_total"] = extras_total
+    
+    # Update vehicle name if category changed
+    if "vehicle_category_id" in update_data:
+        vehicle = await db.vehicles.find_one({"id": update_data["vehicle_category_id"]}, {"_id": 0})
+        if vehicle:
+            update_data["vehicle_name"] = vehicle["name"]
+    
+    # Update assignment names
+    if "assigned_fleet_id" in update_data:
+        if update_data["assigned_fleet_id"]:
+            fleet = await db.fleets.find_one({"id": update_data["assigned_fleet_id"]}, {"_id": 0})
+            update_data["assigned_fleet_name"] = fleet["name"] if fleet else None
+        else:
+            update_data["assigned_fleet_name"] = None
+    
+    if "assigned_driver_id" in update_data:
+        if update_data["assigned_driver_id"]:
+            driver = await db.drivers.find_one({"id": update_data["assigned_driver_id"]}, {"_id": 0})
+            update_data["assigned_driver_name"] = driver["name"] if driver else None
+        else:
+            update_data["assigned_driver_name"] = None
+    
+    if "assigned_vehicle_id" in update_data:
+        if update_data["assigned_vehicle_id"]:
+            vehicle = await db.fleet_vehicles.find_one({"id": update_data["assigned_vehicle_id"]}, {"_id": 0})
+            update_data["assigned_vehicle_plate"] = vehicle["plate_number"] if vehicle else None
+        else:
+            update_data["assigned_vehicle_plate"] = None
+    
+    # Calculate luggage total
+    if "small_bags" in update_data or "large_bags" in update_data:
+        small = update_data.get("small_bags", booking.get("small_bags", 0))
+        large = update_data.get("large_bags", booking.get("large_bags", 0))
+        update_data["luggage"] = small + large
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    return await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+
+@api_router.delete("/admin/bookings/{booking_id}")
+async def delete_booking_admin(booking_id: str, user: dict = Depends(get_super_admin)):
+    result = await db.bookings.delete_one({"id": booking_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"message": "Booking deleted"}
+
+@api_router.get("/admin/stats")
+async def get_admin_stats(user: dict = Depends(get_super_admin)):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    total_bookings = await db.bookings.count_documents({})
+    new_bookings = await db.bookings.count_documents({"status": "new"})
+    unassigned_bookings = await db.bookings.count_documents({"status": "unassigned"})
+    assigned_bookings = await db.bookings.count_documents({"status": "assigned"})
+    completed_bookings = await db.bookings.count_documents({"status": "completed"})
+    cancelled_bookings = await db.bookings.count_documents({"status": "cancelled"})
+    today_bookings = await db.bookings.count_documents({"pickup_date": today})
+    
+    # Calculate total revenue and profit
+    all_completed = await db.bookings.find({"status": "completed"}, {"_id": 0, "customer_price": 1, "profit": 1}).to_list(10000)
+    total_revenue = sum(b.get("customer_price", b.get("price", 0)) for b in all_completed)
+    total_profit = sum(b.get("profit", 0) for b in all_completed)
+    
+    # Fleet and driver stats
+    total_fleets = await db.fleets.count_documents({})
+    active_fleets = await db.fleets.count_documents({"status": "active"})
+    total_drivers = await db.drivers.count_documents({})
+    total_vehicles = await db.fleet_vehicles.count_documents({})
+    
+    return {
+        "total_bookings": total_bookings,
+        "new_bookings": new_bookings,
+        "unassigned_bookings": unassigned_bookings,
+        "assigned_bookings": assigned_bookings,
+        "completed_bookings": completed_bookings,
+        "cancelled_bookings": cancelled_bookings,
+        "today_bookings": today_bookings,
+        "total_revenue": round(total_revenue, 2),
+        "total_profit": round(total_profit, 2),
+        "total_fleets": total_fleets,
+        "active_fleets": active_fleets,
+        "total_drivers": total_drivers,
+        "total_vehicles": total_vehicles
+    }
+
+@api_router.get("/statuses")
+async def get_job_statuses():
+    """Return all available job statuses"""
+    return JOB_STATUSES
+
 # ==================== INVOICE ROUTES ====================
 
 @api_router.get("/invoices")
@@ -899,11 +1426,12 @@ async def get_invoices(
     invoice_type: Optional[str] = None,
     entity_id: Optional[str] = None,
     status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     user: dict = Depends(get_admin_or_fleet)
 ):
     query = {}
     
-    # Fleet admin can only see their invoices
     if user.get("role") == "fleet_admin":
         query["entity_id"] = user.get("fleet_id")
         query["invoice_type"] = "fleet"
@@ -916,7 +1444,7 @@ async def get_invoices(
     if status:
         query["status"] = status
     
-    invoices = await db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    invoices = await db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     return invoices
 
 @api_router.get("/invoices/{invoice_id}")
@@ -925,7 +1453,6 @@ async def get_invoice(invoice_id: str, user: dict = Depends(get_admin_or_fleet))
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
-    # Fleet admin can only view their invoices
     if user.get("role") == "fleet_admin" and invoice.get("entity_id") != user.get("fleet_id"):
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -936,20 +1463,18 @@ async def generate_invoice(
     invoice_type: str,
     entity_id: str,
     booking_ids: List[str],
+    notes: Optional[str] = None,
     user: dict = Depends(get_super_admin)
 ):
     """Generate an invoice for customer, fleet, or driver"""
-    # Get bookings
     bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(100)
     if not bookings:
         raise HTTPException(status_code=400, detail="No valid bookings found")
     
-    # Get entity details
     if invoice_type == "customer":
-        # Use first booking's customer info
-        entity_name = bookings[0]["passenger_name"]
-        entity_email = bookings[0]["passenger_email"]
-        subtotal = sum(b["price"] for b in bookings)
+        entity_name = bookings[0]["customer_name"]
+        entity_email = bookings[0].get("customer_email", "")
+        subtotal = sum(b.get("customer_price", b.get("price", 0)) for b in bookings)
         commission = 0
     elif invoice_type == "fleet":
         fleet = await db.fleets.find_one({"id": entity_id}, {"_id": 0})
@@ -957,37 +1482,35 @@ async def generate_invoice(
             raise HTTPException(status_code=404, detail="Fleet not found")
         entity_name = fleet["name"]
         entity_email = fleet["email"]
-        subtotal = sum(b["price"] for b in bookings)
+        subtotal = sum(b.get("driver_price", 0) for b in bookings)
         if fleet.get("commission_type") == "percentage":
-            commission = subtotal * (fleet.get("commission_value", 15) / 100)
+            commission = subtotal * (fleet.get("commission_value", 0) / 100)
         else:
-            commission = len(bookings) * fleet.get("commission_value", 15)
+            commission = len(bookings) * fleet.get("commission_value", 0)
     elif invoice_type == "driver":
         driver = await db.drivers.find_one({"id": entity_id}, {"_id": 0})
         if not driver:
             raise HTTPException(status_code=404, detail="Driver not found")
         entity_name = driver["name"]
-        entity_email = driver["email"]
-        subtotal = sum(b["price"] for b in bookings)
+        entity_email = driver.get("email", "")
+        subtotal = sum(b.get("driver_price", 0) for b in bookings)
         commission = 0
     else:
         raise HTTPException(status_code=400, detail="Invalid invoice type")
     
-    # Create line items
     line_items = []
     for b in bookings:
+        amount = b.get("customer_price", b.get("price", 0)) if invoice_type == "customer" else b.get("driver_price", 0)
         line_items.append({
             "booking_id": b["id"],
             "booking_ref": b.get("booking_ref", b["id"][:8].upper()),
             "description": f"{b['pickup_location']} → {b['dropoff_location']}",
             "date": b["pickup_date"],
-            "amount": b["price"]
+            "amount": amount
         })
     
-    # Calculate total
     total = subtotal - commission if invoice_type == "fleet" else subtotal
     
-    # Create invoice
     invoice = Invoice(
         invoice_number=await generate_invoice_number(invoice_type),
         invoice_type=invoice_type,
@@ -995,10 +1518,11 @@ async def generate_invoice(
         entity_name=entity_name,
         entity_email=entity_email,
         booking_ids=booking_ids,
+        line_items=line_items,
         subtotal=round(subtotal, 2),
         commission=round(commission, 2),
         total=round(total, 2),
-        line_items=line_items,
+        notes=notes,
         due_date=(datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
     )
     
@@ -1024,47 +1548,68 @@ async def update_invoice(invoice_id: str, update: InvoiceUpdate, user: dict = De
     
     return await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
 
+@api_router.delete("/invoices/{invoice_id}")
+async def delete_invoice(invoice_id: str, user: dict = Depends(get_super_admin)):
+    result = await db.invoices.delete_one({"id": invoice_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return {"message": "Invoice deleted"}
+
 @api_router.get("/invoices/{invoice_id}/pdf")
 async def download_invoice_pdf(invoice_id: str, user: dict = Depends(get_admin_or_fleet)):
-    """Generate and download invoice as PDF"""
     invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
-    # Fleet admin can only download their invoices
     if user.get("role") == "fleet_admin" and invoice.get("entity_id") != user.get("fleet_id"):
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Generate simple HTML invoice (in production, use a PDF library)
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <style>
-            body {{ font-family: Arial, sans-serif; padding: 40px; }}
-            .header {{ text-align: center; margin-bottom: 40px; }}
-            .logo {{ font-size: 24px; font-weight: bold; }}
-            .invoice-details {{ margin-bottom: 30px; }}
+            body {{ font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }}
+            .header {{ display: flex; justify-content: space-between; align-items: start; margin-bottom: 40px; border-bottom: 2px solid #0A0F1C; padding-bottom: 20px; }}
+            .logo {{ font-size: 28px; font-weight: bold; color: #0A0F1C; }}
+            .invoice-title {{ text-align: right; }}
+            .invoice-title h1 {{ margin: 0; color: #0A0F1C; }}
+            .invoice-details {{ display: flex; justify-content: space-between; margin-bottom: 30px; }}
+            .invoice-details div {{ flex: 1; }}
             table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-            th, td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
-            th {{ background: #f5f5f5; }}
-            .total-row {{ font-weight: bold; background: #f0f0f0; }}
-            .footer {{ margin-top: 40px; text-align: center; color: #666; }}
+            th {{ background: #0A0F1C; color: white; padding: 12px; text-align: left; }}
+            td {{ border-bottom: 1px solid #ddd; padding: 12px; }}
+            .total-section {{ margin-top: 20px; text-align: right; }}
+            .total-row {{ font-size: 18px; margin: 5px 0; }}
+            .total-row.final {{ font-size: 24px; font-weight: bold; color: #0A0F1C; border-top: 2px solid #0A0F1C; padding-top: 10px; }}
+            .footer {{ margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; }}
+            .status {{ display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; }}
+            .status-draft {{ background: #fef3c7; color: #92400e; }}
+            .status-issued {{ background: #dbeafe; color: #1e40af; }}
+            .status-paid {{ background: #dcfce7; color: #166534; }}
         </style>
     </head>
     <body>
         <div class="header">
             <div class="logo">AIRCABIO</div>
-            <p>Airport Transfer Services</p>
+            <div class="invoice-title">
+                <h1>INVOICE</h1>
+                <p>#{invoice['invoice_number']}</p>
+                <span class="status status-{invoice['status']}">{invoice['status'].upper()}</span>
+            </div>
         </div>
         
         <div class="invoice-details">
-            <h2>Invoice #{invoice['invoice_number']}</h2>
-            <p><strong>To:</strong> {invoice['entity_name']}</p>
-            <p><strong>Email:</strong> {invoice['entity_email']}</p>
-            <p><strong>Date:</strong> {invoice['created_at'][:10]}</p>
-            <p><strong>Due Date:</strong> {invoice.get('due_date', 'N/A')[:10] if invoice.get('due_date') else 'N/A'}</p>
-            <p><strong>Status:</strong> {invoice['status'].upper()}</p>
+            <div>
+                <strong>Bill To:</strong><br>
+                {invoice['entity_name']}<br>
+                {invoice['entity_email']}
+            </div>
+            <div style="text-align: right;">
+                <strong>Invoice Date:</strong> {invoice['created_at'][:10]}<br>
+                <strong>Due Date:</strong> {invoice.get('due_date', 'N/A')[:10] if invoice.get('due_date') else 'N/A'}<br>
+                <strong>Type:</strong> {invoice['invoice_type'].title()}
+            </div>
         </div>
         
         <table>
@@ -1073,7 +1618,7 @@ async def download_invoice_pdf(invoice_id: str, user: dict = Depends(get_admin_o
                     <th>Booking Ref</th>
                     <th>Description</th>
                     <th>Date</th>
-                    <th>Amount</th>
+                    <th style="text-align: right;">Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -1085,38 +1630,37 @@ async def download_invoice_pdf(invoice_id: str, user: dict = Depends(get_admin_o
                     <td>{item.get('booking_ref', 'N/A')}</td>
                     <td>{item.get('description', 'N/A')}</td>
                     <td>{item.get('date', 'N/A')}</td>
-                    <td>£{item.get('amount', 0):.2f}</td>
+                    <td style="text-align: right;">£{item.get('amount', 0):.2f}</td>
                 </tr>
         """
     
     html_content += f"""
             </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" style="text-align: right;"><strong>Subtotal:</strong></td>
-                    <td>£{invoice['subtotal']:.2f}</td>
-                </tr>
+        </table>
+        
+        <div class="total-section">
+            <div class="total-row">Subtotal: £{invoice['subtotal']:.2f}</div>
     """
     
     if invoice.get('commission', 0) > 0:
         html_content += f"""
-                <tr>
-                    <td colspan="3" style="text-align: right;"><strong>Commission:</strong></td>
-                    <td>-£{invoice['commission']:.2f}</td>
-                </tr>
+            <div class="total-row">Commission: -£{invoice['commission']:.2f}</div>
+        """
+    
+    if invoice.get('tax', 0) > 0:
+        html_content += f"""
+            <div class="total-row">Tax: £{invoice['tax']:.2f}</div>
         """
     
     html_content += f"""
-                <tr class="total-row">
-                    <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
-                    <td>£{invoice['total']:.2f}</td>
-                </tr>
-            </tfoot>
-        </table>
+            <div class="total-row final">Total: £{invoice['total']:.2f}</div>
+        </div>
+        
+        {f'<p><strong>Notes:</strong> {invoice["notes"]}</p>' if invoice.get('notes') else ''}
         
         <div class="footer">
             <p>Thank you for your business!</p>
-            <p>Aircabio | info@aircabio.com | +44 20 1234 5678</p>
+            <p>Aircabio Airport Transfers | info@aircabio.com | +44 20 1234 5678</p>
         </div>
     </body>
     </html>
@@ -1128,106 +1672,40 @@ async def download_invoice_pdf(invoice_id: str, user: dict = Depends(get_admin_o
         headers={"Content-Disposition": f"attachment; filename=invoice_{invoice['invoice_number']}.html"}
     )
 
-# ==================== RADIUS ZONE ROUTES ====================
-
-@api_router.get("/radius-zones")
-async def get_radius_zones(user: dict = Depends(get_super_admin)):
-    zones = await db.radius_zones.find({}, {"_id": 0}).to_list(100)
-    return zones
-
-@api_router.post("/radius-zones", response_model=RadiusZone)
-async def create_radius_zone(zone: RadiusZone, user: dict = Depends(get_super_admin)):
-    await db.radius_zones.insert_one(zone.model_dump())
-    return zone
-
-@api_router.put("/radius-zones/{zone_id}")
-async def update_radius_zone(zone_id: str, zone: RadiusZone, user: dict = Depends(get_super_admin)):
-    result = await db.radius_zones.update_one({"id": zone_id}, {"$set": zone.model_dump()})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Zone not found")
-    return zone
-
-@api_router.delete("/radius-zones/{zone_id}")
-async def delete_radius_zone(zone_id: str, user: dict = Depends(get_super_admin)):
-    result = await db.radius_zones.delete_one({"id": zone_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Zone not found")
-    return {"message": "Zone deleted"}
-
-# ==================== RADIUS ROUTE ROUTES ====================
-
-@api_router.get("/radius-routes")
-async def get_radius_routes(user: dict = Depends(get_super_admin)):
-    routes = await db.radius_routes.find({}, {"_id": 0}).to_list(100)
-    # Enrich with zone names
-    zones = {z["id"]: z for z in await db.radius_zones.find({}, {"_id": 0}).to_list(100)}
-    for route in routes:
-        pickup_zone = zones.get(route.get("pickup_zone_id"))
-        dropoff_zone = zones.get(route.get("dropoff_zone_id"))
-        route["pickup_zone_name"] = pickup_zone["name"] if pickup_zone else "Unknown"
-        route["dropoff_zone_name"] = dropoff_zone["name"] if dropoff_zone else "Unknown"
-    return routes
-
-@api_router.post("/radius-routes", response_model=RadiusRoute)
-async def create_radius_route(route: RadiusRoute, user: dict = Depends(get_super_admin)):
-    # Get zone names
-    pickup_zone = await db.radius_zones.find_one({"id": route.pickup_zone_id}, {"_id": 0})
-    dropoff_zone = await db.radius_zones.find_one({"id": route.dropoff_zone_id}, {"_id": 0})
-    
-    route.pickup_zone_name = pickup_zone["name"] if pickup_zone else None
-    route.dropoff_zone_name = dropoff_zone["name"] if dropoff_zone else None
-    
-    await db.radius_routes.insert_one(route.model_dump())
-    return route
-
-@api_router.put("/radius-routes/{route_id}")
-async def update_radius_route(route_id: str, route: RadiusRoute, user: dict = Depends(get_super_admin)):
-    result = await db.radius_routes.update_one({"id": route_id}, {"$set": route.model_dump()})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Route not found")
-    return route
-
-@api_router.delete("/radius-routes/{route_id}")
-async def delete_radius_route(route_id: str, user: dict = Depends(get_super_admin)):
-    result = await db.radius_routes.delete_one({"id": route_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Route not found")
-    return {"message": "Route deleted"}
-
-# ==================== VEHICLE ROUTES ====================
+# ==================== VEHICLE CATEGORIES (Public) ====================
 
 @api_router.get("/vehicles", response_model=List[VehicleCategory])
-async def get_vehicles():
+async def get_vehicle_categories():
     vehicles = await db.vehicles.find({"is_active": True}, {"_id": 0}).to_list(100)
     return vehicles
 
 @api_router.get("/vehicles/{vehicle_id}", response_model=VehicleCategory)
-async def get_vehicle(vehicle_id: str):
+async def get_vehicle_category(vehicle_id: str):
     vehicle = await db.vehicles.find_one({"id": vehicle_id}, {"_id": 0})
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return vehicle
 
-@api_router.post("/admin/vehicles", response_model=VehicleCategory)
-async def create_vehicle(vehicle: VehicleCategory, user: dict = Depends(get_super_admin)):
+@api_router.post("/admin/vehicle-categories", response_model=VehicleCategory)
+async def create_vehicle_category(vehicle: VehicleCategory, user: dict = Depends(get_super_admin)):
     await db.vehicles.insert_one(vehicle.model_dump())
     return vehicle
 
-@api_router.put("/admin/vehicles/{vehicle_id}", response_model=VehicleCategory)
-async def update_vehicle(vehicle_id: str, vehicle: VehicleCategory, user: dict = Depends(get_super_admin)):
+@api_router.put("/admin/vehicle-categories/{vehicle_id}", response_model=VehicleCategory)
+async def update_vehicle_category(vehicle_id: str, vehicle: VehicleCategory, user: dict = Depends(get_super_admin)):
     result = await db.vehicles.update_one({"id": vehicle_id}, {"$set": vehicle.model_dump()})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return vehicle
 
-@api_router.delete("/admin/vehicles/{vehicle_id}")
-async def delete_vehicle(vehicle_id: str, user: dict = Depends(get_super_admin)):
+@api_router.delete("/admin/vehicle-categories/{vehicle_id}")
+async def delete_vehicle_category(vehicle_id: str, user: dict = Depends(get_super_admin)):
     result = await db.vehicles.delete_one({"id": vehicle_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return {"message": "Vehicle deleted"}
 
-# ==================== PRICING ROUTES ====================
+# ==================== PRICING & ROUTES ====================
 
 @api_router.get("/pricing", response_model=List[PricingRule])
 async def get_pricing_rules():
@@ -1253,8 +1731,6 @@ async def delete_pricing_rule(rule_id: str, user: dict = Depends(get_super_admin
         raise HTTPException(status_code=404, detail="Pricing rule not found")
     return {"message": "Pricing rule deleted"}
 
-# ==================== FIXED ROUTES (Legacy) ====================
-
 @api_router.get("/fixed-routes", response_model=List[FixedRoute])
 async def get_fixed_routes():
     routes = await db.fixed_routes.find({"is_active": True}, {"_id": 0}).to_list(100)
@@ -1279,14 +1755,73 @@ async def delete_fixed_route(route_id: str, user: dict = Depends(get_super_admin
         raise HTTPException(status_code=404, detail="Fixed route not found")
     return {"message": "Fixed route deleted"}
 
-# ==================== QUOTE ROUTES ====================
+# ==================== RADIUS ZONES & ROUTES ====================
+
+@api_router.get("/radius-zones")
+async def get_radius_zones(user: dict = Depends(get_super_admin)):
+    zones = await db.radius_zones.find({}, {"_id": 0}).to_list(100)
+    return zones
+
+@api_router.post("/radius-zones", response_model=RadiusZone)
+async def create_radius_zone(zone: RadiusZone, user: dict = Depends(get_super_admin)):
+    await db.radius_zones.insert_one(zone.model_dump())
+    return zone
+
+@api_router.put("/radius-zones/{zone_id}")
+async def update_radius_zone(zone_id: str, zone: RadiusZone, user: dict = Depends(get_super_admin)):
+    result = await db.radius_zones.update_one({"id": zone_id}, {"$set": zone.model_dump()})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    return zone
+
+@api_router.delete("/radius-zones/{zone_id}")
+async def delete_radius_zone(zone_id: str, user: dict = Depends(get_super_admin)):
+    result = await db.radius_zones.delete_one({"id": zone_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    return {"message": "Zone deleted"}
+
+@api_router.get("/radius-routes")
+async def get_radius_routes(user: dict = Depends(get_super_admin)):
+    routes = await db.radius_routes.find({}, {"_id": 0}).to_list(100)
+    zones = {z["id"]: z for z in await db.radius_zones.find({}, {"_id": 0}).to_list(100)}
+    for route in routes:
+        pickup_zone = zones.get(route.get("pickup_zone_id"))
+        dropoff_zone = zones.get(route.get("dropoff_zone_id"))
+        route["pickup_zone_name"] = pickup_zone["name"] if pickup_zone else "Unknown"
+        route["dropoff_zone_name"] = dropoff_zone["name"] if dropoff_zone else "Unknown"
+    return routes
+
+@api_router.post("/radius-routes", response_model=RadiusRoute)
+async def create_radius_route(route: RadiusRoute, user: dict = Depends(get_super_admin)):
+    pickup_zone = await db.radius_zones.find_one({"id": route.pickup_zone_id}, {"_id": 0})
+    dropoff_zone = await db.radius_zones.find_one({"id": route.dropoff_zone_id}, {"_id": 0})
+    route.pickup_zone_name = pickup_zone["name"] if pickup_zone else None
+    route.dropoff_zone_name = dropoff_zone["name"] if dropoff_zone else None
+    await db.radius_routes.insert_one(route.model_dump())
+    return route
+
+@api_router.put("/radius-routes/{route_id}")
+async def update_radius_route(route_id: str, route: RadiusRoute, user: dict = Depends(get_super_admin)):
+    result = await db.radius_routes.update_one({"id": route_id}, {"$set": route.model_dump()})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Route not found")
+    return route
+
+@api_router.delete("/radius-routes/{route_id}")
+async def delete_radius_route(route_id: str, user: dict = Depends(get_super_admin)):
+    result = await db.radius_routes.delete_one({"id": route_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Route not found")
+    return {"message": "Route deleted"}
+
+# ==================== QUOTE & BOOKING (Website) ====================
 
 @api_router.post("/quote", response_model=QuoteResponse)
 async def get_quote(request: QuoteRequest):
     vehicles = await db.vehicles.find({"is_active": True}, {"_id": 0}).to_list(100)
     pricing_rules = await db.pricing_rules.find({}, {"_id": 0}).to_list(100)
     
-    # Check for radius-based fixed route first
     radius_route_prices = None
     if request.pickup_lat and request.pickup_lng and request.dropoff_lat and request.dropoff_lng:
         zones = await db.radius_zones.find({}, {"_id": 0}).to_list(100)
@@ -1312,7 +1847,6 @@ async def get_quote(request: QuoteRequest):
                     radius_route_prices = route["prices"]
                     break
     
-    # Fallback to text-based fixed routes
     fixed_route_prices = None
     if not radius_route_prices:
         fixed_routes = await db.fixed_routes.find({"is_active": True}, {"_id": 0}).to_list(100)
@@ -1329,7 +1863,6 @@ async def get_quote(request: QuoteRequest):
         if vehicle["max_passengers"] < request.passengers or vehicle["max_luggage"] < request.luggage:
             continue
         
-        # Priority: radius route > text fixed route > mileage-based
         if radius_route_prices and vehicle["id"] in radius_route_prices:
             price = radius_route_prices[vehicle["id"]]
             currency = "GBP"
@@ -1337,7 +1870,6 @@ async def get_quote(request: QuoteRequest):
             price = fixed_route_prices[vehicle["id"]]
             currency = "GBP"
         else:
-            # Mileage-based pricing
             rule = next((r for r in pricing_rules if r["vehicle_category_id"] == vehicle["id"]), None)
             if rule:
                 price = rule["base_fee"] + (request.distance_km * rule["per_km_rate"])
@@ -1374,27 +1906,79 @@ async def get_quote(request: QuoteRequest):
         duration_minutes=duration_minutes
     )
 
-# ==================== BOOKING ROUTES ====================
+# Legacy booking create for website
+class LegacyBookingCreate(BaseModel):
+    pickup_location: str
+    pickup_lat: Optional[float] = None
+    pickup_lng: Optional[float] = None
+    dropoff_location: str
+    dropoff_lat: Optional[float] = None
+    dropoff_lng: Optional[float] = None
+    pickup_date: str
+    pickup_time: str
+    passengers: int
+    luggage: int
+    vehicle_category_id: str
+    flight_number: Optional[str] = None
+    meet_greet: bool = False
+    pickup_notes: Optional[str] = None
+    dropoff_notes: Optional[str] = None
+    passenger_name: str
+    passenger_email: EmailStr
+    passenger_phone: str
+    distance_km: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    price: float
+    currency: str = "GBP"
+    payment_method: str = "stripe"
 
-@api_router.post("/bookings", response_model=Booking)
-async def create_booking(booking_data: BookingCreate, user: dict = Depends(get_optional_user)):
+@api_router.post("/bookings")
+async def create_booking(booking_data: LegacyBookingCreate, user: dict = Depends(get_optional_user)):
     vehicle = await db.vehicles.find_one({"id": booking_data.vehicle_category_id}, {"_id": 0})
     
     booking = Booking(
-        **booking_data.model_dump(),
+        pickup_location=booking_data.pickup_location,
+        pickup_lat=booking_data.pickup_lat,
+        pickup_lng=booking_data.pickup_lng,
+        dropoff_location=booking_data.dropoff_location,
+        dropoff_lat=booking_data.dropoff_lat,
+        dropoff_lng=booking_data.dropoff_lng,
+        pickup_date=booking_data.pickup_date,
+        pickup_time=booking_data.pickup_time,
+        passengers=booking_data.passengers,
+        luggage=booking_data.luggage,
+        small_bags=0,
+        large_bags=booking_data.luggage,
+        vehicle_category_id=booking_data.vehicle_category_id,
         vehicle_name=vehicle["name"] if vehicle else None,
-        user_id=user["id"] if user else None
+        flight_number=booking_data.flight_number,
+        meet_greet=booking_data.meet_greet,
+        pickup_notes=booking_data.pickup_notes,
+        dropoff_notes=booking_data.dropoff_notes,
+        customer_name=booking_data.passenger_name,
+        customer_email=booking_data.passenger_email,
+        customer_phone=booking_data.passenger_phone,
+        user_id=user["id"] if user else None,
+        distance_km=booking_data.distance_km,
+        duration_minutes=booking_data.duration_minutes,
+        customer_price=booking_data.price,
+        driver_price=booking_data.price * 0.7,  # Default 70% to driver
+        profit=booking_data.price * 0.3,
+        price=booking_data.price,
+        currency=booking_data.currency,
+        status="new",
+        customer_source="website"
     )
     
     await db.bookings.insert_one(booking.model_dump())
-    return booking
+    return booking.model_dump()
 
-@api_router.get("/bookings", response_model=List[Booking])
+@api_router.get("/bookings")
 async def get_user_bookings(user: dict = Depends(get_current_user)):
     bookings = await db.bookings.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return bookings
 
-@api_router.get("/bookings/{booking_id}", response_model=Booking)
+@api_router.get("/bookings/{booking_id}")
 async def get_booking(booking_id: str, user: dict = Depends(get_optional_user)):
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
@@ -1415,71 +1999,6 @@ async def cancel_booking(booking_id: str, user: dict = Depends(get_current_user)
     )
     return {"message": "Booking cancelled"}
 
-# ==================== ADMIN BOOKING ROUTES ====================
-
-@api_router.get("/admin/bookings", response_model=List[Booking])
-async def get_all_bookings(
-    status: Optional[str] = None,
-    date: Optional[str] = None,
-    fleet_id: Optional[str] = None,
-    user: dict = Depends(get_super_admin)
-):
-    query = {}
-    if status:
-        query["status"] = status
-    if date:
-        query["pickup_date"] = date
-    if fleet_id:
-        query["assigned_fleet_id"] = fleet_id
-    
-    bookings = await db.bookings.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    return bookings
-
-@api_router.put("/admin/bookings/{booking_id}", response_model=Booking)
-async def update_booking(booking_id: str, update: BookingUpdate, user: dict = Depends(get_super_admin)):
-    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
-    result = await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    
-    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-    return booking
-
-@api_router.get("/admin/stats")
-async def get_admin_stats(user: dict = Depends(get_super_admin)):
-    total_bookings = await db.bookings.count_documents({})
-    pending_bookings = await db.bookings.count_documents({"status": "pending"})
-    confirmed_bookings = await db.bookings.count_documents({"status": "confirmed"})
-    assigned_bookings = await db.bookings.count_documents({"status": "assigned"})
-    completed_bookings = await db.bookings.count_documents({"status": "completed"})
-    cancelled_bookings = await db.bookings.count_documents({"status": "cancelled"})
-    
-    # Revenue calculation
-    paid_bookings = await db.bookings.find({"payment_status": "paid"}, {"_id": 0, "price": 1}).to_list(1000)
-    total_revenue = sum(b.get("price", 0) for b in paid_bookings)
-    
-    # Fleet stats
-    total_fleets = await db.fleets.count_documents({})
-    active_fleets = await db.fleets.count_documents({"status": "active"})
-    
-    # Driver stats
-    total_drivers = await db.drivers.count_documents({})
-    
-    return {
-        "total_bookings": total_bookings,
-        "pending_bookings": pending_bookings,
-        "confirmed_bookings": confirmed_bookings,
-        "assigned_bookings": assigned_bookings,
-        "completed_bookings": completed_bookings,
-        "cancelled_bookings": cancelled_bookings,
-        "total_revenue": round(total_revenue, 2),
-        "total_fleets": total_fleets,
-        "active_fleets": active_fleets,
-        "total_drivers": total_drivers
-    }
-
 # ==================== PAYMENT ROUTES ====================
 
 @api_router.post("/payments/create-session")
@@ -1498,14 +2017,16 @@ async def create_payment_session(request: Request, booking_id: str):
     success_url = f"{frontend_url}/booking/success?session_id={{CHECKOUT_SESSION_ID}}&booking_id={booking_id}"
     cancel_url = f"{frontend_url}/booking/cancel?booking_id={booking_id}"
     
+    price = booking.get("customer_price", booking.get("price", 0))
+    
     checkout_request = CheckoutSessionRequest(
-        amount=float(booking["price"]),
+        amount=float(price),
         currency=booking.get("currency", "gbp").lower(),
         success_url=success_url,
         cancel_url=cancel_url,
         metadata={
             "booking_id": booking_id,
-            "passenger_email": booking["passenger_email"],
+            "passenger_email": booking.get("customer_email", booking.get("passenger_email", "")),
             "pickup_location": booking["pickup_location"],
             "dropoff_location": booking["dropoff_location"]
         }
@@ -1517,7 +2038,7 @@ async def create_payment_session(request: Request, booking_id: str):
         "id": str(uuid.uuid4()),
         "session_id": session.session_id,
         "booking_id": booking_id,
-        "amount": float(booking["price"]),
+        "amount": float(price),
         "currency": booking.get("currency", "GBP"),
         "payment_status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -1544,7 +2065,7 @@ async def get_payment_status(session_id: str):
         )
         await db.bookings.update_one(
             {"payment_session_id": session_id},
-            {"$set": {"payment_status": "paid", "status": "confirmed", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"payment_status": "paid", "status": "unassigned", "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
     
     return {
@@ -1570,7 +2091,7 @@ async def stripe_webhook(request: Request):
             if booking_id:
                 await db.bookings.update_one(
                     {"id": booking_id},
-                    {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    {"$set": {"payment_status": "paid", "status": "unassigned"}}
                 )
         
         return {"status": "success"}
@@ -1585,26 +2106,26 @@ async def seed_data():
     # Seed vehicles
     vehicles = [
         VehicleCategory(
-            id="sedan", name="Sedan", description="Comfortable sedan for up to 3 passengers",
-            max_passengers=3, max_luggage=2,
+            id="saloon", name="Saloon", description="Comfortable saloon for up to 4 passengers",
+            max_passengers=4, max_luggage=2,
             image_url="https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400",
             features=["Air Conditioning", "Leather Seats", "Free WiFi", "Bottled Water"]
         ),
         VehicleCategory(
             id="executive", name="Executive", description="Premium executive vehicle for business travelers",
-            max_passengers=3, max_luggage=2,
+            max_passengers=4, max_luggage=2,
             image_url="https://images.unsplash.com/photo-1563720360172-67b8f3dce741?w=400",
             features=["Air Conditioning", "Leather Seats", "Free WiFi", "Newspapers", "Bottled Water", "Phone Charger"]
         ),
         VehicleCategory(
-            id="suv", name="SUV", description="Spacious SUV for families or groups",
-            max_passengers=5, max_luggage=4,
-            image_url="https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=400",
-            features=["Air Conditioning", "Leather Seats", "Free WiFi", "Extra Luggage Space"]
+            id="estate", name="Estate", description="Estate car with extra luggage space",
+            max_passengers=4, max_luggage=4,
+            image_url="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400",
+            features=["Air Conditioning", "Extra Luggage Space", "Free WiFi"]
         ),
         VehicleCategory(
-            id="mpv", name="MPV", description="Multi-purpose vehicle for larger groups",
-            max_passengers=6, max_luggage=5,
+            id="mpv", name="MPV", description="Multi-purpose vehicle for families",
+            max_passengers=6, max_luggage=4,
             image_url="https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=400",
             features=["Air Conditioning", "Spacious Interior", "Free WiFi", "Child Seats Available"]
         ),
@@ -1627,9 +2148,9 @@ async def seed_data():
     
     # Seed pricing rules
     pricing_rules = [
-        PricingRule(id="pr-sedan", vehicle_category_id="sedan", base_fee=5.0, per_km_rate=1.5, minimum_fare=25.0),
+        PricingRule(id="pr-saloon", vehicle_category_id="saloon", base_fee=5.0, per_km_rate=1.5, minimum_fare=25.0),
         PricingRule(id="pr-executive", vehicle_category_id="executive", base_fee=10.0, per_km_rate=2.0, minimum_fare=35.0),
-        PricingRule(id="pr-suv", vehicle_category_id="suv", base_fee=8.0, per_km_rate=1.8, minimum_fare=30.0),
+        PricingRule(id="pr-estate", vehicle_category_id="estate", base_fee=7.0, per_km_rate=1.7, minimum_fare=28.0),
         PricingRule(id="pr-mpv", vehicle_category_id="mpv", base_fee=10.0, per_km_rate=2.0, minimum_fare=40.0),
         PricingRule(id="pr-van", vehicle_category_id="van", base_fee=15.0, per_km_rate=2.2, minimum_fare=50.0),
         PricingRule(id="pr-minibus", vehicle_category_id="minibus", base_fee=25.0, per_km_rate=2.5, minimum_fare=75.0)
@@ -1643,58 +2164,22 @@ async def seed_data():
         FixedRoute(
             id="lhr-central", name="Heathrow to Central London",
             pickup_location="Heathrow Airport", dropoff_location="Central London",
-            prices={"sedan": 55.0, "executive": 75.0, "suv": 70.0, "mpv": 85.0, "van": 95.0, "minibus": 150.0}
+            prices={"saloon": 55.0, "executive": 75.0, "estate": 60.0, "mpv": 85.0, "van": 95.0, "minibus": 150.0}
         ),
         FixedRoute(
             id="lgw-central", name="Gatwick to Central London",
             pickup_location="Gatwick Airport", dropoff_location="Central London",
-            prices={"sedan": 65.0, "executive": 85.0, "suv": 80.0, "mpv": 95.0, "van": 110.0, "minibus": 170.0}
+            prices={"saloon": 65.0, "executive": 85.0, "estate": 70.0, "mpv": 95.0, "van": 110.0, "minibus": 170.0}
         ),
         FixedRoute(
             id="stn-central", name="Stansted to Central London",
             pickup_location="Stansted Airport", dropoff_location="Central London",
-            prices={"sedan": 75.0, "executive": 95.0, "suv": 90.0, "mpv": 105.0, "van": 120.0, "minibus": 190.0}
+            prices={"saloon": 75.0, "executive": 95.0, "estate": 80.0, "mpv": 105.0, "van": 120.0, "minibus": 190.0}
         )
     ]
     
     for r in fixed_routes:
         await db.fixed_routes.update_one({"id": r.id}, {"$set": r.model_dump()}, upsert=True)
-    
-    # Seed radius zones (example: Heathrow and Central London)
-    radius_zones = [
-        RadiusZone(id="zone-heathrow", name="Heathrow Airport Area", center_lat=51.4700, center_lng=-0.4543, radius_km=5.0, zone_type="pickup"),
-        RadiusZone(id="zone-gatwick", name="Gatwick Airport Area", center_lat=51.1537, center_lng=-0.1821, radius_km=5.0, zone_type="pickup"),
-        RadiusZone(id="zone-central-london", name="Central London", center_lat=51.5074, center_lng=-0.1278, radius_km=8.0, zone_type="dropoff"),
-        RadiusZone(id="zone-city-london", name="City of London", center_lat=51.5155, center_lng=-0.0922, radius_km=3.0, zone_type="dropoff")
-    ]
-    
-    for z in radius_zones:
-        await db.radius_zones.update_one({"id": z.id}, {"$set": z.model_dump()}, upsert=True)
-    
-    # Seed radius routes
-    radius_routes = [
-        RadiusRoute(
-            id="rr-heathrow-central",
-            name="Heathrow Area to Central London",
-            pickup_zone_id="zone-heathrow",
-            dropoff_zone_id="zone-central-london",
-            pickup_zone_name="Heathrow Airport Area",
-            dropoff_zone_name="Central London",
-            prices={"sedan": 55.0, "executive": 75.0, "suv": 70.0, "mpv": 85.0, "van": 95.0, "minibus": 150.0}
-        ),
-        RadiusRoute(
-            id="rr-gatwick-central",
-            name="Gatwick Area to Central London",
-            pickup_zone_id="zone-gatwick",
-            dropoff_zone_id="zone-central-london",
-            pickup_zone_name="Gatwick Airport Area",
-            dropoff_zone_name="Central London",
-            prices={"sedan": 65.0, "executive": 85.0, "suv": 80.0, "mpv": 95.0, "van": 110.0, "minibus": 170.0}
-        )
-    ]
-    
-    for r in radius_routes:
-        await db.radius_routes.update_one({"id": r.id}, {"$set": r.model_dump()}, upsert=True)
     
     # Create super admin user if not exists
     admin_exists = await db.users.find_one({"email": "admin@aircabio.com"})
@@ -1711,7 +2196,6 @@ async def seed_data():
         }
         await db.users.insert_one(admin_user)
     else:
-        # Update existing admin to super_admin role
         await db.users.update_one(
             {"email": "admin@aircabio.com"},
             {"$set": {"role": "super_admin"}}
@@ -1734,11 +2218,44 @@ async def seed_data():
         )
         await db.fleets.insert_one(sample_fleet.model_dump())
     
+    # Create sample driver
+    driver_exists = await db.drivers.find_one({"email": "driver1@aircabio.com"})
+    if not driver_exists:
+        sample_driver = Driver(
+            id="driver-1",
+            name="Mike Johnson",
+            email="driver1@aircabio.com",
+            phone="+44 7700 900123",
+            license_number="JOHNS123456",
+            driver_type="internal",
+            status="active"
+        )
+        await db.drivers.insert_one(sample_driver.model_dump())
+    
+    # Create sample vehicle
+    vehicle_exists = await db.fleet_vehicles.find_one({"plate_number": "AB12 CDE"})
+    if not vehicle_exists:
+        sample_vehicle = Vehicle(
+            id="vehicle-1",
+            name="Mercedes E-Class",
+            plate_number="AB12 CDE",
+            category_id="executive",
+            make="Mercedes",
+            model="E-Class",
+            year=2023,
+            color="Black",
+            passenger_capacity=4,
+            luggage_capacity=2,
+            driver_id="driver-1",
+            status="active"
+        )
+        await db.fleet_vehicles.insert_one(sample_vehicle.model_dump())
+    
     return {"message": "Seed data created successfully"}
 
 @api_router.get("/")
 async def root():
-    return {"message": "Aircabio Airport Transfers API", "version": "2.0.0"}
+    return {"message": "Aircabio Airport Transfers API", "version": "3.0.0"}
 
 # Include the router in the main app
 app.include_router(api_router)
