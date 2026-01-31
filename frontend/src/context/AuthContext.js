@@ -46,6 +46,15 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
+  const fleetLogin = async (email, password) => {
+    const response = await axios.post(`${API}/auth/fleet/login`, { email, password });
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem("aircabio_token", access_token);
+    setToken(access_token);
+    setUser(userData);
+    return userData;
+  };
+
   const register = async (name, email, password, phone) => {
     const response = await axios.post(`${API}/auth/register`, {
       name, email, password, phone
@@ -63,12 +72,15 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const isAdmin = user?.role === "admin";
+  const isSuperAdmin = user?.role === "super_admin" || user?.role === "admin";
+  const isFleetAdmin = user?.role === "fleet_admin";
+  const isAdmin = isSuperAdmin || isFleetAdmin;
   const isAuthenticated = !!user;
 
   return (
     <AuthContext.Provider value={{
-      user, token, loading, login, register, logout, isAdmin, isAuthenticated
+      user, token, loading, login, fleetLogin, register, logout, 
+      isSuperAdmin, isFleetAdmin, isAdmin, isAuthenticated
     }}>
       {children}
     </AuthContext.Provider>

@@ -21,9 +21,14 @@ import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import CancellationPage from "./pages/CancellationPage";
 
+// Fleet Pages
+import FleetLoginPage from "./pages/FleetLoginPage";
+import FleetDashboard from "./pages/FleetDashboard";
+
 // Layout
 import Layout from "./components/Layout";
 import AdminLayout from "./components/AdminLayout";
+import FleetLayout from "./components/FleetLayout";
 
 function App() {
   return (
@@ -48,6 +53,14 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/dashboard" element={<CustomerDashboard />} />
+            </Route>
+            
+            {/* Fleet Login (public) */}
+            <Route path="/fleet/login" element={<FleetLoginPage />} />
+            
+            {/* Fleet Dashboard Routes */}
+            <Route path="/fleet/dashboard" element={<FleetLayout />}>
+              <Route index element={<FleetDashboard />} />
             </Route>
             
             {/* Admin Routes */}
