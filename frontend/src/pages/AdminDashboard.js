@@ -1075,7 +1075,7 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
                 <Select value={formData.assigned_fleet_id} onValueChange={(v) => setFormData({...formData, assigned_fleet_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Select fleet" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {fleets.filter(f => f.status === "active").map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -1085,7 +1085,7 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
                 <Select value={formData.assigned_driver_id} onValueChange={(v) => setFormData({...formData, assigned_driver_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {drivers.filter(d => d.status === "active").map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -1303,7 +1303,7 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
             <Select value={fleetId} onValueChange={setFleetId}>
               <SelectTrigger><SelectValue placeholder="Select fleet" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {fleets.filter(f => f.status === "active").map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -1313,7 +1313,7 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
             <Select value={driverId} onValueChange={setDriverId}>
               <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {drivers.filter(d => d.status === "active").map(d => <SelectItem key={d.id} value={d.id}>{d.name} ({d.driver_type})</SelectItem>)}
               </SelectContent>
             </Select>
@@ -1323,7 +1323,7 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
             <Select value={vehicleId} onValueChange={setVehicleId}>
               <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {allVehicles.filter(v => v.status === "active").map(v => <SelectItem key={v.id} value={v.id}>{v.plate_number} - {v.name || v.make}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -1578,7 +1578,7 @@ const DriverDialog = ({ open, onClose, driver, fleets, allVehicles, headers, onS
             <Select value={formData.vehicle_id} onValueChange={(v) => setFormData({...formData, vehicle_id: v})}>
               <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {allVehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate_number}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -1706,7 +1706,7 @@ const VehicleDialog = ({ open, onClose, vehicle, vehicles, fleets, drivers, head
             <Select value={formData.fleet_id || ""} onValueChange={(v) => setFormData({...formData, fleet_id: v})}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {fleets.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -1716,7 +1716,7 @@ const VehicleDialog = ({ open, onClose, vehicle, vehicles, fleets, drivers, head
             <Select value={formData.driver_id || ""} onValueChange={(v) => setFormData({...formData, driver_id: v})}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
