@@ -136,6 +136,8 @@ const FleetDashboard = () => {
             <SelectItem value="all">All Jobs</SelectItem>
             <SelectItem value="assigned">New</SelectItem>
             <SelectItem value="accepted">Accepted</SelectItem>
+            <SelectItem value="en_route">En Route</SelectItem>
+            <SelectItem value="arrived">Arrived</SelectItem>
             <SelectItem value="in_progress">In Progress</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
