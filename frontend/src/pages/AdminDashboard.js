@@ -1515,11 +1515,16 @@ const DriverDialog = ({ open, onClose, driver, fleets, allVehicles, headers, onS
     }
     setLoading(true);
     try {
+      const submitData = {
+        ...formData,
+        fleet_id: formData.fleet_id && formData.fleet_id !== "none" ? formData.fleet_id : null,
+        vehicle_id: formData.vehicle_id && formData.vehicle_id !== "none" ? formData.vehicle_id : null
+      };
       if (driver) {
-        await axios.put(`${API}/drivers/${driver.id}`, formData, { headers });
+        await axios.put(`${API}/drivers/${driver.id}`, submitData, { headers });
         toast.success("Driver updated!");
       } else {
-        await axios.post(`${API}/drivers`, formData, { headers });
+        await axios.post(`${API}/drivers`, submitData, { headers });
         toast.success("Driver created!");
       }
       onClose();
