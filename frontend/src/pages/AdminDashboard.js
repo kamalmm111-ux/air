@@ -1648,11 +1648,16 @@ const VehicleDialog = ({ open, onClose, vehicle, vehicles, fleets, drivers, head
     }
     setLoading(true);
     try {
+      const submitData = {
+        ...formData,
+        fleet_id: formData.fleet_id && formData.fleet_id !== "none" ? formData.fleet_id : null,
+        driver_id: formData.driver_id && formData.driver_id !== "none" ? formData.driver_id : null
+      };
       if (vehicle) {
-        await axios.put(`${API}/admin/vehicles/${vehicle.id}`, formData, { headers });
+        await axios.put(`${API}/admin/vehicles/${vehicle.id}`, submitData, { headers });
         toast.success("Vehicle updated!");
       } else {
-        await axios.post(`${API}/admin/vehicles`, formData, { headers });
+        await axios.post(`${API}/admin/vehicles`, submitData, { headers });
         toast.success("Vehicle created!");
       }
       onClose();
