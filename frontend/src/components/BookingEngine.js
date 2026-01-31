@@ -5,12 +5,8 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
-import { Calendar } from "./ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { format } from "date-fns";
 import { CalendarIcon, MapPin, Clock, Users, Briefcase, Plane, Search } from "lucide-react";
-import { cn } from "../lib/utils";
 import { toast } from "sonner";
 import axios from "axios";
 
@@ -19,7 +15,6 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const BookingEngine = () => {
   const navigate = useNavigate();
   const { bookingData, updateBookingData, setQuotes } = useBooking();
-  const [date, setDate] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Generate time options
@@ -31,11 +26,15 @@ const BookingEngine = () => {
     }
   }
 
-  const handleDateSelect = (selectedDate) => {
-    setDate(selectedDate);
-    if (selectedDate) {
-      updateBookingData({ pickup_date: format(selectedDate, "yyyy-MM-dd") });
-    }
+  // Get tomorrow's date as minimum
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const handleDateChange = (e) => {
+    updateBookingData({ pickup_date: e.target.value });
   };
 
   const handleSearch = async () => {
