@@ -52,7 +52,7 @@ const FleetDashboard = () => {
 
   const acceptJob = async (bookingId) => {
     try {
-      await axios.put(`${API}/bookings/${bookingId}/accept`, {}, { headers });
+      await axios.put(`${API}/fleet/jobs/${bookingId}/accept`, {}, { headers });
       toast.success("Job accepted!");
       fetchData();
     } catch (error) {
@@ -60,24 +60,22 @@ const FleetDashboard = () => {
     }
   };
 
-  const startJob = async (bookingId) => {
+  const updateJobStatus = async (bookingId, status) => {
     try {
-      await axios.put(`${API}/bookings/${bookingId}/start`, {}, { headers });
-      toast.success("Job started!");
+      await axios.put(`${API}/bookings/${bookingId}/status?status=${status}`, {}, { headers });
+      toast.success(`Job ${status.replace("_", " ")}!`);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to start job");
+      toast.error(error.response?.data?.detail || "Failed to update job");
     }
   };
 
+  const startJob = async (bookingId) => {
+    await updateJobStatus(bookingId, "en_route");
+  };
+
   const completeJob = async (bookingId) => {
-    try {
-      await axios.put(`${API}/bookings/${bookingId}/complete`, {}, { headers });
-      toast.success("Job completed!");
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to complete job");
-    }
+    await updateJobStatus(bookingId, "completed");
   };
 
   const getStatusBadge = (status) => {
