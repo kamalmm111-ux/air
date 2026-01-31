@@ -36,13 +36,13 @@ const AdminLayout = () => {
 
   const sidebarItems = [
     { id: "dashboard", name: "Dashboard", icon: LayoutDashboard },
-    { id: "bookings", name: "Bookings", icon: CalendarDays },
+    { id: "bookings", name: "Jobs / Bookings", icon: CalendarDays },
     { id: "fleets", name: "Fleets", icon: Building2 },
     { id: "drivers", name: "Drivers", icon: Users },
+    { id: "vehicles", name: "Vehicles", icon: Truck },
     { id: "pricing", name: "Pricing Rules", icon: DollarSign },
     { id: "routes", name: "Fixed Routes", icon: Route },
-    { id: "radius-routes", name: "Radius Zones", icon: MapPin },
-    { id: "vehicles", name: "Vehicle Categories", icon: Truck },
+    { id: "vehicle-categories", name: "Vehicle Classes", icon: Car },
     { id: "invoices", name: "Invoices", icon: FileText },
     { id: "settings", name: "Settings", icon: Settings },
   ];
