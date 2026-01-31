@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -7,16 +7,38 @@ import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
 import { 
-  Calendar, DollarSign, Users, Car, TrendingUp, Download, Eye, Edit, Plus, Search, Filter,
-  Clock, CheckCircle, Briefcase, Building2, Truck, FileText, MapPin, Send, ExternalLink
+  Calendar, DollarSign, Users, Car, Download, Eye, Edit, Plus, Search, Filter,
+  Clock, CheckCircle, Building2, Truck, FileText, MapPin, Send, X, Minus,
+  Plane, User, Phone, Mail, Hash, AlertTriangle, TrendingUp, UserCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Job status configuration
+const JOB_STATUSES = {
+  new: { label: "New", color: "bg-blue-100 text-blue-800" },
+  unassigned: { label: "Unassigned", color: "bg-yellow-100 text-yellow-800" },
+  assigned: { label: "Assigned", color: "bg-purple-100 text-purple-800" },
+  accepted: { label: "Accepted", color: "bg-indigo-100 text-indigo-800" },
+  en_route: { label: "En Route", color: "bg-cyan-100 text-cyan-800" },
+  arrived: { label: "Arrived", color: "bg-teal-100 text-teal-800" },
+  in_progress: { label: "In Progress", color: "bg-orange-100 text-orange-800" },
+  completed: { label: "Completed", color: "bg-green-100 text-green-800" },
+  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-800" },
+  no_show: { label: "No Show", color: "bg-red-100 text-red-800" },
+  driver_no_show: { label: "Driver No Show", color: "bg-red-100 text-red-800" },
+  customer_no_show: { label: "Customer No Show", color: "bg-red-100 text-red-800" },
+  on_hold: { label: "On Hold", color: "bg-zinc-100 text-zinc-800" },
+  rescheduled: { label: "Rescheduled", color: "bg-amber-100 text-amber-800" },
+  pending: { label: "Pending", color: "bg-yellow-100 text-yellow-800" },
+  confirmed: { label: "Confirmed", color: "bg-blue-100 text-blue-800" }
+};
 
 const AdminDashboard = () => {
   const { activeTab } = useOutletContext();
@@ -28,25 +50,36 @@ const AdminDashboard = () => {
   const [fixedRoutes, setFixedRoutes] = useState([]);
   const [fleets, setFleets] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [allVehicles, setAllVehicles] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [radiusZones, setRadiusZones] = useState([]);
-  const [radiusRoutes, setRadiusRoutes] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filters
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [fleetFilter, setFleetFilter] = useState("all");
+  const [driverFilter, setDriverFilter] = useState("all");
+  
+  // Dialogs
+  const [newJobDialogOpen, setNewJobDialogOpen] = useState(false);
+  const [editJobDialogOpen, setEditJobDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [fleetDialogOpen, setFleetDialogOpen] = useState(false);
+  const [driverDialogOpen, setDriverDialogOpen] = useState(false);
+  const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [selectedFleetId, setSelectedFleetId] = useState("");
+  const [editingFleet, setEditingFleet] = useState(null);
+  const [editingDriver, setEditingDriver] = useState(null);
+  const [editingVehicle, setEditingVehicle] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
-  useEffect(() => {
-    fetchData();
-  }, [token]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const [statsRes, bookingsRes, vehiclesRes, pricingRes, routesRes, fleetsRes, driversRes, invoicesRes, zonesRes, radiusRoutesRes] = await Promise.all([
+      const [statsRes, bookingsRes, vehiclesRes, pricingRes, routesRes, fleetsRes, driversRes, allVehiclesRes, invoicesRes, customersRes] = await Promise.all([
         axios.get(`${API}/admin/stats`, { headers }),
         axios.get(`${API}/admin/bookings`, { headers }),
         axios.get(`${API}/vehicles`),
@@ -54,9 +87,9 @@ const AdminDashboard = () => {
         axios.get(`${API}/fixed-routes`),
         axios.get(`${API}/fleets`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/drivers`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/admin/vehicles`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/invoices`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/radius-zones`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/radius-routes`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${API}/customers`, { headers }).catch(() => ({ data: [] }))
       ]);
       setStats(statsRes.data);
       setBookings(bookingsRes.data);
@@ -65,65 +98,46 @@ const AdminDashboard = () => {
       setFixedRoutes(routesRes.data);
       setFleets(fleetsRes.data);
       setDrivers(driversRes.data);
+      setAllVehicles(allVehiclesRes.data);
       setInvoices(invoicesRes.data);
-      setRadiusZones(zonesRes.data);
-      setRadiusRoutes(radiusRoutesRes.data);
+      setCustomers(customersRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const updateBookingStatus = async (bookingId, status) => {
-    try {
-      await axios.put(`${API}/admin/bookings/${bookingId}`, { status }, { headers });
-      setBookings(bookings.map(b => b.id === bookingId ? { ...b, status } : b));
-      toast.success("Booking status updated");
-    } catch (error) {
-      toast.error("Failed to update booking");
-    }
-  };
-
-  const assignBookingToFleet = async () => {
-    if (!selectedBooking || !selectedFleetId) return;
-    
-    try {
-      await axios.post(`${API}/bookings/${selectedBooking.id}/assign`, {
-        fleet_id: selectedFleetId
-      }, { headers });
-      toast.success("Booking assigned to fleet!");
-      setAssignDialogOpen(false);
-      setSelectedBooking(null);
-      setSelectedFleetId("");
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to assign booking");
-    }
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const getStatusBadge = (status) => {
-    const styles = {
-      pending: "bg-yellow-100 text-yellow-800",
-      confirmed: "bg-blue-100 text-blue-800",
-      assigned: "bg-purple-100 text-purple-800",
-      accepted: "bg-indigo-100 text-indigo-800",
-      in_progress: "bg-orange-100 text-orange-800",
-      completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800"
-    };
-    return <Badge className={styles[status] || "bg-zinc-100"}>{status?.replace("_", " ")}</Badge>;
+    const config = JOB_STATUSES[status] || { label: status, color: "bg-zinc-100 text-zinc-800" };
+    return <Badge className={config.color}>{config.label}</Badge>;
   };
 
+  // Filter bookings
   const filteredBookings = bookings.filter(b => {
     const matchesStatus = statusFilter === "all" || b.status === statusFilter;
     const matchesSearch = searchTerm === "" || 
-      b.passenger_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.passenger_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.pickup_location?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+      b.booking_ref?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.pickup_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.dropoff_location?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDateFrom = !dateFrom || b.pickup_date >= dateFrom;
+    const matchesDateTo = !dateTo || b.pickup_date <= dateTo;
+    const matchesFleet = fleetFilter === "all" || b.assigned_fleet_id === fleetFilter;
+    const matchesDriver = driverFilter === "all" || b.assigned_driver_id === driverFilter;
+    return matchesStatus && matchesSearch && matchesDateFrom && matchesDateTo && matchesFleet && matchesDriver;
   });
+
+  // Quick filters
+  const today = new Date().toISOString().split('T')[0];
+  const getTodayBookings = () => bookings.filter(b => b.pickup_date === today);
+  const getUnassignedBookings = () => bookings.filter(b => b.status === "unassigned" || b.status === "new");
+  const getNoShowBookings = () => bookings.filter(b => ["no_show", "driver_no_show", "customer_no_show"].includes(b.status));
 
   if (loading) {
     return (
@@ -133,41 +147,47 @@ const AdminDashboard = () => {
     );
   }
 
+  // ==================== RENDER FUNCTIONS ====================
+
   const renderDashboard = () => (
     <div className="space-y-8">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Bookings" value={stats?.total_bookings || 0} icon={Calendar} color="bg-blue-500" />
-        <StatCard title="Pending" value={stats?.pending_bookings || 0} icon={Clock} color="bg-yellow-500" />
-        <StatCard title="Active Fleets" value={stats?.active_fleets || 0} icon={Building2} color="bg-purple-500" />
-        <StatCard title="Total Revenue" value={`£${stats?.total_revenue?.toFixed(2) || 0}`} icon={DollarSign} color="bg-[#D4AF37]" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard title="Total Jobs" value={stats?.total_bookings || 0} icon={Calendar} color="bg-blue-500" />
+        <StatCard title="Today" value={stats?.today_bookings || 0} icon={Clock} color="bg-cyan-500" />
+        <StatCard title="Unassigned" value={stats?.unassigned_bookings || 0} icon={AlertTriangle} color="bg-yellow-500" />
+        <StatCard title="Revenue" value={`£${(stats?.total_revenue || 0).toFixed(0)}`} icon={DollarSign} color="bg-green-500" />
+        <StatCard title="Profit" value={`£${(stats?.total_profit || 0).toFixed(0)}`} icon={TrendingUp} color="bg-[#D4AF37]" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Bookings */}
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Jobs */}
+        <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Bookings</CardTitle>
+            <CardTitle>Recent Jobs</CardTitle>
+            <Button size="sm" onClick={() => setNewJobDialogOpen(true)} className="bg-[#0A0F1C]">
+              <Plus className="w-4 h-4 mr-1" /> New Job
+            </Button>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Ref</TableHead>
-                  <TableHead>Passenger</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Profit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {bookings.slice(0, 5).map((booking) => (
                   <TableRow key={booking.id}>
-                    <TableCell className="font-mono text-sm">
-                      {booking.booking_ref || booking.id.slice(0, 8).toUpperCase()}
-                    </TableCell>
-                    <TableCell>{booking.passenger_name}</TableCell>
+                    <TableCell className="font-mono text-sm">{booking.booking_ref}</TableCell>
+                    <TableCell>{booking.customer_name}</TableCell>
                     <TableCell>{getStatusBadge(booking.status)}</TableCell>
-                    <TableCell className="font-bold">£{booking.price?.toFixed(2)}</TableCell>
+                    <TableCell className="font-medium">£{(booking.customer_price || booking.price || 0).toFixed(2)}</TableCell>
+                    <TableCell className="font-medium text-green-600">£{(booking.profit || 0).toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -175,34 +195,24 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Fleets Overview */}
+        {/* Quick Stats */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Active Fleets</CardTitle>
+          <CardHeader>
+            <CardTitle>Resources</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fleet Name</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fleets.slice(0, 5).map((fleet) => (
-                  <TableRow key={fleet.id}>
-                    <TableCell className="font-medium">{fleet.name}</TableCell>
-                    <TableCell>{fleet.city}</TableCell>
-                    <TableCell>
-                      <Badge className={fleet.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                        {fleet.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-sm">
+              <span className="flex items-center gap-2"><Building2 className="w-4 h-4" /> Fleets</span>
+              <span className="font-bold">{stats?.active_fleets || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-sm">
+              <span className="flex items-center gap-2"><Users className="w-4 h-4" /> Drivers</span>
+              <span className="font-bold">{stats?.total_drivers || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-sm">
+              <span className="flex items-center gap-2"><Truck className="w-4 h-4" /> Vehicles</span>
+              <span className="font-bold">{stats?.total_vehicles || 0}</span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -211,145 +221,151 @@ const AdminDashboard = () => {
 
   const renderBookings = () => (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <Input
-            placeholder="Search by name, email, or location..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-            data-testid="booking-search-input"
-          />
+      {/* Quick Tabs */}
+      <div className="flex flex-wrap gap-2">
+        <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("all")}>
+          All Jobs ({bookings.length})
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => { setDateFrom(today); setDateTo(today); setStatusFilter("all"); }}>
+          Today ({getTodayBookings().length})
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setStatusFilter("unassigned")} className="text-yellow-700">
+          Unassigned ({getUnassignedBookings().length})
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setStatusFilter("no_show")} className="text-red-700">
+          No-Shows ({getNoShowBookings().length})
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setStatusFilter("cancelled")} className="text-red-700">
+          Cancelled ({bookings.filter(b => b.status === "cancelled").length})
+        </Button>
+      </div>
+
+      {/* Filters Row */}
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex-1 min-w-[200px]">
+          <Label className="text-xs text-zinc-500">Search</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <Input
+              placeholder="Ref, name, location..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="status-filter">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="assigned">Assigned</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
+        <div className="w-[140px]">
+          <Label className="text-xs text-zinc-500">Date From</Label>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div className="w-[140px]">
+          <Label className="text-xs text-zinc-500">Date To</Label>
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+        <div className="w-[160px]">
+          <Label className="text-xs text-zinc-500">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {Object.entries(JOB_STATUSES).map(([key, val]) => (
+                <SelectItem key={key} value={key}>{val.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[160px]">
+          <Label className="text-xs text-zinc-500">Fleet</Label>
+          <Select value={fleetFilter} onValueChange={setFleetFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Fleets</SelectItem>
+              {fleets.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button onClick={() => { setSearchTerm(""); setDateFrom(""); setDateTo(""); setStatusFilter("all"); setFleetFilter("all"); setDriverFilter("all"); }} variant="ghost" size="sm">
+          Clear
+        </Button>
+        <Button onClick={() => setNewJobDialogOpen(true)} className="bg-[#0A0F1C]">
+          <Plus className="w-4 h-4 mr-1" /> New Job
         </Button>
       </div>
 
       {/* Bookings Table */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Passenger</TableHead>
-                <TableHead>Route</TableHead>
+                <TableHead className="w-[80px]">Ref</TableHead>
                 <TableHead>Date/Time</TableHead>
-                <TableHead>Vehicle</TableHead>
-                <TableHead>Fleet</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Pickup</TableHead>
+                <TableHead>Dropoff</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead>Assigned To</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-right">Price</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="text-right">Profit</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredBookings.map((booking) => (
-                <TableRow key={booking.id} data-testid={`admin-booking-row-${booking.id}`}>
-                  <TableCell className="font-mono text-sm">
-                    {booking.booking_ref || booking.id.slice(0, 8).toUpperCase()}
+                <TableRow key={booking.id} className="hover:bg-zinc-50">
+                  <TableCell className="font-mono text-xs">{booking.booking_ref}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <div className="text-sm">{booking.pickup_date}</div>
+                    <div className="text-xs text-zinc-500">{booking.pickup_time}</div>
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <p className="font-medium">{booking.passenger_name}</p>
-                      <p className="text-xs text-zinc-500">{booking.passenger_phone}</p>
-                    </div>
+                    <div className="text-sm font-medium">{booking.customer_name}</div>
+                    <div className="text-xs text-zinc-500">{booking.customer_phone}</div>
                   </TableCell>
-                  <TableCell className="max-w-[150px]">
-                    <p className="truncate text-sm">{booking.pickup_location}</p>
-                    <p className="truncate text-xs text-zinc-500">→ {booking.dropoff_location}</p>
+                  <TableCell className="max-w-[120px]">
+                    <div className="truncate text-sm" title={booking.pickup_location}>{booking.pickup_location}</div>
                   </TableCell>
+                  <TableCell className="max-w-[120px]">
+                    <div className="truncate text-sm" title={booking.dropoff_location}>{booking.dropoff_location}</div>
+                  </TableCell>
+                  <TableCell className="text-sm">{booking.vehicle_name || booking.vehicle_category_id}</TableCell>
                   <TableCell>
-                    <p>{booking.pickup_date}</p>
-                    <p className="text-xs text-zinc-500">{booking.pickup_time}</p>
-                  </TableCell>
-                  <TableCell>{booking.vehicle_name}</TableCell>
-                  <TableCell>
-                    {booking.assigned_fleet_name ? (
-                      <Badge variant="outline">{booking.assigned_fleet_name}</Badge>
+                    {booking.assigned_driver_name || booking.assigned_fleet_name ? (
+                      <div className="text-sm">
+                        {booking.assigned_driver_name && <div className="font-medium">{booking.assigned_driver_name}</div>}
+                        {booking.assigned_fleet_name && <div className="text-xs text-zinc-500">{booking.assigned_fleet_name}</div>}
+                      </div>
                     ) : (
-                      <span className="text-zinc-400 text-sm">Unassigned</span>
+                      <span className="text-zinc-400 text-sm">-</span>
                     )}
                   </TableCell>
                   <TableCell>{getStatusBadge(booking.status)}</TableCell>
-                  <TableCell className="font-bold">£{booking.price?.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-medium">£{(booking.customer_price || booking.price || 0).toFixed(2)}</TableCell>
+                  <TableCell className="text-right text-zinc-600">£{(booking.driver_price || 0).toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-medium text-green-600">£{(booking.profit || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      {!booking.assigned_fleet_id && booking.status === "confirmed" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setAssignDialogOpen(true);
-                          }}
-                          title="Assign to Fleet"
-                        >
-                          <Send className="w-4 h-4 text-blue-600" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm">
-                        <Eye className="w-4 h-4" />
+                      <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setEditJobDialogOpen(true); }}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setAssignDialogOpen(true); }}>
+                        <Send className="w-4 h-4 text-blue-600" />
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredBookings.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={12} className="text-center py-8 text-zinc-500">No bookings found</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-
-      {/* Assign Dialog */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign to Fleet</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-zinc-600 mb-4">
-              Assign booking <strong>{selectedBooking?.booking_ref || selectedBooking?.id?.slice(0, 8).toUpperCase()}</strong> to a fleet:
-            </p>
-            <Select value={selectedFleetId} onValueChange={setSelectedFleetId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a fleet" />
-              </SelectTrigger>
-              <SelectContent>
-                {fleets.filter(f => f.status === "active").map((fleet) => (
-                  <SelectItem key={fleet.id} value={fleet.id}>
-                    {fleet.name} ({fleet.city})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
-            <Button onClick={assignBookingToFleet} disabled={!selectedFleetId}>
-              <Send className="w-4 h-4 mr-2" />
-              Assign
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 
@@ -357,9 +373,8 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Fleet Management</h2>
-        <Button className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Fleet
+        <Button onClick={() => { setEditingFleet(null); setFleetDialogOpen(true); }} className="bg-[#0A0F1C]">
+          <Plus className="w-4 h-4 mr-2" /> Add Fleet
         </Button>
       </div>
 
@@ -372,6 +387,7 @@ const AdminDashboard = () => {
                 <TableHead>Contact</TableHead>
                 <TableHead>City</TableHead>
                 <TableHead>Commission</TableHead>
+                <TableHead>Payment Terms</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -380,21 +396,18 @@ const AdminDashboard = () => {
               {fleets.map((fleet) => (
                 <TableRow key={fleet.id}>
                   <TableCell>
-                    <div>
-                      <p className="font-medium">{fleet.name}</p>
-                      <p className="text-xs text-zinc-500">{fleet.email}</p>
-                    </div>
+                    <div className="font-medium">{fleet.name}</div>
+                    <div className="text-xs text-zinc-500">{fleet.email}</div>
                   </TableCell>
                   <TableCell>
-                    <p>{fleet.contact_person}</p>
-                    <p className="text-xs text-zinc-500">{fleet.phone}</p>
+                    <div>{fleet.contact_person}</div>
+                    <div className="text-xs text-zinc-500">{fleet.phone}</div>
                   </TableCell>
                   <TableCell>{fleet.city}</TableCell>
                   <TableCell>
-                    {fleet.commission_type === "percentage" 
-                      ? `${fleet.commission_value}%` 
-                      : `£${fleet.commission_value}`}
+                    {fleet.commission_type === "percentage" ? `${fleet.commission_value}%` : `£${fleet.commission_value}`}
                   </TableCell>
+                  <TableCell className="capitalize">{fleet.payment_terms}</TableCell>
                   <TableCell>
                     <Badge className={fleet.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                       {fleet.status}
@@ -402,16 +415,21 @@ const AdminDashboard = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" title="View Fleet Dashboard">
-                        <ExternalLink className="w-4 h-4" />
+                      <Button variant="ghost" size="sm" onClick={() => { setEditingFleet(fleet); setFleetDialogOpen(true); }}>
+                        <Edit className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
+              {fleets.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-zinc-500">No fleets added yet</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -423,9 +441,8 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Driver Management</h2>
-        <Button className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Driver
+        <Button onClick={() => { setEditingDriver(null); setDriverDialogOpen(true); }} className="bg-[#0A0F1C]">
+          <Plus className="w-4 h-4 mr-2" /> Add Driver
         </Button>
       </div>
 
@@ -437,6 +454,7 @@ const AdminDashboard = () => {
                 <TableHead>Driver Name</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>License</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Fleet</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
@@ -449,24 +467,21 @@ const AdminDashboard = () => {
                   <TableRow key={driver.id}>
                     <TableCell className="font-medium">{driver.name}</TableCell>
                     <TableCell>
-                      <p>{driver.phone}</p>
-                      <p className="text-xs text-zinc-500">{driver.email}</p>
+                      <div>{driver.phone}</div>
+                      <div className="text-xs text-zinc-500">{driver.email}</div>
                     </TableCell>
-                    <TableCell>{driver.license_number}</TableCell>
+                    <TableCell>{driver.license_number || "-"}</TableCell>
                     <TableCell>
-                      {fleet ? (
-                        <Badge variant="outline">{fleet.name}</Badge>
-                      ) : (
-                        <span className="text-zinc-400">Internal</span>
-                      )}
+                      <Badge variant="outline" className="capitalize">{driver.driver_type}</Badge>
                     </TableCell>
+                    <TableCell>{fleet ? fleet.name : <span className="text-zinc-400">Internal</span>}</TableCell>
                     <TableCell>
                       <Badge className={driver.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                         {driver.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={() => { setEditingDriver(driver); setDriverDialogOpen(true); }}>
                         <Edit className="w-4 h-4" />
                       </Button>
                     </TableCell>
@@ -475,9 +490,76 @@ const AdminDashboard = () => {
               })}
               {drivers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-zinc-500">
-                    No drivers added yet
-                  </TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-zinc-500">No drivers added yet</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderVehicles = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold">Vehicle Management</h2>
+        <Button onClick={() => { setEditingVehicle(null); setVehicleDialogOpen(true); }} className="bg-[#0A0F1C]">
+          <Plus className="w-4 h-4 mr-2" /> Add Vehicle
+        </Button>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Plate Number</TableHead>
+                <TableHead>Name/Model</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead>Capacity</TableHead>
+                <TableHead>Fleet</TableHead>
+                <TableHead>Driver</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allVehicles.map((vehicle) => {
+                const fleet = fleets.find(f => f.id === vehicle.fleet_id);
+                const driver = drivers.find(d => d.id === vehicle.driver_id);
+                const category = vehicles.find(v => v.id === vehicle.category_id);
+                return (
+                  <TableRow key={vehicle.id}>
+                    <TableCell className="font-mono font-medium">{vehicle.plate_number}</TableCell>
+                    <TableCell>
+                      <div>{vehicle.name || `${vehicle.make || ''} ${vehicle.model || ''}`}</div>
+                      {vehicle.color && <div className="text-xs text-zinc-500">{vehicle.color} {vehicle.year}</div>}
+                    </TableCell>
+                    <TableCell>{category?.name || vehicle.category_id}</TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2">
+                        <Users className="w-3 h-3" /> {vehicle.passenger_capacity}
+                      </span>
+                    </TableCell>
+                    <TableCell>{fleet ? fleet.name : <span className="text-zinc-400">-</span>}</TableCell>
+                    <TableCell>{driver ? driver.name : <span className="text-zinc-400">-</span>}</TableCell>
+                    <TableCell>
+                      <Badge className={vehicle.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                        {vehicle.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => { setEditingVehicle(vehicle); setVehicleDialogOpen(true); }}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {allVehicles.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-zinc-500">No vehicles added yet</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -491,10 +573,6 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Invoice Management</h2>
-        <Button className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" />
-          Generate Invoice
-        </Button>
       </div>
 
       <Card>
@@ -505,9 +583,10 @@ const AdminDashboard = () => {
                 <TableHead>Invoice #</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Entity</TableHead>
-                <TableHead>Subtotal</TableHead>
-                <TableHead>Commission</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead>Jobs</TableHead>
+                <TableHead className="text-right">Subtotal</TableHead>
+                <TableHead className="text-right">Commission</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -516,49 +595,35 @@ const AdminDashboard = () => {
               {invoices.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell className="font-mono">{invoice.invoice_number}</TableCell>
+                  <TableCell><Badge variant="outline" className="capitalize">{invoice.invoice_type}</Badge></TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="capitalize">{invoice.invoice_type}</Badge>
+                    <div className="font-medium">{invoice.entity_name}</div>
+                    <div className="text-xs text-zinc-500">{invoice.entity_email}</div>
                   </TableCell>
-                  <TableCell>
-                    <p className="font-medium">{invoice.entity_name}</p>
-                    <p className="text-xs text-zinc-500">{invoice.entity_email}</p>
-                  </TableCell>
-                  <TableCell>£{invoice.subtotal?.toFixed(2)}</TableCell>
-                  <TableCell className="text-red-600">
+                  <TableCell>{invoice.booking_ids?.length || 0}</TableCell>
+                  <TableCell className="text-right">£{invoice.subtotal?.toFixed(2)}</TableCell>
+                  <TableCell className="text-right text-red-600">
                     {invoice.commission > 0 ? `-£${invoice.commission?.toFixed(2)}` : "-"}
                   </TableCell>
-                  <TableCell className="font-bold">£{invoice.total?.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-bold">£{invoice.total?.toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge className={
                       invoice.status === "paid" ? "bg-green-100 text-green-800" :
                       invoice.status === "issued" ? "bg-blue-100 text-blue-800" :
                       invoice.status === "overdue" ? "bg-red-100 text-red-800" :
                       "bg-zinc-100"
-                    }>
-                      {invoice.status}
-                    </Badge>
+                    }>{invoice.status}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(`${API}/invoices/${invoice.id}/pdf`, '_blank')}
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => window.open(`${API}/invoices/${invoice.id}/pdf`, '_blank')}>
+                      <Download className="w-4 h-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
               {invoices.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-zinc-500">
-                    No invoices generated yet
-                  </TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-zinc-500">No invoices generated yet</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -568,111 +633,9 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderRadiusZones = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Radius-Based Pricing Zones</h2>
-        <Button className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Zone
-        </Button>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Zones List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Defined Zones</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {radiusZones.map((zone) => (
-                <div key={zone.id} className="flex items-center justify-between p-4 border rounded-sm">
-                  <div>
-                    <p className="font-medium">{zone.name}</p>
-                    <p className="text-sm text-zinc-500">
-                      {zone.radius_km} km radius • {zone.zone_type}
-                    </p>
-                    <p className="text-xs text-zinc-400">
-                      {zone.center_lat.toFixed(4)}, {zone.center_lng.toFixed(4)}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="capitalize">{zone.zone_type}</Badge>
-                </div>
-              ))}
-              {radiusZones.length === 0 && (
-                <p className="text-center py-4 text-zinc-500">No zones defined yet</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Radius Routes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Radius Routes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {radiusRoutes.map((route) => (
-                <div key={route.id} className="p-4 border rounded-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium">{route.name}</p>
-                    <Badge className={route.is_active ? "bg-green-100 text-green-800" : "bg-zinc-100"}>
-                      {route.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-zinc-500 mb-2">
-                    {route.pickup_zone_name} → {route.dropoff_zone_name}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(route.prices || {}).map(([vehicleId, price]) => {
-                      const vehicle = vehicles.find(v => v.id === vehicleId);
-                      return (
-                        <Badge key={vehicleId} variant="outline" className="text-xs">
-                          {vehicle?.name || vehicleId}: £{price}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {radiusRoutes.length === 0 && (
-                <p className="text-center py-4 text-zinc-500">No radius routes defined yet</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Map Placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Zone Map</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 bg-zinc-100 rounded-sm flex items-center justify-center">
-            <div className="text-center text-zinc-500">
-              <MapPin className="w-12 h-12 mx-auto mb-2 text-zinc-300" />
-              <p>Interactive map for drawing zones</p>
-              <p className="text-sm">Coming soon</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
   const renderPricing = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Mileage-Based Pricing Rules</h2>
-        <Button className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Rule
-        </Button>
-      </div>
-
+      <h2 className="text-xl font-bold">Mileage-Based Pricing Rules</h2>
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -682,10 +645,8 @@ const AdminDashboard = () => {
                 <TableHead>Base Fee</TableHead>
                 <TableHead>Per KM</TableHead>
                 <TableHead>Minimum Fare</TableHead>
-                <TableHead>Airport Surcharge</TableHead>
+                <TableHead>Airport</TableHead>
                 <TableHead>Meet & Greet</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -699,12 +660,6 @@ const AdminDashboard = () => {
                     <TableCell>£{rule.minimum_fare?.toFixed(2)}</TableCell>
                     <TableCell>£{rule.airport_surcharge?.toFixed(2)}</TableCell>
                     <TableCell>£{rule.meet_greet_fee?.toFixed(2)}</TableCell>
-                    <TableCell>{rule.currency}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -717,48 +672,28 @@ const AdminDashboard = () => {
 
   const renderRoutes = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Fixed Route Pricing (Text-Based)</h2>
-        <Button className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Route
-        </Button>
-      </div>
-
-      <div className="grid gap-6">
+      <h2 className="text-xl font-bold">Fixed Route Pricing</h2>
+      <div className="grid gap-4">
         {fixedRoutes.map((route) => (
           <Card key={route.id}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{route.name}</span>
-                <Badge className={route.is_active ? "bg-green-100 text-green-800" : "bg-zinc-100"}>
-                  {route.is_active ? "Active" : "Inactive"}
-                </Badge>
+                <Badge className={route.is_active ? "bg-green-100 text-green-800" : "bg-zinc-100"}>{route.is_active ? "Active" : "Inactive"}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-zinc-500">Pickup</p>
-                  <p className="font-medium">{route.pickup_location}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-500">Drop-off</p>
-                  <p className="font-medium">{route.dropoff_location}</p>
-                </div>
+                <div><span className="text-sm text-zinc-500">Pickup:</span> <span className="font-medium">{route.pickup_location}</span></div>
+                <div><span className="text-sm text-zinc-500">Drop-off:</span> <span className="font-medium">{route.dropoff_location}</span></div>
               </div>
-              <div className="border-t pt-4">
-                <p className="text-sm text-zinc-500 mb-2">Prices by Vehicle</p>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(route.prices || {}).map(([vehicleId, price]) => {
-                    const vehicle = vehicles.find(v => v.id === vehicleId);
-                    return (
-                      <Badge key={vehicleId} variant="outline" className="text-sm">
-                        {vehicle?.name || vehicleId}: £{price}
-                      </Badge>
-                    );
-                  })}
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(route.prices || {}).map(([vehicleId, price]) => {
+                  const vehicle = vehicles.find(v => v.id === vehicleId);
+                  return (
+                    <Badge key={vehicleId} variant="outline">{vehicle?.name || vehicleId}: £{price}</Badge>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -767,25 +702,14 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderVehicles = () => (
+  const renderVehicleCategories = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Vehicle Categories</h2>
-        <Button className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Category
-        </Button>
-      </div>
-
+      <h2 className="text-xl font-bold">Vehicle Categories</h2>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {vehicles.map((vehicle) => (
           <Card key={vehicle.id} className="overflow-hidden">
             <div className="h-40 bg-zinc-100">
-              <img
-                src={vehicle.image_url || "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400"}
-                alt={vehicle.name}
-                className="w-full h-full object-cover"
-              />
+              <img src={vehicle.image_url || "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400"} alt={vehicle.name} className="w-full h-full object-cover" />
             </div>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
@@ -796,20 +720,8 @@ const AdminDashboard = () => {
               </div>
               <p className="text-sm text-zinc-500 mb-3">{vehicle.description}</p>
               <div className="flex items-center gap-4 text-sm text-zinc-600">
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  {vehicle.max_passengers}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Briefcase className="w-4 h-4" />
-                  {vehicle.max_luggage}
-                </span>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Edit className="w-4 h-4 mr-1" />
-                  Edit
-                </Button>
+                <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {vehicle.max_passengers}</span>
+                <span className="flex items-center gap-1"><Car className="w-4 h-4" /> {vehicle.max_luggage} bags</span>
               </div>
             </CardContent>
           </Card>
@@ -818,15 +730,17 @@ const AdminDashboard = () => {
     </div>
   );
 
+  // ==================== DIALOGS ====================
+
   const content = {
     dashboard: renderDashboard(),
     bookings: renderBookings(),
     fleets: renderFleets(),
     drivers: renderDrivers(),
+    vehicles: renderVehicles(),
     pricing: renderPricing(),
     routes: renderRoutes(),
-    "radius-routes": renderRadiusZones(),
-    vehicles: renderVehicles(),
+    "vehicle-categories": renderVehicleCategories(),
     invoices: renderInvoices(),
     settings: <div className="p-8 text-center text-zinc-500">Settings panel coming soon</div>
   };
@@ -835,31 +749,1003 @@ const AdminDashboard = () => {
     <div className="p-8" data-testid="admin-dashboard">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#0A0F1C] capitalize" style={{ fontFamily: 'Chivo, sans-serif' }}>
-          {activeTab === "dashboard" ? "Dashboard Overview" : 
-           activeTab === "radius-routes" ? "Radius Zones" : activeTab}
+          {activeTab === "dashboard" ? "Dashboard Overview" : activeTab === "vehicle-categories" ? "Vehicle Categories" : activeTab.replace("-", " ")}
         </h1>
       </div>
       {content[activeTab] || content.dashboard}
+
+      {/* New Job Dialog */}
+      <NewJobDialog 
+        open={newJobDialogOpen} 
+        onClose={() => setNewJobDialogOpen(false)} 
+        vehicles={vehicles}
+        fleets={fleets}
+        drivers={drivers}
+        customers={customers}
+        headers={headers}
+        onSuccess={fetchData}
+      />
+
+      {/* Edit Job Dialog */}
+      <EditJobDialog
+        open={editJobDialogOpen}
+        onClose={() => { setEditJobDialogOpen(false); setSelectedBooking(null); }}
+        booking={selectedBooking}
+        vehicles={vehicles}
+        fleets={fleets}
+        drivers={drivers}
+        headers={headers}
+        onSuccess={fetchData}
+      />
+
+      {/* Assign Dialog */}
+      <AssignDialog
+        open={assignDialogOpen}
+        onClose={() => { setAssignDialogOpen(false); setSelectedBooking(null); }}
+        booking={selectedBooking}
+        fleets={fleets}
+        drivers={drivers}
+        allVehicles={allVehicles}
+        headers={headers}
+        onSuccess={fetchData}
+      />
+
+      {/* Fleet Dialog */}
+      <FleetDialog
+        open={fleetDialogOpen}
+        onClose={() => { setFleetDialogOpen(false); setEditingFleet(null); }}
+        fleet={editingFleet}
+        headers={headers}
+        onSuccess={fetchData}
+      />
+
+      {/* Driver Dialog */}
+      <DriverDialog
+        open={driverDialogOpen}
+        onClose={() => { setDriverDialogOpen(false); setEditingDriver(null); }}
+        driver={editingDriver}
+        fleets={fleets}
+        allVehicles={allVehicles}
+        headers={headers}
+        onSuccess={fetchData}
+      />
+
+      {/* Vehicle Dialog */}
+      <VehicleDialog
+        open={vehicleDialogOpen}
+        onClose={() => { setVehicleDialogOpen(false); setEditingVehicle(null); }}
+        vehicle={editingVehicle}
+        vehicles={vehicles}
+        fleets={fleets}
+        drivers={drivers}
+        headers={headers}
+        onSuccess={fetchData}
+      />
     </div>
   );
 };
 
+// ==================== SUB-COMPONENTS ====================
+
 const StatCard = ({ title, value, icon: Icon, color }) => (
   <Card>
-    <CardContent className="p-6">
+    <CardContent className="p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-zinc-500">{title}</p>
-          <p className="text-3xl font-bold text-[#0A0F1C] mt-1" style={{ fontFamily: 'Chivo, sans-serif' }}>
-            {value}
-          </p>
+          <p className="text-xs text-zinc-500">{title}</p>
+          <p className="text-2xl font-bold text-[#0A0F1C] mt-1">{value}</p>
         </div>
-        <div className={`w-12 h-12 ${color} rounded-sm flex items-center justify-center`}>
-          <Icon className="w-6 h-6 text-white" />
+        <div className={`w-10 h-10 ${color} rounded-sm flex items-center justify-center`}>
+          <Icon className="w-5 h-5 text-white" />
         </div>
       </div>
     </CardContent>
   </Card>
 );
+
+// New Job Dialog Component
+const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, headers, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    customer_name: "",
+    customer_email: "",
+    customer_phone: "",
+    customer_reference: "",
+    pickup_date: "",
+    pickup_time: "",
+    pickup_location: "",
+    pickup_postcode: "",
+    dropoff_location: "",
+    dropoff_postcode: "",
+    vehicle_category_id: "",
+    passengers: 1,
+    small_bags: 0,
+    large_bags: 0,
+    flight_number: "",
+    meet_greet: false,
+    customer_price: 0,
+    driver_price: 0,
+    extras: [],
+    pickup_notes: "",
+    dropoff_notes: "",
+    admin_notes: "",
+    assigned_fleet_id: "",
+    assigned_driver_id: ""
+  });
+  const [loading, setLoading] = useState(false);
+
+  const profit = (formData.customer_price || 0) - (formData.driver_price || 0) + 
+    formData.extras.reduce((sum, e) => sum + (e.price || 0) - (e.affects_driver_cost ? (e.price || 0) : 0), 0);
+
+  const addExtra = () => {
+    setFormData({ ...formData, extras: [...formData.extras, { name: "", price: 0, notes: "", affects_driver_cost: false }] });
+  };
+
+  const removeExtra = (index) => {
+    setFormData({ ...formData, extras: formData.extras.filter((_, i) => i !== index) });
+  };
+
+  const updateExtra = (index, field, value) => {
+    const newExtras = [...formData.extras];
+    newExtras[index][field] = value;
+    setFormData({ ...formData, extras: newExtras });
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.customer_name || !formData.pickup_location || !formData.dropoff_location || !formData.pickup_date || !formData.vehicle_category_id) {
+      toast.error("Please fill in required fields");
+      return;
+    }
+    setLoading(true);
+    try {
+      await axios.post(`${API}/admin/bookings/manual`, formData, { headers });
+      toast.success("Job created successfully!");
+      onClose();
+      onSuccess();
+      setFormData({
+        customer_name: "", customer_email: "", customer_phone: "", customer_reference: "",
+        pickup_date: "", pickup_time: "", pickup_location: "", pickup_postcode: "",
+        dropoff_location: "", dropoff_postcode: "", vehicle_category_id: "", passengers: 1,
+        small_bags: 0, large_bags: 0, flight_number: "", meet_greet: false,
+        customer_price: 0, driver_price: 0, extras: [], pickup_notes: "", dropoff_notes: "",
+        admin_notes: "", assigned_fleet_id: "", assigned_driver_id: ""
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to create job");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Plus className="w-5 h-5" /> Create New Job</DialogTitle>
+        </DialogHeader>
+        
+        <div className="grid grid-cols-2 gap-6 py-4">
+          {/* Customer Details */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2"><User className="w-4 h-4" /> Customer Details</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Customer Name *</Label>
+                <Input value={formData.customer_name} onChange={(e) => setFormData({...formData, customer_name: e.target.value})} placeholder="John Smith" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Phone</Label>
+                  <Input value={formData.customer_phone} onChange={(e) => setFormData({...formData, customer_phone: e.target.value})} placeholder="+44..." />
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <Input type="email" value={formData.customer_email} onChange={(e) => setFormData({...formData, customer_email: e.target.value})} />
+                </div>
+              </div>
+              <div>
+                <Label>Customer Reference</Label>
+                <Input value={formData.customer_reference} onChange={(e) => setFormData({...formData, customer_reference: e.target.value})} placeholder="PO Number, etc." />
+              </div>
+            </div>
+          </div>
+
+          {/* Trip Details */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2"><Calendar className="w-4 h-4" /> Trip Details</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Date *</Label>
+                  <Input type="date" value={formData.pickup_date} onChange={(e) => setFormData({...formData, pickup_date: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Time</Label>
+                  <Input type="time" value={formData.pickup_time} onChange={(e) => setFormData({...formData, pickup_time: e.target.value})} />
+                </div>
+              </div>
+              <div>
+                <Label>Flight Number</Label>
+                <Input value={formData.flight_number} onChange={(e) => setFormData({...formData, flight_number: e.target.value})} placeholder="BA123" />
+              </div>
+            </div>
+          </div>
+
+          {/* Locations */}
+          <div className="col-span-2 space-y-4">
+            <h3 className="font-semibold flex items-center gap-2"><MapPin className="w-4 h-4" /> Locations</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Pickup Address *</Label>
+                <Input value={formData.pickup_location} onChange={(e) => setFormData({...formData, pickup_location: e.target.value})} placeholder="Heathrow Airport Terminal 5" />
+                <Input value={formData.pickup_postcode} onChange={(e) => setFormData({...formData, pickup_postcode: e.target.value})} placeholder="Postcode" className="w-32" />
+              </div>
+              <div className="space-y-2">
+                <Label>Drop-off Address *</Label>
+                <Input value={formData.dropoff_location} onChange={(e) => setFormData({...formData, dropoff_location: e.target.value})} placeholder="10 Downing Street" />
+                <Input value={formData.dropoff_postcode} onChange={(e) => setFormData({...formData, dropoff_postcode: e.target.value})} placeholder="Postcode" className="w-32" />
+              </div>
+            </div>
+          </div>
+
+          {/* Vehicle & Passengers */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2"><Car className="w-4 h-4" /> Vehicle & Passengers</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Vehicle Class *</Label>
+                <Select value={formData.vehicle_category_id} onValueChange={(v) => setFormData({...formData, vehicle_category_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                  <SelectContent>
+                    {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Passengers</Label>
+                <Input type="number" min="1" value={formData.passengers} onChange={(e) => setFormData({...formData, passengers: parseInt(e.target.value) || 1})} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Small Bags</Label>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setFormData({...formData, small_bags: Math.max(0, formData.small_bags - 1)})}><Minus className="w-3 h-3" /></Button>
+                    <span className="w-8 text-center">{formData.small_bags}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setFormData({...formData, small_bags: formData.small_bags + 1})}><Plus className="w-3 h-3" /></Button>
+                  </div>
+                </div>
+                <div>
+                  <Label>Large Bags</Label>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setFormData({...formData, large_bags: Math.max(0, formData.large_bags - 1)})}><Minus className="w-3 h-3" /></Button>
+                    <span className="w-8 text-center">{formData.large_bags}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setFormData({...formData, large_bags: formData.large_bags + 1})}><Plus className="w-3 h-3" /></Button>
+                  </div>
+                </div>
+              </div>
+              <div className="text-sm text-zinc-500">Total: {formData.small_bags + formData.large_bags} bags</div>
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2"><DollarSign className="w-4 h-4" /> Pricing</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Customer Price (£) *</Label>
+                <Input type="number" step="0.01" value={formData.customer_price} onChange={(e) => setFormData({...formData, customer_price: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div>
+                <Label>Driver Price (£)</Label>
+                <Input type="number" step="0.01" value={formData.driver_price} onChange={(e) => setFormData({...formData, driver_price: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div className="p-3 bg-green-50 rounded-sm">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Profit</span>
+                  <span className="text-xl font-bold text-green-600">£{profit.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Extras */}
+          <div className="col-span-2 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Extras</h3>
+              <Button type="button" variant="outline" size="sm" onClick={addExtra}><Plus className="w-3 h-3 mr-1" /> Add Extra</Button>
+            </div>
+            {formData.extras.map((extra, i) => (
+              <div key={i} className="flex items-center gap-2 p-2 bg-zinc-50 rounded-sm">
+                <Input placeholder="Name" value={extra.name} onChange={(e) => updateExtra(i, 'name', e.target.value)} className="flex-1" />
+                <Input type="number" placeholder="Price" value={extra.price} onChange={(e) => updateExtra(i, 'price', parseFloat(e.target.value) || 0)} className="w-24" />
+                <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                  <input type="checkbox" checked={extra.affects_driver_cost} onChange={(e) => updateExtra(i, 'affects_driver_cost', e.target.checked)} />
+                  Driver cost
+                </label>
+                <Button type="button" variant="ghost" size="sm" onClick={() => removeExtra(i)}><X className="w-4 h-4" /></Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Assignment */}
+          <div className="col-span-2 space-y-4">
+            <h3 className="font-semibold">Assignment (Optional)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Assign to Fleet</Label>
+                <Select value={formData.assigned_fleet_id} onValueChange={(v) => setFormData({...formData, assigned_fleet_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select fleet" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {fleets.filter(f => f.status === "active").map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Assign to Driver</Label>
+                <Select value={formData.assigned_driver_id} onValueChange={(v) => setFormData({...formData, assigned_driver_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {drivers.filter(d => d.status === "active").map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="col-span-2 space-y-3">
+            <h3 className="font-semibold">Notes</h3>
+            <Textarea placeholder="Admin notes (internal)" value={formData.admin_notes} onChange={(e) => setFormData({...formData, admin_notes: e.target.value})} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading} className="bg-[#0A0F1C]">
+            {loading ? "Creating..." : "Create Job"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Edit Job Dialog
+const EditJobDialog = ({ open, onClose, booking, vehicles, fleets, drivers, headers, onSuccess }) => {
+  const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (booking) {
+      setFormData({ ...booking });
+    }
+  }, [booking]);
+
+  if (!booking) return null;
+
+  const profit = (formData.customer_price || 0) - (formData.driver_price || 0);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await axios.put(`${API}/admin/bookings/${booking.id}`, formData, { headers });
+      toast.success("Job updated successfully!");
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to update job");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Job - {booking.booking_ref}</DialogTitle>
+        </DialogHeader>
+        
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div>
+            <Label>Status</Label>
+            <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(JOB_STATUSES).map(([key, val]) => (
+                  <SelectItem key={key} value={key}>{val.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Payment Status</Label>
+            <Select value={formData.payment_status} onValueChange={(v) => setFormData({...formData, payment_status: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="refunded">Refunded</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Customer Name</Label>
+            <Input value={formData.customer_name || ""} onChange={(e) => setFormData({...formData, customer_name: e.target.value})} />
+          </div>
+          <div>
+            <Label>Customer Phone</Label>
+            <Input value={formData.customer_phone || ""} onChange={(e) => setFormData({...formData, customer_phone: e.target.value})} />
+          </div>
+          <div>
+            <Label>Date</Label>
+            <Input type="date" value={formData.pickup_date || ""} onChange={(e) => setFormData({...formData, pickup_date: e.target.value})} />
+          </div>
+          <div>
+            <Label>Time</Label>
+            <Input type="time" value={formData.pickup_time || ""} onChange={(e) => setFormData({...formData, pickup_time: e.target.value})} />
+          </div>
+          <div className="col-span-2">
+            <Label>Pickup Location</Label>
+            <Input value={formData.pickup_location || ""} onChange={(e) => setFormData({...formData, pickup_location: e.target.value})} />
+          </div>
+          <div className="col-span-2">
+            <Label>Drop-off Location</Label>
+            <Input value={formData.dropoff_location || ""} onChange={(e) => setFormData({...formData, dropoff_location: e.target.value})} />
+          </div>
+          <div>
+            <Label>Vehicle Class</Label>
+            <Select value={formData.vehicle_category_id || ""} onValueChange={(v) => setFormData({...formData, vehicle_category_id: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Passengers</Label>
+            <Input type="number" min="1" value={formData.passengers || 1} onChange={(e) => setFormData({...formData, passengers: parseInt(e.target.value) || 1})} />
+          </div>
+          <div>
+            <Label>Customer Price (£)</Label>
+            <Input type="number" step="0.01" value={formData.customer_price || 0} onChange={(e) => setFormData({...formData, customer_price: parseFloat(e.target.value) || 0})} />
+          </div>
+          <div>
+            <Label>Driver Price (£)</Label>
+            <Input type="number" step="0.01" value={formData.driver_price || 0} onChange={(e) => setFormData({...formData, driver_price: parseFloat(e.target.value) || 0})} />
+          </div>
+          <div className="col-span-2 p-3 bg-green-50 rounded-sm">
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Calculated Profit</span>
+              <span className="text-xl font-bold text-green-600">£{profit.toFixed(2)}</span>
+            </div>
+          </div>
+          <div className="col-span-2">
+            <Label>Admin Notes</Label>
+            <Textarea value={formData.admin_notes || ""} onChange={(e) => setFormData({...formData, admin_notes: e.target.value})} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading} className="bg-[#0A0F1C]">
+            {loading ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Assign Dialog
+const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, headers, onSuccess }) => {
+  const [fleetId, setFleetId] = useState("");
+  const [driverId, setDriverId] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (booking) {
+      setFleetId(booking.assigned_fleet_id || "");
+      setDriverId(booking.assigned_driver_id || "");
+      setVehicleId(booking.assigned_vehicle_id || "");
+    }
+  }, [booking]);
+
+  if (!booking) return null;
+
+  const handleAssign = async () => {
+    setLoading(true);
+    try {
+      await axios.post(`${API}/bookings/${booking.id}/assign`, {
+        fleet_id: fleetId || null,
+        driver_id: driverId || null,
+        vehicle_id: vehicleId || null
+      }, { headers });
+      toast.success("Job assigned successfully!");
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to assign job");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnassign = async () => {
+    setLoading(true);
+    try {
+      await axios.put(`${API}/bookings/${booking.id}/unassign`, {}, { headers });
+      toast.success("Job unassigned");
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to unassign");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign Job - {booking.booking_ref}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="p-3 bg-zinc-50 rounded-sm text-sm">
+            <div><strong>Route:</strong> {booking.pickup_location} → {booking.dropoff_location}</div>
+            <div><strong>Date:</strong> {booking.pickup_date} {booking.pickup_time}</div>
+          </div>
+          <div>
+            <Label>Assign to Fleet</Label>
+            <Select value={fleetId} onValueChange={setFleetId}>
+              <SelectTrigger><SelectValue placeholder="Select fleet" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {fleets.filter(f => f.status === "active").map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Assign to Driver</Label>
+            <Select value={driverId} onValueChange={setDriverId}>
+              <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {drivers.filter(d => d.status === "active").map(d => <SelectItem key={d.id} value={d.id}>{d.name} ({d.driver_type})</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Assign Vehicle</Label>
+            <Select value={vehicleId} onValueChange={setVehicleId}>
+              <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {allVehicles.filter(v => v.status === "active").map(v => <SelectItem key={v.id} value={v.id}>{v.plate_number} - {v.name || v.make}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          {(booking.assigned_fleet_id || booking.assigned_driver_id) && (
+            <Button variant="destructive" onClick={handleUnassign} disabled={loading}>Unassign</Button>
+          )}
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleAssign} disabled={loading} className="bg-[#0A0F1C]">
+            {loading ? "Assigning..." : "Assign"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Fleet Dialog
+const FleetDialog = ({ open, onClose, fleet, headers, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    name: "", contact_person: "", email: "", phone: "", whatsapp: "",
+    city: "", operating_area: "", commission_type: "percentage",
+    commission_value: 15, payment_terms: "weekly", notes: "", status: "active", password: ""
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (fleet) {
+      setFormData({ ...fleet, password: "" });
+    } else {
+      setFormData({
+        name: "", contact_person: "", email: "", phone: "", whatsapp: "",
+        city: "", operating_area: "", commission_type: "percentage",
+        commission_value: 15, payment_terms: "weekly", notes: "", status: "active", password: ""
+      });
+    }
+  }, [fleet]);
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.email) {
+      toast.error("Name and email are required");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (fleet) {
+        await axios.put(`${API}/fleets/${fleet.id}`, formData, { headers });
+        toast.success("Fleet updated!");
+      } else {
+        const res = await axios.post(`${API}/fleets`, formData, { headers });
+        if (res.data.temporary_password) {
+          toast.success(`Fleet created! Password: ${res.data.temporary_password}`);
+        } else {
+          toast.success("Fleet created!");
+        }
+      }
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save fleet");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{fleet ? "Edit Fleet" : "Add New Fleet"}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="col-span-2">
+            <Label>Fleet Name *</Label>
+            <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+          </div>
+          <div>
+            <Label>Contact Person</Label>
+            <Input value={formData.contact_person} onChange={(e) => setFormData({...formData, contact_person: e.target.value})} />
+          </div>
+          <div>
+            <Label>Email *</Label>
+            <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+          </div>
+          <div>
+            <Label>WhatsApp</Label>
+            <Input value={formData.whatsapp} onChange={(e) => setFormData({...formData, whatsapp: e.target.value})} />
+          </div>
+          <div>
+            <Label>City</Label>
+            <Input value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} />
+          </div>
+          <div>
+            <Label>Operating Area</Label>
+            <Input value={formData.operating_area} onChange={(e) => setFormData({...formData, operating_area: e.target.value})} />
+          </div>
+          <div>
+            <Label>Commission Type</Label>
+            <Select value={formData.commission_type} onValueChange={(v) => setFormData({...formData, commission_type: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="percentage">Percentage</SelectItem>
+                <SelectItem value="fixed">Fixed Amount</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Commission Value</Label>
+            <Input type="number" value={formData.commission_value} onChange={(e) => setFormData({...formData, commission_value: parseFloat(e.target.value) || 0})} />
+          </div>
+          <div>
+            <Label>Payment Terms</Label>
+            <Select value={formData.payment_terms} onValueChange={(v) => setFormData({...formData, payment_terms: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {!fleet && (
+            <div className="col-span-2">
+              <Label>Password (leave blank for auto-generated)</Label>
+              <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Auto-generated if empty" />
+            </div>
+          )}
+          <div className="col-span-2">
+            <Label>Notes</Label>
+            <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading} className="bg-[#0A0F1C]">
+            {loading ? "Saving..." : (fleet ? "Update Fleet" : "Create Fleet")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Driver Dialog
+const DriverDialog = ({ open, onClose, driver, fleets, allVehicles, headers, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    name: "", email: "", phone: "", license_number: "", license_expiry: "",
+    driver_type: "internal", fleet_id: "", vehicle_id: "", notes: "", status: "active"
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (driver) {
+      setFormData({ ...driver });
+    } else {
+      setFormData({
+        name: "", email: "", phone: "", license_number: "", license_expiry: "",
+        driver_type: "internal", fleet_id: "", vehicle_id: "", notes: "", status: "active"
+      });
+    }
+  }, [driver]);
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.phone) {
+      toast.error("Name and phone are required");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (driver) {
+        await axios.put(`${API}/drivers/${driver.id}`, formData, { headers });
+        toast.success("Driver updated!");
+      } else {
+        await axios.post(`${API}/drivers`, formData, { headers });
+        toast.success("Driver created!");
+      }
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save driver");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{driver ? "Edit Driver" : "Add New Driver"}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="col-span-2">
+            <Label>Full Name *</Label>
+            <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+          </div>
+          <div>
+            <Label>Phone *</Label>
+            <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+          </div>
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+          </div>
+          <div>
+            <Label>License Number</Label>
+            <Input value={formData.license_number} onChange={(e) => setFormData({...formData, license_number: e.target.value})} />
+          </div>
+          <div>
+            <Label>License Expiry</Label>
+            <Input type="date" value={formData.license_expiry} onChange={(e) => setFormData({...formData, license_expiry: e.target.value})} />
+          </div>
+          <div>
+            <Label>Driver Type</Label>
+            <Select value={formData.driver_type} onValueChange={(v) => setFormData({...formData, driver_type: v, fleet_id: v === "internal" ? "" : formData.fleet_id})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="internal">Internal Driver</SelectItem>
+                <SelectItem value="fleet">Fleet Driver</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {formData.driver_type === "fleet" && (
+            <div>
+              <Label>Fleet</Label>
+              <Select value={formData.fleet_id} onValueChange={(v) => setFormData({...formData, fleet_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Select fleet" /></SelectTrigger>
+                <SelectContent>
+                  {fleets.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div>
+            <Label>Default Vehicle</Label>
+            <Select value={formData.vehicle_id} onValueChange={(v) => setFormData({...formData, vehicle_id: v})}>
+              <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {allVehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate_number}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2">
+            <Label>Notes</Label>
+            <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading} className="bg-[#0A0F1C]">
+            {loading ? "Saving..." : (driver ? "Update Driver" : "Create Driver")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Vehicle Dialog
+const VehicleDialog = ({ open, onClose, vehicle, vehicles, fleets, drivers, headers, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    name: "", plate_number: "", category_id: "", make: "", model: "",
+    year: null, color: "", passenger_capacity: 4, luggage_capacity: 2,
+    fleet_id: "", driver_id: "", notes: "", status: "active"
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (vehicle) {
+      setFormData({ ...vehicle });
+    } else {
+      setFormData({
+        name: "", plate_number: "", category_id: "", make: "", model: "",
+        year: null, color: "", passenger_capacity: 4, luggage_capacity: 2,
+        fleet_id: "", driver_id: "", notes: "", status: "active"
+      });
+    }
+  }, [vehicle]);
+
+  const handleSubmit = async () => {
+    if (!formData.plate_number || !formData.category_id) {
+      toast.error("Plate number and category are required");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (vehicle) {
+        await axios.put(`${API}/admin/vehicles/${vehicle.id}`, formData, { headers });
+        toast.success("Vehicle updated!");
+      } else {
+        await axios.post(`${API}/admin/vehicles`, formData, { headers });
+        toast.success("Vehicle created!");
+      }
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save vehicle");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{vehicle ? "Edit Vehicle" : "Add New Vehicle"}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div>
+            <Label>Plate Number *</Label>
+            <Input value={formData.plate_number} onChange={(e) => setFormData({...formData, plate_number: e.target.value})} placeholder="AB12 CDE" />
+          </div>
+          <div>
+            <Label>Category *</Label>
+            <Select value={formData.category_id} onValueChange={(v) => setFormData({...formData, category_id: v})}>
+              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Name</Label>
+            <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="E.g. Mercedes E-Class" />
+          </div>
+          <div>
+            <Label>Make</Label>
+            <Input value={formData.make} onChange={(e) => setFormData({...formData, make: e.target.value})} placeholder="Mercedes" />
+          </div>
+          <div>
+            <Label>Model</Label>
+            <Input value={formData.model} onChange={(e) => setFormData({...formData, model: e.target.value})} placeholder="E-Class" />
+          </div>
+          <div>
+            <Label>Year</Label>
+            <Input type="number" value={formData.year || ""} onChange={(e) => setFormData({...formData, year: parseInt(e.target.value) || null})} placeholder="2023" />
+          </div>
+          <div>
+            <Label>Color</Label>
+            <Input value={formData.color} onChange={(e) => setFormData({...formData, color: e.target.value})} placeholder="Black" />
+          </div>
+          <div>
+            <Label>Passenger Capacity</Label>
+            <Input type="number" value={formData.passenger_capacity} onChange={(e) => setFormData({...formData, passenger_capacity: parseInt(e.target.value) || 4})} />
+          </div>
+          <div>
+            <Label>Luggage Capacity</Label>
+            <Input type="number" value={formData.luggage_capacity} onChange={(e) => setFormData({...formData, luggage_capacity: parseInt(e.target.value) || 2})} />
+          </div>
+          <div>
+            <Label>Fleet</Label>
+            <Select value={formData.fleet_id || ""} onValueChange={(v) => setFormData({...formData, fleet_id: v})}>
+              <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {fleets.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Assigned Driver</Label>
+            <Select value={formData.driver_id || ""} onValueChange={(v) => setFormData({...formData, driver_id: v})}>
+              <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2">
+            <Label>Notes</Label>
+            <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading} className="bg-[#0A0F1C]">
+            {loading ? "Saving..." : (vehicle ? "Update Vehicle" : "Create Vehicle")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default AdminDashboard;
