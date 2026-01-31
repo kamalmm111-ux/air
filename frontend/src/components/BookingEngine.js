@@ -125,35 +125,19 @@ const BookingEngine = () => {
 
         {/* Date */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium flex items-center gap-2">
+          <Label htmlFor="pickup_date" className="text-sm font-medium flex items-center gap-2">
             <CalendarIcon className="w-4 h-4 text-[#D4AF37]" />
             Pickup Date
           </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full h-12 justify-start text-left font-normal bg-zinc-50 border-zinc-200",
-                  !date && "text-muted-foreground"
-                )}
-                data-testid="date-picker-trigger"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : "Select date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={handleDateSelect}
-                disabled={(date) => date < new Date()}
-                initialFocus
-                data-testid="calendar"
-              />
-            </PopoverContent>
-          </Popover>
+          <Input
+            id="pickup_date"
+            type="date"
+            min={getTomorrowDate()}
+            value={bookingData.pickup_date}
+            onChange={handleDateChange}
+            className="h-12 bg-zinc-50 border-zinc-200 focus:border-[#0A0F1C] focus:ring-[#0A0F1C]"
+            data-testid="date-input"
+          />
         </div>
 
         {/* Time */}
