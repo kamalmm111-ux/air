@@ -399,7 +399,26 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     token = authorization.split(" ")[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        user_id = payload["user_id"]
+        role = payload.get("role")
+        
+        # For fleet_admin, look in fleets collection
+        if role == "fleet_admin":
+            fleet = await db.fleets.find_one({"id": user_id}, {"_id": 0, "password": 0})
+            if fleet:
+                # Return fleet data in user format
+                return {
+                    "id": fleet["id"],
+                    "email": fleet["email"],
+                    "name": fleet["name"],
+                    "phone": fleet.get("phone"),
+                    "role": "fleet_admin",
+                    "fleet_id": fleet["id"],
+                    "created_at": fleet["created_at"]
+                }
+        
+        # For other roles, look in users collection
+        user = await db.users.find_one({"id": user_id}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         return user
