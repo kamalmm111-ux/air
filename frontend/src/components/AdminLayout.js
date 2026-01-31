@@ -2,20 +2,20 @@ import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "./ui/button";
 import {
-  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck
+  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const AdminLayout = () => {
-  const { user, logout, isAdmin, loading } = useAuth();
+  const { user, logout, isSuperAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
+    if (!loading && (!user || !isSuperAdmin)) {
       navigate("/login");
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, isSuperAdmin, loading, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -30,17 +30,20 @@ const AdminLayout = () => {
     );
   }
 
-  if (!isAdmin) {
+  if (!isSuperAdmin) {
     return null;
   }
 
   const sidebarItems = [
     { id: "dashboard", name: "Dashboard", icon: LayoutDashboard },
     { id: "bookings", name: "Bookings", icon: CalendarDays },
+    { id: "fleets", name: "Fleets", icon: Building2 },
+    { id: "drivers", name: "Drivers", icon: Users },
     { id: "pricing", name: "Pricing Rules", icon: DollarSign },
     { id: "routes", name: "Fixed Routes", icon: Route },
-    { id: "vehicles", name: "Vehicles", icon: Truck },
-    { id: "customers", name: "Customers", icon: Users },
+    { id: "radius-routes", name: "Radius Zones", icon: MapPin },
+    { id: "vehicles", name: "Vehicle Categories", icon: Truck },
+    { id: "invoices", name: "Invoices", icon: FileText },
     { id: "settings", name: "Settings", icon: Settings },
   ];
 
@@ -54,11 +57,11 @@ const AdminLayout = () => {
             <Car className="w-8 h-8" />
             <span className="text-xl font-black" style={{ fontFamily: 'Chivo, sans-serif' }}>AIRCABIO</span>
           </Link>
-          <p className="text-xs text-zinc-500 mt-1">Admin Panel</p>
+          <p className="text-xs text-zinc-500 mt-1">Super Admin</p>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6">
+        <nav className="flex-1 py-6 overflow-y-auto">
           <ul className="space-y-1 px-3">
             {sidebarItems.map((item) => (
               <li key={item.id}>
