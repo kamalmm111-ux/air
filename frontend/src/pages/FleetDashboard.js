@@ -80,13 +80,26 @@ const FleetDashboard = () => {
 
   const getStatusBadge = (status) => {
     const styles = {
-      assigned: "bg-yellow-100 text-yellow-800",
-      accepted: "bg-blue-100 text-blue-800",
-      in_progress: "bg-purple-100 text-purple-800",
+      new: "bg-blue-100 text-blue-800",
+      unassigned: "bg-yellow-100 text-yellow-800",
+      assigned: "bg-purple-100 text-purple-800",
+      accepted: "bg-indigo-100 text-indigo-800",
+      en_route: "bg-cyan-100 text-cyan-800",
+      arrived: "bg-teal-100 text-teal-800",
+      in_progress: "bg-orange-100 text-orange-800",
       completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800"
+      cancelled: "bg-red-100 text-red-800",
+      no_show: "bg-red-100 text-red-800",
+      driver_no_show: "bg-red-100 text-red-800",
+      customer_no_show: "bg-red-100 text-red-800"
     };
-    return <Badge className={styles[status] || "bg-zinc-100"}>{status.replace("_", " ")}</Badge>;
+    const labels = {
+      en_route: "En Route",
+      in_progress: "In Progress",
+      driver_no_show: "Driver No Show",
+      customer_no_show: "Customer No Show"
+    };
+    return <Badge className={styles[status] || "bg-zinc-100"}>{labels[status] || status.replace("_", " ")}</Badge>;
   };
 
   const filteredJobs = jobs.filter(j => {
