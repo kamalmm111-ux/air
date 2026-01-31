@@ -1265,9 +1265,9 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
     setLoading(true);
     try {
       await axios.post(`${API}/bookings/${booking.id}/assign`, {
-        fleet_id: fleetId || null,
-        driver_id: driverId || null,
-        vehicle_id: vehicleId || null
+        fleet_id: fleetId && fleetId !== "none" ? fleetId : null,
+        driver_id: driverId && driverId !== "none" ? driverId : null,
+        vehicle_id: vehicleId && vehicleId !== "none" ? vehicleId : null
       }, { headers });
       toast.success("Job assigned successfully!");
       onClose();
