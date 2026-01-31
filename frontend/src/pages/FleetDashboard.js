@@ -204,8 +204,8 @@ const FleetDashboard = () => {
                     {/* Passenger */}
                     <div className="text-sm">
                       <span className="text-zinc-500">Passenger: </span>
-                      <span className="font-medium">{job.passenger_name}</span>
-                      <span className="text-zinc-400 ml-2">{job.passenger_phone}</span>
+                      <span className="font-medium">{job.customer_name || job.passenger_name}</span>
+                      <span className="text-zinc-400 ml-2">{job.customer_phone || job.passenger_phone}</span>
                     </div>
                   </div>
 
