@@ -114,12 +114,36 @@ Build a complete airport transfer booking website for Aircabio with:
   - "Save up to 10% when booking return trip!" notice
   - Search Results show "Return Total" with original price crossed out
 
+### Phase 4 (Pricing Module) - Completed Feb 1, 2026
+#### Backend
+- ✅ Pricing Schemes API (`/api/pricing-schemes`, `/api/pricing-schemes/{vehicle_id}`)
+- ✅ Map-Based Fixed Routes API (`/api/map-fixed-routes`, CRUD operations)
+- ✅ Mileage bracket calculation logic
+- ✅ Haversine distance and radius matching for fixed routes
+- ✅ Quote engine prioritizes fixed routes, falls back to mileage pricing
+
+#### Frontend
+- ✅ **Unified Pricing Tab** in admin sidebar (consolidated from Pricing Rules, Fixed Routes, Vehicle Classes)
+- ✅ **Vehicle Class Cards** grid showing all vehicle types with click-to-configure
+- ✅ **Mileage Brackets Card** with inline editing (add/remove/edit brackets)
+- ✅ **Hourly/Daily Rates Card** with editable fields
+- ✅ **Extra Fees Card** with all configurable fees
+- ✅ **Fixed Routes Card** with table listing routes, search, edit/delete actions
+- ✅ **Add Fixed Route Dialog** with Google Maps integration:
+  - Interactive map with draggable markers (A=Start, B=End)
+  - Editable radius circles for start/end zones
+  - Auto-calculated distance
+  - Valid for return journey checkbox
+- ✅ **Summary Panel** showing counts and key metrics (brackets, routes, base fare, min fare)
+
 ### Database Collections
 - users (with role: customer, super_admin)
 - customers
-- vehicles (6 categories seeded)
-- pricing_rules (6 rules seeded)
-- fixed_routes (3 routes seeded)
+- vehicles (8 categories)
+- pricing_rules (legacy mileage rules)
+- pricing_schemes (NEW - comprehensive pricing per vehicle class)
+- fixed_routes (text-based legacy routes)
+- map_fixed_routes (NEW - geo-based routes with radius)
 - radius_zones
 - radius_routes
 - fleets (1 sample fleet: London Premier Cars)
