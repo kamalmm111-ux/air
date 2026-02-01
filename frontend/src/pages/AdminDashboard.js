@@ -448,11 +448,21 @@ const AdminDashboard = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => { setEditingFleet(fleet); setFleetDialogOpen(true); }}>
+                      <Button variant="ghost" size="sm" onClick={() => { setEditingFleet(fleet); setFleetDialogOpen(true); }} title="Edit Fleet">
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" title="View Details">
                         <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => impersonateFleet(fleet)}
+                        disabled={impersonating}
+                        className="text-[#D4AF37] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                        title="Access Fleet Dashboard"
+                      >
+                        <LogIn className="w-4 h-4" />
                       </Button>
                     </div>
                   </TableCell>
