@@ -842,6 +842,15 @@ const AdminDashboard = () => {
         headers={headers}
         onSuccess={fetchData}
       />
+
+      {/* Booking View Dialog */}
+      <BookingViewDialog
+        open={viewBookingDialogOpen}
+        onClose={() => { setViewBookingDialogOpen(false); setSelectedBooking(null); }}
+        booking={selectedBooking}
+        token={token}
+        onRefresh={fetchData}
+      />
     </div>
   );
 };
