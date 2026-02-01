@@ -118,6 +118,34 @@ const AdminDashboard = () => {
     fetchData();
   }, [fetchData]);
 
+  // Fleet Impersonation Handler
+  const impersonateFleet = async (fleet) => {
+    try {
+      setImpersonating(true);
+      const response = await axios.post(
+        `${API}/admin/fleets/${fleet.id}/impersonate`,
+        {},
+        { headers }
+      );
+      
+      // Store impersonation data in sessionStorage
+      sessionStorage.setItem("impersonation_token", response.data.access_token);
+      sessionStorage.setItem("impersonation_fleet", JSON.stringify(response.data.fleet));
+      sessionStorage.setItem("impersonation_id", response.data.impersonation_id);
+      sessionStorage.setItem("admin_token", token); // Store original admin token for returning
+      
+      toast.success(`Accessing ${fleet.name} dashboard...`);
+      
+      // Redirect to fleet dashboard with impersonation
+      window.location.href = `/fleet/dashboard?impersonate=true`;
+    } catch (error) {
+      console.error("Impersonation error:", error);
+      toast.error("Failed to access fleet dashboard");
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const config = JOB_STATUSES[status] || { label: status, color: "bg-zinc-100 text-zinc-800" };
     return <Badge className={config.color}>{config.label}</Badge>;
