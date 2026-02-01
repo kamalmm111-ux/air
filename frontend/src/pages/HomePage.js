@@ -72,7 +72,7 @@ const HomePage = () => {
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1641736950490-ebb6533422d9?crop=entropy&cs=srgb&fm=jpg&q=85')"
+            backgroundImage: `url('${heroImage}')`
           }}
         >
           <div className="absolute inset-0 hero-overlay"></div>
@@ -85,14 +85,18 @@ const HomePage = () => {
               {/* Hero Text */}
               <div className="text-white animate-fadeInUp">
                 <p className="text-xs uppercase tracking-widest font-semibold text-[#D4AF37] mb-4">
-                  Premium Airport Transfers
+                  {siteSettings.tagline || "Premium Airport Transfers"}
                 </p>
                 <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-6" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                  Travel in <br />
-                  <span className="text-[#D4AF37]">Style</span> & Comfort
+                  {heroTitle.includes("Style") ? (
+                    <>
+                      Travel in <br />
+                      <span className="text-[#D4AF37]">Style</span> & Comfort
+                    </>
+                  ) : heroTitle}
                 </h1>
                 <p className="text-lg md:text-xl text-zinc-300 max-w-lg mb-8">
-                  Book your airport transfer with Aircabio. Professional drivers, premium vehicles, and guaranteed on-time service worldwide.
+                  {heroSubtitle}
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <Button
