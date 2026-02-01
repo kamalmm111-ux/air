@@ -1041,10 +1041,19 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
                 Start Point
               </h4>
               <div className="space-y-2">
-                <Input
+                <PlacesAutocomplete
                   value={formData.start_label}
-                  onChange={(e) => setFormData({ ...formData, start_label: e.target.value })}
-                  placeholder="e.g., Heathrow Airport"
+                  onChange={(value) => setFormData({ ...formData, start_label: value })}
+                  onPlaceSelect={(place) => {
+                    setFormData({ 
+                      ...formData, 
+                      start_label: place.address,
+                      start_lat: place.lat,
+                      start_lng: place.lng
+                    });
+                  }}
+                  placeholder="Search for start location..."
+                  data-testid="route-start-input"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -1072,10 +1081,19 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
                 End Point
               </h4>
               <div className="space-y-2">
-                <Input
+                <PlacesAutocomplete
                   value={formData.end_label}
-                  onChange={(e) => setFormData({ ...formData, end_label: e.target.value })}
-                  placeholder="e.g., Central London"
+                  onChange={(value) => setFormData({ ...formData, end_label: value })}
+                  onPlaceSelect={(place) => {
+                    setFormData({ 
+                      ...formData, 
+                      end_label: place.address,
+                      end_lat: place.lat,
+                      end_lng: place.lng
+                    });
+                  }}
+                  placeholder="Search for end location..."
+                  data-testid="route-end-input"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <div>
