@@ -1462,36 +1462,6 @@ async def fleet_accept_job(booking_id: str, user: dict = Depends(get_fleet_admin
     )
     return {"message": "Job accepted"}
 
-@api_router.put("/fleet/jobs/{booking_id}/assign-driver")
-async def fleet_assign_driver(booking_id: str, driver_id: str, vehicle_id: Optional[str] = None, user: dict = Depends(get_fleet_admin)):
-    """Fleet assigns their own driver to the job"""
-    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    
-    if booking.get("assigned_fleet_id") != user.get("fleet_id"):
-        raise HTTPException(status_code=403, detail="This job is not assigned to your fleet")
-    
-    # Verify driver belongs to fleet
-    driver = await db.drivers.find_one({"id": driver_id, "fleet_id": user.get("fleet_id")}, {"_id": 0})
-    if not driver:
-        raise HTTPException(status_code=404, detail="Driver not found or not in your fleet")
-    
-    update_data = {
-        "assigned_driver_id": driver_id,
-        "assigned_driver_name": driver["name"],
-        "updated_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    if vehicle_id:
-        vehicle = await db.fleet_vehicles.find_one({"id": vehicle_id, "fleet_id": user.get("fleet_id")}, {"_id": 0})
-        if vehicle:
-            update_data["assigned_vehicle_id"] = vehicle_id
-            update_data["assigned_vehicle_plate"] = vehicle["plate_number"]
-    
-    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
-    return {"message": "Driver assigned to job"}
-
 @api_router.get("/fleet/notifications")
 async def get_fleet_notifications(user: dict = Depends(get_fleet_admin)):
     notifications = await db.notifications.find(
