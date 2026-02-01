@@ -3,7 +3,7 @@ import { useBooking } from "../context/BookingContext";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
-import { Users, Briefcase, Check, MapPin, Clock, ArrowRight, ArrowLeft } from "lucide-react";
+import { Users, Briefcase, Check, MapPin, Clock, ArrowRight, ArrowLeft, RotateCcw, Plane } from "lucide-react";
 
 const SearchResultsPage = () => {
   const navigate = useNavigate();
@@ -35,53 +35,120 @@ const SearchResultsPage = () => {
 
         {/* Trip Summary */}
         <div className="bg-white border border-zinc-200 rounded-sm p-6 mb-8">
-          <h2 className="text-xl font-bold text-[#0A0F1C] mb-4" style={{ fontFamily: 'Chivo, sans-serif' }}>
-            Trip Summary
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-[#D4AF37] mt-1" />
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider">Pickup</p>
-                <p className="font-medium text-[#0A0F1C]">{bookingData.pickup_location}</p>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
+              Trip Summary
+            </h2>
+            {bookingData.is_return && (
+              <Badge className="bg-[#D4AF37] text-[#0A0F1C] flex items-center gap-1">
+                <RotateCcw className="w-3 h-3" />
+                Return Journey
+              </Badge>
+            )}
+          </div>
+
+          {/* Outbound Journey */}
+          <div className="mb-6">
+            {bookingData.is_return && (
+              <p className="text-sm font-semibold text-[#D4AF37] uppercase tracking-wider mb-3">Outbound Journey</p>
+            )}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-[#D4AF37] mt-1" />
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider">Pickup</p>
+                  <p className="font-medium text-[#0A0F1C]">{bookingData.pickup_location}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-[#D4AF37] mt-1" />
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider">Drop-off</p>
-                <p className="font-medium text-[#0A0F1C]">{bookingData.dropoff_location}</p>
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-[#D4AF37] mt-1" />
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider">Drop-off</p>
+                  <p className="font-medium text-[#0A0F1C]">{bookingData.dropoff_location}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-[#D4AF37] mt-1" />
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider">Date & Time</p>
-                <p className="font-medium text-[#0A0F1C]">{bookingData.pickup_date} at {bookingData.pickup_time}</p>
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-[#D4AF37] mt-1" />
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider">Date & Time</p>
+                  <p className="font-medium text-[#0A0F1C]">{bookingData.pickup_date} at {bookingData.pickup_time}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Users className="w-5 h-5 text-[#D4AF37] mt-1" />
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider">Passengers & Luggage</p>
-                <p className="font-medium text-[#0A0F1C]">{bookingData.passengers} passengers, {bookingData.luggage} bags</p>
-              </div>
+              {bookingData.flight_number && (
+                <div className="flex items-start gap-3">
+                  <Plane className="w-5 h-5 text-[#D4AF37] mt-1" />
+                  <div>
+                    <p className="text-xs text-zinc-500 uppercase tracking-wider">Flight</p>
+                    <p className="font-medium text-[#0A0F1C]">{bookingData.flight_number}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          
-          {/* Distance Info */}
-          <div className="mt-6 pt-6 border-t border-zinc-200 flex flex-wrap gap-6">
-            <div>
-              <span className="text-sm text-zinc-500">Estimated Distance:</span>
-              <span className="ml-2 font-bold text-[#0A0F1C]">{bookingData.distance_km?.toFixed(1)} km</span>
+
+          {/* Return Journey */}
+          {bookingData.is_return && (
+            <div className="pt-6 border-t border-zinc-200 mb-6">
+              <p className="text-sm font-semibold text-[#D4AF37] uppercase tracking-wider mb-3">Return Journey</p>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-[#D4AF37] mt-1" />
+                  <div>
+                    <p className="text-xs text-zinc-500 uppercase tracking-wider">Pickup</p>
+                    <p className="font-medium text-[#0A0F1C]">{bookingData.dropoff_location}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-[#D4AF37] mt-1" />
+                  <div>
+                    <p className="text-xs text-zinc-500 uppercase tracking-wider">Drop-off</p>
+                    <p className="font-medium text-[#0A0F1C]">{bookingData.pickup_location}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-[#D4AF37] mt-1" />
+                  <div>
+                    <p className="text-xs text-zinc-500 uppercase tracking-wider">Date & Time</p>
+                    <p className="font-medium text-[#0A0F1C]">{bookingData.return_date} at {bookingData.return_time}</p>
+                  </div>
+                </div>
+                {bookingData.return_flight_number && (
+                  <div className="flex items-start gap-3">
+                    <Plane className="w-5 h-5 text-[#D4AF37] mt-1" />
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase tracking-wider">Flight</p>
+                      <p className="font-medium text-[#0A0F1C]">{bookingData.return_flight_number}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <span className="text-sm text-zinc-500">Estimated Duration:</span>
-              <span className="ml-2 font-bold text-[#0A0F1C]">{bookingData.duration_minutes} mins</span>
+          )}
+
+          {/* Passengers & Trip Info */}
+          <div className="pt-6 border-t border-zinc-200">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex items-start gap-3">
+                <Users className="w-5 h-5 text-[#D4AF37] mt-1" />
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider">Passengers & Luggage</p>
+                  <p className="font-medium text-[#0A0F1C]">{bookingData.passengers} passengers, {bookingData.luggage} bags</p>
+                </div>
+              </div>
+              <div>
+                <span className="text-xs text-zinc-500 uppercase tracking-wider">Est. Distance</span>
+                <p className="font-bold text-[#0A0F1C]">{bookingData.distance_km?.toFixed(1)} km {bookingData.is_return && "(each way)"}</p>
+              </div>
+              <div>
+                <span className="text-xs text-zinc-500 uppercase tracking-wider">Est. Duration</span>
+                <p className="font-bold text-[#0A0F1C]">{bookingData.duration_minutes} mins {bookingData.is_return && "(each way)"}</p>
+              </div>
+              {bookingData.meet_greet && (
+                <div className="flex items-center">
+                  <Badge className="bg-[#D4AF37] text-[#0A0F1C]">Meet & Greet Included</Badge>
+                </div>
+              )}
             </div>
-            {bookingData.meet_greet && (
-              <Badge className="bg-[#D4AF37] text-[#0A0F1C]">Meet & Greet Included</Badge>
-            )}
           </div>
         </div>
 
@@ -146,10 +213,25 @@ const SearchResultsPage = () => {
 
                       {/* Price & Book */}
                       <div className="text-right">
-                        <p className="text-sm text-zinc-500">Total Price</p>
+                        {vehicle.is_return && vehicle.one_way_price && (
+                          <div className="mb-1">
+                            <span className="text-sm text-zinc-500 line-through">
+                              {vehicle.currency === "GBP" ? "£" : vehicle.currency}{(vehicle.one_way_price * 2).toFixed(2)}
+                            </span>
+                            <Badge className="ml-2 bg-green-100 text-green-800 text-xs">Save 10%</Badge>
+                          </div>
+                        )}
+                        <p className="text-sm text-zinc-500">
+                          {vehicle.is_return ? "Return Total" : "Total Price"}
+                        </p>
                         <p className="text-3xl font-black text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
                           {vehicle.currency === "GBP" ? "£" : vehicle.currency}{vehicle.price.toFixed(2)}
                         </p>
+                        {vehicle.is_return && (
+                          <p className="text-xs text-zinc-500 mt-1">
+                            (£{vehicle.one_way_price.toFixed(2)} each way)
+                          </p>
+                        )}
                         <Button
                           onClick={() => handleSelectVehicle(vehicle)}
                           className="mt-4 bg-[#0A0F1C] hover:bg-[#0A0F1C]/90 text-white font-bold px-8"
