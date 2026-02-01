@@ -955,12 +955,34 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Pickup Address *</Label>
-                <Input value={formData.pickup_location} onChange={(e) => setFormData({...formData, pickup_location: e.target.value})} placeholder="Heathrow Airport Terminal 5" />
+                <PlacesAutocomplete
+                  value={formData.pickup_location}
+                  onChange={(value) => setFormData({...formData, pickup_location: value})}
+                  onPlaceSelect={(place) => setFormData({
+                    ...formData, 
+                    pickup_location: place.address,
+                    pickup_lat: place.lat,
+                    pickup_lng: place.lng
+                  })}
+                  placeholder="Search for pickup location..."
+                  data-testid="new-job-pickup-input"
+                />
                 <Input value={formData.pickup_postcode} onChange={(e) => setFormData({...formData, pickup_postcode: e.target.value})} placeholder="Postcode" className="w-32" />
               </div>
               <div className="space-y-2">
                 <Label>Drop-off Address *</Label>
-                <Input value={formData.dropoff_location} onChange={(e) => setFormData({...formData, dropoff_location: e.target.value})} placeholder="10 Downing Street" />
+                <PlacesAutocomplete
+                  value={formData.dropoff_location}
+                  onChange={(value) => setFormData({...formData, dropoff_location: value})}
+                  onPlaceSelect={(place) => setFormData({
+                    ...formData, 
+                    dropoff_location: place.address,
+                    dropoff_lat: place.lat,
+                    dropoff_lng: place.lng
+                  })}
+                  placeholder="Search for drop-off location..."
+                  data-testid="new-job-dropoff-input"
+                />
                 <Input value={formData.dropoff_postcode} onChange={(e) => setFormData({...formData, dropoff_postcode: e.target.value})} placeholder="Postcode" className="w-32" />
               </div>
             </div>
