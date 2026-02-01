@@ -1508,6 +1508,157 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
     )
     return {"message": "Notification marked as read"}
 
+# ==================== FLEET RESOURCE MANAGEMENT ROUTES ====================
+
+# Fleet Drivers Management
+@api_router.get("/fleet/drivers")
+async def get_fleet_drivers(user: dict = Depends(get_fleet_admin)):
+    """Get drivers belonging to the fleet"""
+    fleet_id = user.get("fleet_id")
+    drivers = await db.drivers.find({"fleet_id": fleet_id}, {"_id": 0}).to_list(100)
+    return drivers
+
+@api_router.post("/fleet/drivers")
+async def create_fleet_driver(driver_data: DriverCreate, user: dict = Depends(get_fleet_admin)):
+    """Create a new driver for the fleet"""
+    fleet_id = user.get("fleet_id")
+    
+    driver = Driver(
+        name=driver_data.name,
+        email=driver_data.email,
+        phone=driver_data.phone,
+        license_number=driver_data.license_number,
+        license_expiry=driver_data.license_expiry,
+        driver_type="fleet",
+        fleet_id=fleet_id,
+        vehicle_id=driver_data.vehicle_id,
+        notes=driver_data.notes
+    )
+    
+    await db.drivers.insert_one(driver.model_dump())
+    return driver.model_dump()
+
+@api_router.put("/fleet/drivers/{driver_id}")
+async def update_fleet_driver(driver_id: str, update: DriverUpdate, user: dict = Depends(get_fleet_admin)):
+    """Update a fleet driver"""
+    fleet_id = user.get("fleet_id")
+    
+    # Verify driver belongs to fleet
+    existing = await db.drivers.find_one({"id": driver_id, "fleet_id": fleet_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Driver not found or not in your fleet")
+    
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    # Prevent changing fleet_id
+    update_data.pop("fleet_id", None)
+    
+    await db.drivers.update_one({"id": driver_id}, {"$set": update_data})
+    return await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+
+@api_router.delete("/fleet/drivers/{driver_id}")
+async def delete_fleet_driver(driver_id: str, user: dict = Depends(get_fleet_admin)):
+    """Delete a fleet driver"""
+    fleet_id = user.get("fleet_id")
+    
+    result = await db.drivers.delete_one({"id": driver_id, "fleet_id": fleet_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Driver not found or not in your fleet")
+    return {"message": "Driver deleted"}
+
+# Fleet Vehicles Management
+@api_router.get("/fleet/vehicles")
+async def get_fleet_vehicles(user: dict = Depends(get_fleet_admin)):
+    """Get vehicles belonging to the fleet"""
+    fleet_id = user.get("fleet_id")
+    vehicles = await db.fleet_vehicles.find({"fleet_id": fleet_id}, {"_id": 0}).to_list(100)
+    return vehicles
+
+@api_router.post("/fleet/vehicles")
+async def create_fleet_vehicle(vehicle_data: VehicleCreate, user: dict = Depends(get_fleet_admin)):
+    """Create a new vehicle for the fleet"""
+    fleet_id = user.get("fleet_id")
+    
+    vehicle = Vehicle(
+        name=vehicle_data.name,
+        plate_number=vehicle_data.plate_number,
+        category_id=vehicle_data.category_id,
+        make=vehicle_data.make,
+        model=vehicle_data.model,
+        year=vehicle_data.year,
+        color=vehicle_data.color,
+        passenger_capacity=vehicle_data.passenger_capacity,
+        luggage_capacity=vehicle_data.luggage_capacity,
+        fleet_id=fleet_id,
+        driver_id=vehicle_data.driver_id,
+        notes=vehicle_data.notes
+    )
+    
+    await db.fleet_vehicles.insert_one(vehicle.model_dump())
+    return vehicle.model_dump()
+
+@api_router.put("/fleet/vehicles/{vehicle_id}")
+async def update_fleet_vehicle(vehicle_id: str, update: VehicleUpdate, user: dict = Depends(get_fleet_admin)):
+    """Update a fleet vehicle"""
+    fleet_id = user.get("fleet_id")
+    
+    # Verify vehicle belongs to fleet
+    existing = await db.fleet_vehicles.find_one({"id": vehicle_id, "fleet_id": fleet_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Vehicle not found or not in your fleet")
+    
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    # Prevent changing fleet_id
+    update_data.pop("fleet_id", None)
+    
+    await db.fleet_vehicles.update_one({"id": vehicle_id}, {"$set": update_data})
+    return await db.fleet_vehicles.find_one({"id": vehicle_id}, {"_id": 0})
+
+@api_router.delete("/fleet/vehicles/{vehicle_id}")
+async def delete_fleet_vehicle(vehicle_id: str, user: dict = Depends(get_fleet_admin)):
+    """Delete a fleet vehicle"""
+    fleet_id = user.get("fleet_id")
+    
+    result = await db.fleet_vehicles.delete_one({"id": vehicle_id, "fleet_id": fleet_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Vehicle not found or not in your fleet")
+    return {"message": "Vehicle deleted"}
+
+# Fleet Driver Assignment Model
+class FleetDriverAssignment(BaseModel):
+    driver_id: str
+    vehicle_id: Optional[str] = None
+
+@api_router.put("/fleet/jobs/{booking_id}/assign-driver")
+async def fleet_assign_driver_to_job(booking_id: str, assignment: FleetDriverAssignment, user: dict = Depends(get_fleet_admin)):
+    """Fleet assigns their own driver and vehicle to a job"""
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    fleet_id = user.get("fleet_id")
+    if booking.get("assigned_fleet_id") != fleet_id:
+        raise HTTPException(status_code=403, detail="This job is not assigned to your fleet")
+    
+    # Verify driver belongs to fleet
+    driver = await db.drivers.find_one({"id": assignment.driver_id, "fleet_id": fleet_id}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found or not in your fleet")
+    
+    update_data = {
+        "assigned_driver_id": assignment.driver_id,
+        "assigned_driver_name": driver["name"],
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if assignment.vehicle_id:
+        vehicle = await db.fleet_vehicles.find_one({"id": assignment.vehicle_id, "fleet_id": fleet_id}, {"_id": 0})
+        if vehicle:
+            update_data["assigned_vehicle_id"] = assignment.vehicle_id
+            update_data["assigned_vehicle_plate"] = vehicle["plate_number"]
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    return {"message": "Driver assigned to job successfully"}
+
 # ==================== ADMIN BOOKING ROUTES ====================
 
 @api_router.get("/admin/bookings")
