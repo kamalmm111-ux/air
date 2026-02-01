@@ -222,9 +222,12 @@ Public:
 ## Technical Notes
 
 ### Mocked Features
-- Google Places: Using plain text input (but Google Maps works in route builder)
 - Email notifications: Not sent (logged only)
 - Stripe: Using test keys (sk_test_emergent)
+
+### Live Integrations (NOT MOCKED)
+- Google Places API: Live autocomplete in admin dialogs and route builder
+- Google Maps JavaScript API: Live maps in Fixed Route Builder
 
 ### Key Files
 - `/app/backend/server.py` - All backend routes and models (~2500 lines)
