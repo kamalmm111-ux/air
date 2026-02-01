@@ -1415,6 +1415,28 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict 
     
     await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
     
+    # Log assignment to history
+    if assignment.fleet_id:
+        fleet = await db.fleets.find_one({"id": assignment.fleet_id}, {"_id": 0})
+        await log_booking_history(
+            booking_id,
+            "fleet_assigned",
+            f"Assigned to fleet: {fleet['name'] if fleet else assignment.fleet_id}",
+            user,
+            old_value=booking.get("assigned_fleet_name"),
+            new_value=fleet['name'] if fleet else assignment.fleet_id
+        )
+    
+    if assignment.driver_price is not None:
+        await log_booking_history(
+            booking_id,
+            "driver_price_updated",
+            f"Driver price set to £{assignment.driver_price:.2f}",
+            user,
+            old_value=str(booking.get("driver_price")),
+            new_value=str(assignment.driver_price)
+        )
+    
     # Create notification for fleet
     if assignment.fleet_id:
         await db.notifications.insert_one({
