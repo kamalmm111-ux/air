@@ -1189,11 +1189,33 @@ const EditJobDialog = ({ open, onClose, booking, vehicles, fleets, drivers, head
           </div>
           <div className="col-span-2">
             <Label>Pickup Location</Label>
-            <Input value={formData.pickup_location || ""} onChange={(e) => setFormData({...formData, pickup_location: e.target.value})} />
+            <PlacesAutocomplete
+              value={formData.pickup_location || ""}
+              onChange={(value) => setFormData({...formData, pickup_location: value})}
+              onPlaceSelect={(place) => setFormData({
+                ...formData, 
+                pickup_location: place.address,
+                pickup_lat: place.lat,
+                pickup_lng: place.lng
+              })}
+              placeholder="Search for pickup location..."
+              data-testid="edit-job-pickup-input"
+            />
           </div>
           <div className="col-span-2">
             <Label>Drop-off Location</Label>
-            <Input value={formData.dropoff_location || ""} onChange={(e) => setFormData({...formData, dropoff_location: e.target.value})} />
+            <PlacesAutocomplete
+              value={formData.dropoff_location || ""}
+              onChange={(value) => setFormData({...formData, dropoff_location: value})}
+              onPlaceSelect={(place) => setFormData({
+                ...formData, 
+                dropoff_location: place.address,
+                dropoff_lat: place.lat,
+                dropoff_lng: place.lng
+              })}
+              placeholder="Search for drop-off location..."
+              data-testid="edit-job-dropoff-input"
+            />
           </div>
           <div>
             <Label>Vehicle Class</Label>
