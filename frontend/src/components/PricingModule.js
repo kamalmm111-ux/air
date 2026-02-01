@@ -960,6 +960,11 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
     setFormData(prev => ({ ...prev, distance_miles: Math.round(distanceMiles * 10) / 10 }));
   };
 
+  // Calculate distance when coordinates change
+  useEffect(() => {
+    calculateDistance();
+  }, [formData.start_lat, formData.start_lng, formData.end_lat, formData.end_lng]);
+
   // Update map when form data changes
   useEffect(() => {
     if (!mapLoaded) return;
