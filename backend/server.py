@@ -2263,55 +2263,59 @@ async def delete_radius_route(route_id: str, user: dict = Depends(get_super_admi
 async def get_quote(request: QuoteRequest):
     vehicles = await db.vehicles.find({"is_active": True}, {"_id": 0}).to_list(100)
     pricing_rules = await db.pricing_rules.find({}, {"_id": 0}).to_list(100)
+    pricing_schemes = await db.pricing_schemes.find({}, {"_id": 0}).to_list(100)
+    schemes_by_vehicle = {s["vehicle_category_id"]: s for s in pricing_schemes}
     
-    radius_route_prices = None
-    if request.pickup_lat and request.pickup_lng and request.dropoff_lat and request.dropoff_lng:
-        zones = await db.radius_zones.find({}, {"_id": 0}).to_list(100)
-        radius_routes = await db.radius_routes.find({"is_active": True}, {"_id": 0}).to_list(100)
-        
-        for route in radius_routes:
-            pickup_zone = next((z for z in zones if z["id"] == route["pickup_zone_id"]), None)
-            dropoff_zone = next((z for z in zones if z["id"] == route["dropoff_zone_id"]), None)
-            
-            if pickup_zone and dropoff_zone:
-                pickup_match = is_point_in_radius(
-                    request.pickup_lat, request.pickup_lng,
-                    pickup_zone["center_lat"], pickup_zone["center_lng"],
-                    pickup_zone["radius_km"]
-                )
-                dropoff_match = is_point_in_radius(
-                    request.dropoff_lat, request.dropoff_lng,
-                    dropoff_zone["center_lat"], dropoff_zone["center_lng"],
-                    dropoff_zone["radius_km"]
-                )
-                
-                if pickup_match and dropoff_match:
-                    radius_route_prices = route["prices"]
-                    break
-    
-    fixed_route_prices = None
-    if not radius_route_prices:
-        fixed_routes = await db.fixed_routes.find({"is_active": True}, {"_id": 0}).to_list(100)
-        for route in fixed_routes:
-            if (request.pickup_location.lower() in route["pickup_location"].lower() or 
-                route["pickup_location"].lower() in request.pickup_location.lower()) and \
-               (request.dropoff_location.lower() in route["dropoff_location"].lower() or
-                route["dropoff_location"].lower() in request.dropoff_location.lower()):
-                fixed_route_prices = route["prices"]
-                break
+    distance_miles = km_to_miles(request.distance_km)
     
     quotes = []
     for vehicle in vehicles:
         if vehicle["max_passengers"] < request.passengers or vehicle["max_luggage"] < request.luggage:
             continue
         
-        if radius_route_prices and vehicle["id"] in radius_route_prices:
-            price = radius_route_prices[vehicle["id"]]
-            currency = "GBP"
-        elif fixed_route_prices and vehicle["id"] in fixed_route_prices:
-            price = fixed_route_prices[vehicle["id"]]
-            currency = "GBP"
-        else:
+        price = None
+        currency = "GBP"
+        used_fixed_route = False
+        
+        # Priority 1: Check map-based fixed routes (new system)
+        if request.pickup_lat and request.pickup_lng and request.dropoff_lat and request.dropoff_lng:
+            fixed_route = await find_matching_fixed_route(
+                request.pickup_lat, request.pickup_lng,
+                request.dropoff_lat, request.dropoff_lng,
+                vehicle["id"]
+            )
+            if fixed_route:
+                price = fixed_route["price"]
+                used_fixed_route = True
+        
+        # Priority 2: Check text-based fixed routes (legacy)
+        if price is None:
+            fixed_routes = await db.fixed_routes.find({"is_active": True}, {"_id": 0}).to_list(100)
+            for route in fixed_routes:
+                if (request.pickup_location.lower() in route["pickup_location"].lower() or 
+                    route["pickup_location"].lower() in request.pickup_location.lower()) and \
+                   (request.dropoff_location.lower() in route["dropoff_location"].lower() or
+                    route["dropoff_location"].lower() in request.dropoff_location.lower()):
+                    if vehicle["id"] in route.get("prices", {}):
+                        price = route["prices"][vehicle["id"]]
+                        used_fixed_route = True
+                        break
+        
+        # Priority 3: Use mileage brackets from pricing scheme (new system)
+        if price is None:
+            scheme = schemes_by_vehicle.get(vehicle["id"])
+            if scheme and scheme.get("mileage_brackets"):
+                price = await calculate_mileage_price(distance_miles, vehicle["id"])
+                if price:
+                    # Add extra fees
+                    extra_fees = scheme.get("extra_fees", {})
+                    if request.is_airport_pickup:
+                        price += extra_fees.get("airport_pickup_fee", 10.0)
+                    if request.meet_greet:
+                        price += extra_fees.get("meet_greet_fee", 15.0)
+        
+        # Priority 4: Use legacy pricing rules
+        if price is None:
             rule = next((r for r in pricing_rules if r["vehicle_category_id"] == vehicle["id"]), None)
             if rule:
                 price = rule["base_fee"] + (request.distance_km * rule["per_km_rate"])
@@ -2321,13 +2325,14 @@ async def get_quote(request: QuoteRequest):
                     price += rule["meet_greet_fee"]
                 price = max(price, rule["minimum_fare"])
                 currency = rule["currency"]
-            else:
-                price = 25.0 + (request.distance_km * 1.8)
-                if request.meet_greet:
-                    price += 15.0
-                if request.is_airport_pickup:
-                    price += 10.0
-                currency = "GBP"
+        
+        # Fallback pricing
+        if price is None:
+            price = 25.0 + (request.distance_km * 1.8)
+            if request.meet_greet:
+                price += 15.0
+            if request.is_airport_pickup:
+                price += 10.0
         
         quotes.append(VehicleQuote(
             vehicle_category_id=vehicle["id"],
