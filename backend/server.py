@@ -1381,6 +1381,14 @@ async def update_booking_status(booking_id: str, status: str, user: dict = Depen
         current_status = booking.get("status")
         if current_status not in allowed_transitions or status not in allowed_transitions.get(current_status, []):
             raise HTTPException(status_code=400, detail=f"Cannot change status from {current_status} to {status}")
+        
+        # IMPORTANT: Fleet must assign driver and vehicle before starting the job
+        # They can accept without driver, but cannot proceed beyond accepted without driver/vehicle
+        if status == "en_route":
+            if not booking.get("assigned_driver_id"):
+                raise HTTPException(status_code=400, detail="You must assign a driver before starting this job")
+            if not booking.get("assigned_vehicle_id"):
+                raise HTTPException(status_code=400, detail="You must assign a vehicle before starting this job")
     
     update_data = {
         "status": status,
