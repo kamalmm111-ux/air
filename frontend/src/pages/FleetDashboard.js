@@ -903,13 +903,17 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
       toast.error("Please select a driver");
       return;
     }
+    if (!vehicleId) {
+      toast.error("Please select a vehicle");
+      return;
+    }
     setLoading(true);
     try {
       await axios.put(`${API}/fleet/jobs/${job.id}/assign-driver`, {
         driver_id: driverId,
-        vehicle_id: vehicleId && vehicleId !== "none" ? vehicleId : null
+        vehicle_id: vehicleId
       }, { headers });
-      toast.success("Driver assigned to job!");
+      toast.success("Driver and vehicle assigned to job!");
       onClose();
       onSuccess();
     } catch (error) {
@@ -919,11 +923,14 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
     }
   };
 
+  const hasDrivers = drivers.filter(d => d.status === "active").length > 0;
+  const hasVehicles = vehicles.filter(v => v.status === "active").length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Assign Driver to Job</DialogTitle>
+          <DialogTitle>Assign Driver & Vehicle to Job</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="p-3 bg-zinc-50 rounded-sm text-sm">
@@ -933,10 +940,13 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
             <div><strong>Payout:</strong> £{job.price?.toFixed(2)}</div>
           </div>
           
-          {drivers.length === 0 ? (
+          {!hasDrivers || !hasVehicles ? (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-sm text-center">
-              <p className="text-amber-700">You haven't added any drivers yet.</p>
-              <p className="text-sm text-amber-600 mt-1">Go to the "Drivers" tab to add drivers first.</p>
+              <AlertTriangle className="w-6 h-6 text-amber-500 mx-auto mb-2" />
+              <p className="text-amber-700 font-medium">Setup Required</p>
+              {!hasDrivers && <p className="text-sm text-amber-600 mt-1">Add drivers in the "My Drivers" tab</p>}
+              {!hasVehicles && <p className="text-sm text-amber-600 mt-1">Add vehicles in the "My Vehicles" tab</p>}
+              <p className="text-xs text-amber-500 mt-2">You must have both drivers and vehicles to start jobs.</p>
             </div>
           ) : (
             <>
@@ -953,11 +963,10 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
               </div>
               
               <div>
-                <Label>Select Vehicle (Optional)</Label>
+                <Label>Select Vehicle *</Label>
                 <Select value={vehicleId} onValueChange={setVehicleId}>
-                  <SelectTrigger><SelectValue placeholder="Choose a vehicle" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-vehicle-dropdown"><SelectValue placeholder="Choose a vehicle" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No specific vehicle</SelectItem>
                     {vehicles.filter(v => v.status === "active").map(v => (
                       <SelectItem key={v.id} value={v.id}>{v.plate_number} - {v.make} {v.model}</SelectItem>
                     ))}
@@ -969,8 +978,8 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleAssign} disabled={loading || drivers.length === 0} className="bg-[#0A0F1C]" data-testid="confirm-assign-driver-btn">
-            {loading ? "Assigning..." : "Assign Driver"}
+          <Button onClick={handleAssign} disabled={loading || !hasDrivers || !hasVehicles || !driverId || !vehicleId} className="bg-[#0A0F1C]" data-testid="confirm-assign-driver-btn">
+            {loading ? "Assigning..." : "Assign Driver & Vehicle"}
           </Button>
         </DialogFooter>
       </DialogContent>
