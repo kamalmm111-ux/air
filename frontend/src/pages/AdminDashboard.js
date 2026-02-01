@@ -880,6 +880,7 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
     customer_email: "",
     customer_phone: "",
     customer_reference: "",
+    customer_account_id: "",
     pickup_date: "",
     pickup_time: "",
     pickup_location: "",
