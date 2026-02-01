@@ -6,7 +6,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { CalendarIcon, MapPin, Clock, Users, Briefcase, Plane, Search } from "lucide-react";
+import { CalendarIcon, MapPin, Clock, Users, Briefcase, Plane, Search, ArrowLeftRight, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import PlacesAutocomplete, { calculateDistance } from "./PlacesAutocomplete";
@@ -19,6 +19,7 @@ const BookingEngine = () => {
   const [loading, setLoading] = useState(false);
   const [pickupCoords, setPickupCoords] = useState(null);
   const [dropoffCoords, setDropoffCoords] = useState(null);
+  const [tripType, setTripType] = useState("one-way"); // "one-way" or "return"
 
   // Generate time options
   const timeOptions = [];
@@ -36,8 +37,30 @@ const BookingEngine = () => {
     return tomorrow.toISOString().split('T')[0];
   };
 
+  // Get minimum return date (must be >= pickup date)
+  const getMinReturnDate = () => {
+    if (bookingData.pickup_date) {
+      return bookingData.pickup_date;
+    }
+    return getTomorrowDate();
+  };
+
   const handleDateChange = (e) => {
-    updateBookingData({ pickup_date: e.target.value });
+    const newDate = e.target.value;
+    updateBookingData({ pickup_date: newDate });
+    // If return date is before pickup date, reset it
+    if (bookingData.return_date && bookingData.return_date < newDate) {
+      updateBookingData({ return_date: newDate });
+    }
+  };
+
+  const handleTripTypeChange = (type) => {
+    setTripType(type);
+    updateBookingData({ 
+      is_return: type === "return",
+      return_date: type === "return" ? bookingData.pickup_date : "",
+      return_time: ""
+    });
   };
 
   const handlePickupSelect = (location) => {
@@ -71,6 +94,18 @@ const BookingEngine = () => {
     if (!bookingData.pickup_time) {
       toast.error("Please select a pickup time");
       return;
+    }
+
+    // Validate return fields if return journey is selected
+    if (tripType === "return") {
+      if (!bookingData.return_date) {
+        toast.error("Please select a return date");
+        return;
+      }
+      if (!bookingData.return_time) {
+        toast.error("Please select a return time");
+        return;
+      }
     }
 
     setLoading(true);
@@ -124,11 +159,22 @@ const BookingEngine = () => {
         is_airport_pickup: isAirport
       });
 
+      // If return journey, double the distance for pricing indication
+      const finalQuotes = response.data.quotes.map(quote => ({
+        ...quote,
+        // Store original one-way price
+        one_way_price: quote.price,
+        // If return, show total price (roughly 2x, could add discount)
+        price: tripType === "return" ? Math.round(quote.price * 1.9 * 100) / 100 : quote.price,
+        is_return: tripType === "return"
+      }));
+
       updateBookingData({
         distance_km: response.data.distance_km,
-        duration_minutes: response.data.duration_minutes
+        duration_minutes: response.data.duration_minutes,
+        is_return: tripType === "return"
       });
-      setQuotes(response.data.quotes);
+      setQuotes(finalQuotes);
       navigate("/search");
     } catch (error) {
       console.error("Quote error:", error);
@@ -143,6 +189,30 @@ const BookingEngine = () => {
       <h2 className="text-2xl md:text-3xl font-bold text-[#0A0F1C] mb-6" style={{ fontFamily: 'Chivo, sans-serif' }}>
         Book Your Transfer
       </h2>
+
+      {/* Trip Type Toggle */}
+      <div className="flex gap-2 mb-6" data-testid="trip-type-toggle">
+        <Button
+          type="button"
+          variant={tripType === "one-way" ? "default" : "outline"}
+          onClick={() => handleTripTypeChange("one-way")}
+          className={`flex-1 h-12 ${tripType === "one-way" ? "bg-[#0A0F1C]" : "border-zinc-300"}`}
+          data-testid="one-way-btn"
+        >
+          <ArrowLeftRight className="w-4 h-4 mr-2" />
+          One Way
+        </Button>
+        <Button
+          type="button"
+          variant={tripType === "return" ? "default" : "outline"}
+          onClick={() => handleTripTypeChange("return")}
+          className={`flex-1 h-12 ${tripType === "return" ? "bg-[#0A0F1C]" : "border-zinc-300"}`}
+          data-testid="return-btn"
+        >
+          <RotateCcw className="w-4 h-4 mr-2" />
+          Return Journey
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Pickup Location */}
@@ -179,11 +249,11 @@ const BookingEngine = () => {
           />
         </div>
 
-        {/* Date */}
+        {/* Outbound Date */}
         <div className="space-y-2">
           <Label htmlFor="pickup_date" className="text-sm font-medium flex items-center gap-2">
             <CalendarIcon className="w-4 h-4 text-[#D4AF37]" />
-            Pickup Date
+            {tripType === "return" ? "Outbound Date" : "Pickup Date"}
           </Label>
           <Input
             id="pickup_date"
@@ -196,11 +266,11 @@ const BookingEngine = () => {
           />
         </div>
 
-        {/* Time */}
+        {/* Outbound Time */}
         <div className="space-y-2">
           <Label className="text-sm font-medium flex items-center gap-2">
             <Clock className="w-4 h-4 text-[#D4AF37]" />
-            Pickup Time
+            {tripType === "return" ? "Outbound Time" : "Pickup Time"}
           </Label>
           <Select
             value={bookingData.pickup_time}
@@ -218,6 +288,49 @@ const BookingEngine = () => {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Return Date & Time - Only shown when return is selected */}
+        {tripType === "return" && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="return_date" className="text-sm font-medium flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-[#D4AF37]" />
+                Return Date
+              </Label>
+              <Input
+                id="return_date"
+                type="date"
+                min={getMinReturnDate()}
+                value={bookingData.return_date}
+                onChange={(e) => updateBookingData({ return_date: e.target.value })}
+                className="h-12 bg-zinc-50 border-zinc-200 focus:border-[#0A0F1C] focus:ring-[#0A0F1C]"
+                data-testid="return-date-input"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#D4AF37]" />
+                Return Time
+              </Label>
+              <Select
+                value={bookingData.return_time}
+                onValueChange={(value) => updateBookingData({ return_time: value })}
+              >
+                <SelectTrigger className="h-12 bg-zinc-50 border-zinc-200" data-testid="return-time-select">
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
 
         {/* Passengers */}
         <div className="space-y-2">
@@ -265,11 +378,11 @@ const BookingEngine = () => {
           </Select>
         </div>
 
-        {/* Flight Number */}
+        {/* Outbound Flight Number */}
         <div className="space-y-2">
           <Label htmlFor="flight" className="text-sm font-medium flex items-center gap-2">
             <Plane className="w-4 h-4 text-[#D4AF37]" />
-            Flight Number (Optional)
+            {tripType === "return" ? "Outbound Flight (Optional)" : "Flight Number (Optional)"}
           </Label>
           <Input
             id="flight"
@@ -281,8 +394,41 @@ const BookingEngine = () => {
           />
         </div>
 
-        {/* Meet & Greet */}
-        <div className="flex items-center space-x-3 pt-6">
+        {/* Return Flight Number - Only shown when return is selected */}
+        {tripType === "return" ? (
+          <div className="space-y-2">
+            <Label htmlFor="return_flight" className="text-sm font-medium flex items-center gap-2">
+              <Plane className="w-4 h-4 text-[#D4AF37]" />
+              Return Flight (Optional)
+            </Label>
+            <Input
+              id="return_flight"
+              placeholder="e.g., BA5678"
+              value={bookingData.return_flight_number}
+              onChange={(e) => updateBookingData({ return_flight_number: e.target.value })}
+              className="h-12 bg-zinc-50 border-zinc-200 focus:border-[#0A0F1C] focus:ring-[#0A0F1C]"
+              data-testid="return-flight-input"
+            />
+          </div>
+        ) : (
+          /* Meet & Greet */
+          <div className="flex items-center space-x-3 pt-6">
+            <Checkbox
+              id="meet_greet"
+              checked={bookingData.meet_greet}
+              onCheckedChange={(checked) => updateBookingData({ meet_greet: checked })}
+              data-testid="meet-greet-checkbox"
+            />
+            <Label htmlFor="meet_greet" className="text-sm font-medium cursor-pointer">
+              Meet & Greet Service (+£15)
+            </Label>
+          </div>
+        )}
+      </div>
+
+      {/* Meet & Greet for return trips */}
+      {tripType === "return" && (
+        <div className="flex items-center space-x-3 mt-4">
           <Checkbox
             id="meet_greet"
             checked={bookingData.meet_greet}
@@ -290,10 +436,20 @@ const BookingEngine = () => {
             data-testid="meet-greet-checkbox"
           />
           <Label htmlFor="meet_greet" className="text-sm font-medium cursor-pointer">
-            Meet & Greet Service (+£15)
+            Meet & Greet Service (+£15 per trip)
           </Label>
         </div>
-      </div>
+      )}
+
+      {/* Return Journey Notice */}
+      {tripType === "return" && (
+        <div className="mt-4 p-3 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-sm">
+          <p className="text-sm text-[#0A0F1C] flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 text-[#D4AF37]" />
+            <span><strong>Return Journey:</strong> Save up to 10% when booking a return trip!</span>
+          </p>
+        </div>
+      )}
 
       {/* Search Button */}
       <Button
@@ -310,7 +466,7 @@ const BookingEngine = () => {
         ) : (
           <span className="flex items-center gap-2">
             <Search className="w-5 h-5" />
-            Search Vehicles
+            {tripType === "return" ? "Search Return Vehicles" : "Search Vehicles"}
           </span>
         )}
       </Button>
