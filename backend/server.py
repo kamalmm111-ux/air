@@ -399,6 +399,19 @@ class JobAssignment(BaseModel):
     driver_price: Optional[float] = None
     notes: Optional[str] = None
 
+# Job Comment Model
+class JobComment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    booking_id: str
+    user_id: str
+    user_name: str
+    user_role: str  # super_admin, fleet_admin
+    comment: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class JobCommentCreate(BaseModel):
+    comment: str
+
 # Invoice Model
 class InvoiceLineItem(BaseModel):
     booking_id: str
