@@ -2700,6 +2700,78 @@ async def seed_data():
     
     return {"message": "Seed data created successfully"}
 
+# ==================== WEBSITE SETTINGS ====================
+
+class WebsiteSettings(BaseModel):
+    site_name: str = "Aircabio"
+    tagline: str = "Travel in Style & Comfort"
+    description: str = ""
+    hero_title: str = "Travel in Style & Comfort"
+    hero_subtitle: str = ""
+    hero_background_url: str = ""
+    contact_email: str = ""
+    contact_phone: str = ""
+    contact_address: str = ""
+    facebook_url: str = ""
+    twitter_url: str = ""
+    instagram_url: str = ""
+    linkedin_url: str = ""
+    feature_1_title: str = ""
+    feature_1_description: str = ""
+    feature_2_title: str = ""
+    feature_2_description: str = ""
+    feature_3_title: str = ""
+    feature_3_description: str = ""
+    feature_4_title: str = ""
+    feature_4_description: str = ""
+    footer_text: str = ""
+    primary_color: str = "#D4AF37"
+    secondary_color: str = "#0A0F1C"
+    accent_color: str = "#1a1a2e"
+    meta_title: str = ""
+    meta_description: str = ""
+    meta_keywords: str = ""
+
+@api_router.get("/admin/website-settings")
+async def get_website_settings(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    settings = await db.website_settings.find_one({"_id": "main"})
+    if settings:
+        del settings["_id"]
+        return settings
+    return {}
+
+@api_router.post("/admin/website-settings")
+async def save_website_settings(
+    settings: WebsiteSettings,
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    settings_dict = settings.model_dump()
+    settings_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.website_settings.update_one(
+        {"_id": "main"},
+        {"$set": settings_dict},
+        upsert=True
+    )
+    
+    return {"message": "Settings saved successfully"}
+
+# Public endpoint to get website settings for frontend
+@api_router.get("/website-settings")
+async def get_public_website_settings():
+    settings = await db.website_settings.find_one({"_id": "main"})
+    if settings:
+        del settings["_id"]
+        return settings
+    # Return default settings
+    return WebsiteSettings().model_dump()
+
 @api_router.get("/")
 async def root():
     return {"message": "Aircabio Airport Transfers API", "version": "3.0.0"}
