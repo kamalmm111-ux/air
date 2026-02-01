@@ -1,83 +1,86 @@
 <analysis>**original_problem_statement:**
-The user wants to build a complete airport transfer booking website, Aircabio.
-
-**Phase 1 (Completed):** An MVP website with a booking engine (Google Places, date, time), vehicle results, Stripe checkout, and a basic admin panel for managing bookings and pricing (fixed-route and mileage-based).
-
-**Phase 2 (Completed):** A multi-fleet expansion introducing , , and  roles. Fleets have their own dashboards to manage assigned jobs. The Super Admin has an enhanced dashboard to manage fleets, drivers, and an initial version of an invoicing system.
-
-**Super Admin Upgrade (Completed):** A major overhaul of the Super Admin dashboard to include:
-*   **Manual Booking Creation:** A detailed New Job modal with fields for customer details, trip info, vehicle class, and separate  and  inputs, with automatic  calculation.
-*   **Enhanced Booking List:** A table showing columns for , , and , with advanced filters (date range, status, etc.).
-*   **Expanded Statuses:** A full set of operational statuses (, , , , , etc.).
-*   **CRUD Functionality:** Working forms and tables for managing Fleets, Drivers, and Vehicles.
-*   **Data Segregation:** The Fleet Portal correctly hides customer price and profit, showing only the Driver Price (their payable amount).
-
-**Return Journey (Completed):** The main website booking engine was updated to support Return Journey bookings with separate date/time fields for outbound and return legs.
-
-**Current Request:** Rebuild the Pricing section in the Super Admin dashboard into a single, comprehensive module. This new module must support:
-*   **Vehicle Class-based Pricing:** A main list of vehicle classes, where each class has its own configurable pricing card.
-*   **Mileage Brackets:** A system for setting tiered pricing based on distance (e.g., up to 6 miles = £40, 6-20 miles = £2.50/mile).
-*   **Hourly/Daily Rates.**
-*   **Extras/Fees:** Configurable fees for services like airport pickups or additional waiting time.
-*   **Fixed Routes with Map-Based Radius:** An interface for admins to define fixed-price routes by drawing start and end radius circles on a Google Map.
-*   **Quote Logic:** The website's quote engine must be updated to prioritize fixed-route prices if a journey falls within a defined radius zone; otherwise, it should fall back to mileage-based pricing.
+The user's objective is to create Aircabio, a comprehensive airport transfer booking website. The project has evolved through several phases:
+- **Phase 1 & 2 (Completed):** Established an MVP with a booking engine and a multi-fleet architecture with , , and  roles.
+- **Feature Implementations (Completed):**
+    - **Super Admin Upgrade:** Built a dashboard for manual booking creation (with dual pricing), enhanced booking lists, and full CRUD for managing fleets, drivers, and vehicles.
+    - **Return Journey:** Added support for round-trip bookings in the main booking engine.
+    - **Pricing Module:** A complete rebuild of the pricing engine, featuring vehicle class-based pricing, mileage brackets, hourly/daily rates, extra fees, and map-based fixed routes.
+    - **Google Places Integration:** Integrated Google Places Autocomplete into all address input fields in the Super Admin dashboard.
+    - **Full CMS Control:** Implemented a comprehensive Content Management System (CMS) allowing the Super Admin to edit all website text, images, pages, and vehicle details.
+    - **Fleet Impersonation:** Enabled the Super Admin to log into any Fleet Admin's dashboard directly without a password for support and verification.
+- **Current Urgent Request:** The user has identified critical flaws in the fleet management workflow. The system currently does not show jobs assigned by the Super Admin on the Fleet Dashboard, and fleets lack the ability to manage their own resources (drivers, vehicles) or assign them to jobs.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a functional multi-fleet booking platform. The Super Admin and Fleet Admin dashboards are implemented with role-based access. The previous agent completed the Super Admin Upgrade and the Return Journey feature.
-
-The agent has just begun the **Pricing Module Rebuild**. The backend file  has been significantly updated with new Pydantic models and API endpoints for vehicle classes, mileage brackets, fixed routes (with radius), and other pricing rules. The main quote calculation endpoint has also been rewritten to incorporate the new logic. On the frontend, a new component, , has been created, and the main  has been updated to render this new component in place of the old pricing section.
+The application is a full-stack booking platform with a customer-facing website, a Super Admin dashboard, and a Fleet Admin portal. All major features requested by the user, including the advanced pricing engine and a full CMS, have been implemented. The agent has just begun addressing a set of critical bug fixes related to the core fleet dispatch workflow. An initial change was made to add a  input field to the job assignment dialog in the Super Admin panel.
 
 **Last working item**:
-    - Last item agent was working: The agent was in the initial stages of implementing the new **Pricing Module**. It has updated the backend  with all the necessary data models and API endpoints and has updated the main quote logic. It also created a new placeholder frontend component  and wired it into the .
+    - Last item agent was working: The agent started fixing the broken fleet management workflow. The core issues are that assigned jobs are not visible to fleets, and fleets cannot manage their own drivers/vehicles or assign them to jobs. The agent's first step was to modify the UI in  to add a  (fleet payout) field to the job assignment modal.
     - Status: IN PROGRESS
     - Agent Testing Done: N
     - Which testing method agent to use? both
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - None.
+  - Issue 1: (P0 - HIGHEST) Critical Fleet Workflow is Broken
+  
+  Issues Detail:
+  - Issue 1: 
+     - **Description**: This is a multi-part issue blocking the core business logic. 
+       1.  Jobs assigned by the Super Admin do not appear on the corresponding Fleet Dashboard.
+       2.  The  (payout to the fleet) is not being saved or shown to the fleet.
+       3.  The Fleet Dashboard lacks modules for fleets to manage their own drivers and vehicles.
+       4.  Fleets have no functionality to assign their drivers and vehicles to the jobs they receive.
+       5.  Super Admin cannot see which driver/vehicle a fleet has assigned to a job.
+     - **Attempted fixes**: The agent has just started, adding only the  input field to the Super Admin's assignment dialog UI. The backend logic is not yet updated.
+     - **Next debug checklist**: 
+        1. **Backend ():**
+           - Update the  endpoint to save the .
+           - Ensure the  endpoint correctly filters and returns jobs for the authenticated fleet.
+           - Create new endpoints for fleets to perform CRUD operations on their own drivers and vehicles (e.g., ).
+           - Create an endpoint for a fleet to assign one of its drivers/vehicles to a booking (e.g., ).
+        2. **Frontend ():**
+           - Build new UI tabs/sections for My Drivers and My Vehicles to display data and manage CRUD operations.
+           - In the job detail view, add dropdowns to select a driver and vehicle from the fleet's own list.
+           - Implement the logic to call the new assignment endpoint.
+        3. **Frontend ():**
+           - Update the bookings table/details to display the , the fleet-assigned driver, and the fleet-assigned vehicle.
+     - **Why fix this issue and what will be achieved with the fix?** This is the most critical workflow for the platform's multi-fleet model. Fixing it will enable the dispatching of jobs to partners, which is essential for the business to operate.
+     - **Status**:  IN PROGRESS
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** both
+     - **Blocked on other issue:** None
 
 **In progress Task List**:
-  - Task 1: (HIGH-PRIORITY - P0) Complete and Test the New Pricing Module
-     - Where to resume: 
-        1. The frontend component  is just a shell. It needs to be fully built out to include the UI for managing Vehicle Classes, Mileage Brackets, Hourly/Daily rates, Fees, and the Fixed Routes list.
-        2. Implement the Add Fixed Route map builder UI, allowing admins to search for locations and draw radius circles.
-        3. Thoroughly test the entire pricing flow:
-            - CRUD operations for all pricing entities in the admin dashboard.
-            - The website's quote engine to ensure it correctly prioritizes fixed routes and falls back to mileage pricing.
-            - The Valid for return logic for fixed routes.
-     - What will be achieved with this? This will deliver the core pricing engine requested by the user, giving them powerful and flexible control over how quotes are calculated.
-     - Status:  IN PROGRESS
-     - Should Test frontend/backend/both after fix? both
-     - Blocked on something: none
+  - Task 1: (P0 - HIGHEST) Complete the Fleet Management Workflow Fixes
+     - **Where to resume**: The agent has modified the UI. The immediate next step is to update the backend. Modify the  function in  to handle the  sent from the frontend. After that, proceed with the full checklist outlined in the pending issue above.
+     - **What will be achieved with this?** A fully functional and testable dispatch system where the Super Admin can assign jobs to fleets, and fleets can manage their resources and fulfill those jobs.
+     - **Status**: IN PROGRESS
+     - **Should Test frontend/backend/both after fix?** both
+     - **Blocked on something**: None
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **P1: Invoicing System (Enhancement):** The current invoicing is minimal. The next step is to build out the full invoicing feature as requested, allowing the Super Admin to create/edit/download PDF invoices for customers, fleets, and drivers, with editable lines and status tracking. The Fleet Portal also needs a section to view/download their invoices.
-    - **P2: Comprehensive Testing of Super Admin & Return Journey Features:** The testing agent was queued to run on the big Super Admin upgrade but was interrupted by the user's Return Journey request. A full regression test of all the Super Admin features (manual booking, job assignment, fleet/driver/vehicle management) and the return booking flow is needed.
+    - **P1: Invoicing System (Enhancement):** Build out the full invoicing feature as requested, allowing the Super Admin to create/edit/download PDF invoices for customers and fleets.
+    - **P1: Fleet User Roles:** Implement distinct access levels within the Fleet Portal (e.g.,  vs. ) and a password reset flow.
+    - **P2: Comprehensive Regression Testing:** After the current critical fix, a full regression test of all major features (Pricing, CMS, Admin functions, etc.) is required to ensure platform stability.
 
     Future Tasks:
-    - **P2: Real-time Notifications:** Upgrade from API polling to WebSockets for instant job notifications and status updates in the Fleet and Admin dashboards.
-    - **P2: Multi-language Support:** Refactor the frontend to support multiple languages.
-    - **P3: Bulk Import/Export:** Add CSV import/export functionality for pricing rules and fixed routes.
+    - **P2: Real-time Notifications:** Upgrade the platform from API polling to WebSockets for instant job updates.
+    - **P2: Multi-language Support:** Refactor the frontend to support internationalization.
+    - **P3: Code Refactoring:** Break down the monolithic  and  files into a more maintainable, modular structure.
+    - **P3: Bulk Import/Export:** Add CSV import/export functionality for pricing rules.
 
 **Completed work in this session**
-- **Phase 2: Multi-Fleet Architecture Stabilized:**
-  - Resolved login issues for  and  roles.
-  - Verified and stabilized the foundational multi-fleet architecture.
-- **Super Admin Dashboard Upgrade:**
-  - Implemented manual job creation with dual pricing (Customer Price, Driver Cost) and auto-profit calculation.
-  - Enhanced the bookings list with advanced filters and new columns (Price, Cost, Profit).
-  - Fixed and implemented full CRUD functionality for Fleets, Drivers, and a new Vehicles module.
-  - Verified the data segregation where the Fleet Dashboard correctly hides customer price and profit.
-- **Return Journey Feature:**
-  - Added a Return Journey toggle to the website's main booking engine with separate date/time fields.
-  - Updated the search results page to handle return trip details.
+- **Pricing Module Rebuild:** A comprehensive pricing engine was created and tested, with mileage brackets, map-based fixed routes, and other rules.
+- **Google Places API Integration:** Google Places Autocomplete was successfully integrated into all address forms in the Super Admin dashboard, with bug fixes applied.
+- **Full CMS Implementation:** A complete CMS was built, empowering the Super Admin to manage all website content, including text, images, SEO settings, vehicle categories, and all pages, from a new Website CMS section.
+- **Fleet Impersonation Feature:** The Super Admin can now securely log in as any fleet admin to view their dashboard for support, with full audit logging.
+- **Application Walkthrough:** A comprehensive screenshot-based tour of the entire application was provided to the user.
 
 **Earlier issues found/mentioned but not fixed**
-   - None. The previously ignored admin login failure was resolved in this session.
+   - None.
 
 **Known issue recurrence from previous fork**
   - None
@@ -86,87 +89,77 @@ The agent has just begun the **Pricing Module Rebuild**. The backend file  has b
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, MongoDB (Pydantic models)
-- **Frontend:** React, React Router, Context API, Tailwind CSS, shadcn/ui
-- **Authentication:** Role-Based Access Control (RBAC) with JWT for , , and  roles.
-- **APIs:** Google Maps (Places, Distance Matrix, Maps JavaScript), Stripe
-- **Pricing Logic:** A new hierarchical system: Quote -> Check for Fixed Route (Radius-based) -> Fallback to Vehicle Class Pricing (Mileage Brackets, Hourly Rates).
+- **Backend:** FastAPI, MongoDB (with Pydantic models).
+- **Frontend:** React, React Router, Context API, Tailwind CSS, shadcn/ui.
+- **Authentication:** Role-Based Access Control (RBAC) with JWT for , , . A new impersonation flow has been added for Super Admins.
+- **CMS:** A new database-driven system using  and  collections in MongoDB to make all website content dynamically editable by the admin.
+- **APIs:** Google Maps API (Places, Geometry, Maps JavaScript), Stripe.
 
 **key DB schema**
-- **users**: {email, password, role: ['customer', 'fleet_admin', 'super_admin'], fleet_id?}
-- **bookings**: {..., customer_price, driver_price, profit, assigned_to_type, assigned_to_id, status}
-- **fleets**: {name, email, status, ...}
-- **drivers**: {name, phone, driver_type, fleet_id, ...}
-- **vehicles**: {plate_number, category_id, assigned_driver_id, ...}
-- **vehicle_categories**: {name, slug, status} (Previously vehicle classes)
-- **mileage_brackets**: {category_id, min_distance, max_distance, rate_type, price} (New)
-- **time_rates**: {category_id, hourly_rate, daily_rate, ...} (New)
-- **fees**: {category_id, fee_type, amount} (New)
-- **fixed_routes**: {category_id, start_lat, start_lng, start_radius, end_lat, end_lng, end_radius, price, valid_return} (New)
+- **bookings**: {..., , , , } (Fields added or pending use).
+- **audit_logs**: {, : 'impersonate_fleet', , } (New collection for logging).
+- **site_content**: {, } (New collection for general CMS settings).
+- **pages**: {, , : [...]} (New collection for page-specific CMS content).
+- **vehicle_categories**: {..., , , , , , } (Expanded for CMS control).
+- The schemas for , , , and  will be used more extensively in the current task.
 
 **changes in tech stack**
 - No changes.
 
 **All files of reference**
-*   **/app/backend/server.py**: Majorly overwritten to add new pricing models (, ,  etc.), new API endpoints for pricing management, and updated the main  logic.
-*   **/app/frontend/src/pages/AdminDashboard.js**: Heavily modified to implement the Super Admin upgrade and to integrate the new .
-*   **/app/frontend/src/components/PricingModule.js**: New file created to house the entire pricing section UI.
-*   **/app/frontend/src/components/AdminLayout.js**: Updated to include a Vehicles navigation link.
-*   **/app/frontend/src/pages/FleetDashboard.js**: Updated to hide sensitive pricing data and adjust status change logic.
-*   **/app/frontend/src/components/BookingEngine.js**: Overwritten to add the Return Journey feature.
-*   **/app/frontend/src/context/BookingContext.js**: Updated to manage return journey state.
-*   **/app/frontend/src/pages/SearchResultsPage.js**: Updated to display return journey details.
+*   **/app/backend/server.py**: Heavily modified for CMS and impersonation. Will require significant additions for the current fleet workflow fix.
+*   **/app/frontend/src/pages/AdminDashboard.js**: Heavily modified for CMS and impersonation. The assignment dialog was just updated.
+*   **/app/frontend/src/pages/FleetDashboard.js**: Modified for impersonation. Requires major updates to add driver/vehicle management and assignment functionality.
+*   **/app/frontend/src/components/CMSManager.js**: A new, large component that houses the entire website CMS UI.
+*   **/app/frontend/src/pages/HomePage.js**: Refactored to fetch its content from the new CMS endpoints.
+*   **/app/frontend/src/components/PlacesAutocomplete.js**: Refactored to fix a critical bug with stale closures.
+*   **/app/frontend/src/components/FleetLayout.js**: Updated to handle the impersonation state.
 
 **Areas that need refactoring**:
-- The  file is now extremely large and complex (over 2500 lines). It urgently needs to be broken down into a proper project structure with directories for , , , and  to ensure future maintainability.
-- The  component is also a monolith (over 1700 lines), managing state and rendering for almost all admin functions. It should be refactored into smaller, more focused components for each section (Jobs, Fleets, Drivers, etc.).
+- **Critical:** The  and  files are now extremely large and complex. They urgently need to be broken down into a proper project structure (e.g., routes, services, models for backend; smaller, focused components for frontend) to ensure future maintainability. This should be proposed after the current critical fix is deployed.
+- The now-unused  component should be deleted to avoid confusion.
 
 **key api endpoints**
--  (New - CRUD for vehicle classes)
--  (New - CRUD)
--  (New - CRUD)
--  (New - CRUD)
--  (New - CRUD)
--  (Updated with new pricing logic)
--  (Updated - for manual booking creation)
-- , ,  (CRUD endpoints)
--  (Updated to filter pricing info)
+-  (POST, New): Generates a token for a Super Admin to impersonate a fleet.
+-  (Multiple, New): A new suite of endpoints for managing all website content.
+-  (POST): Assigns a booking to a fleet. **Needs immediate modification to accept .**
 
 **Critical Info for New Agent**
-- You are resuming mid-implementation of the new Pricing Module. The backend has been significantly changed, but the frontend is just a shell. Your immediate priority is to build the  component to match the user's requirements and then test it end-to-end.
-- The  and  files have become unmanageably large. While the immediate task is feature delivery, plan to propose a refactor after the pricing module is stable.
-- The user has provided an API key for Google Maps. Use it for all related features (Places Autocomplete, Map rendering, Distance Matrix).
-- The comprehensive test run for the Super Admin Upgrade was interrupted. After completing the current pricing task, it's crucial to perform a full regression test on those features.
+- **Top Priority:** You are resuming work on a set of urgent, critical fixes for the fleet management workflow. The user has explicitly stated this is a blocker for their operations. Do not deviate from this task.
+- **Starting Point:** The previous agent added a  input to the Super Admin's UI. Your immediate next step is to update the backend in  to process this field during assignment.
+- **Task Scope:** Follow the Next debug checklist to complete the entire fleet workflow: fix job visibility, enable fleet resource management (drivers/vehicles), and implement the driver/vehicle assignment flow.
+- **User Communication:** The user is highly engaged and expects this functionality to work end-to-end. After implementing, you must test the complete flow (Super Admin assigns -> Fleet receives -> Fleet assigns driver -> Super Admin sees assignment).
 
 **documents and test reports created in this job**
-  -  (Updated)
-  - 
+  - /app/memory/PRD.md (Continuously updated)
+  - /app/test_reports/iteration_4.json (Pricing Module)
+  - /app/test_reports/iteration_5.json (Google Places Integration)
 
 **Last 10 User Messages and any pending HUMAN messages** 
-10. **User:** Provided a detailed prompt to rebuild the Pricing section with mileage brackets, map-based fixed routes, and a new quote logic. (Current task)
-9.  **Agent:** Started implementing the new pricing module.
-8.  **Agent:** Completed the Return Journey feature and showed screenshots.
-7.  **Agent:** Updated the Booking Context and Booking Engine for the return journey feature.
-6.  **User:** ok and also add return booking feature in the booking engine of website (Completed)
-5.  **Agent:** Indicated that the testing agent was running for the Super Admin upgrade.
-4.  **Agent:** Successfully created a manual booking and assigned it to a fleet, verifying the correct (driver-only) price appears on the Fleet Dashboard.
-3.  **Agent:** Showed screenshots of the working Add Fleet, Drivers, and Vehicles tabs.
-2.  **Agent:** Fixed a bug in the New Job modal and showed a working screenshot.
-1.  **User:** yes (approved the plan for the Super Admin Upgrade).
+10. **User:** ok - Acknowledged the agent's plan to start the fleet workflow fixes. (Status: Complete)
+9.  **User:** **URGENT FIX:** A detailed prompt outlining 5 critical problems with the fleet assignment workflow, including jobs not appearing, missing driver price, and fleets' inability to manage resources. (Status: **In Progress - Current Task**)
+8.  **Agent:** Proposed a plan to implement the fleet impersonation feature. (Status: Complete)
+7.  **User:** Requested the Fleet Login As / Impersonate feature from the Super Admin panel. (Status: Complete)
+6.  **Agent:** Provided a summary of the completed CMS and Fleet Impersonation features. (Status: Complete)
+5.  **User:** **URGENT FIX:** Requested full CMS control over the entire website, as the previous implementation was incomplete. (Status: Complete)
+4.  **Agent:** Confirmed a fix for the Google Maps markers not updating correctly in the route builder. (Status: Complete)
+3.  **User:** Reported a bug where map markers didn't move when selecting a new location from Google Places. (Status: Complete)
+2.  **Agent:** Presented the Complete Final Product via a series of screenshots and a summary. (Status: Complete, but led to bug reports)
+1.  **User:** Asked for a way to edit website content from the admin panel. (Status: Complete)
 
 **Project Health Check:**
-- **Broken:** The application is in a broken state as it is in the middle of a major feature implementation (Pricing Module). The frontend for the pricing section is not functional.
-- **Mocked:** Stripe payments use test keys. Email notifications are not implemented.
+- **Broken:** Yes. The core fleet dispatch workflow is non-functional. Jobs assigned to fleets are not being delivered, which breaks the main business model of the application.
+- **Mocked:** Stripe payments still use test keys. No email notification system is in place.
 
 **3rd Party Integrations**
-- **Google Maps API**: Used for Places Autocomplete, Distance Matrix, and Maps for radius definition. Uses a User-provided API Key.
-- **Stripe**: Used for payments. Requires a User API Key (currently using a test key).
+- **Google Maps API**: Used for Places Autocomplete, Distance Matrix, and rendering maps for the route builder. Requires a user-provided API key.
+- **Stripe**: Used for payment processing. Requires a user-provided API key (currently using a test key).
 
 **Testing status**
-  - Testing agent used after significant changes: YES (for the Multi-Fleet architecture), but the run for the Super Admin Upgrade was interrupted and its results were never reviewed.
+  - Testing agent used after significant changes: YES (for Pricing Module and Google Places integration).
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created:  (created during multi-fleet stabilization).
-  - Known regressions: None confirmed, but the Super Admin features are not fully regression tested.
+  - Test files created: 
+  - Known regressions: The entire fleet assignment and dispatch workflow is currently broken.
 
 **Credentials to test flow:**
 - **Super Admin:**
@@ -177,4 +170,5 @@ The agent has just begun the **Pricing Module Rebuild**. The backend file  has b
   - Password: 
 
 **What agent forgot to execute**
-- The agent initiated a  call for the comprehensive Super Admin Upgrade but was interrupted by the user's request for the Return Booking feature. The agent never went back to check the test report (, which was never created) or confirm the results of that test run. This means the large set of Super Admin features has not been formally tested by the testing agent.</analysis>
+- The initial implementation of the multi-fleet architecture did not correctly implement the job assignment and visibility for fleets, leading to the current critical bug fix request. This core piece of functionality was missed.
+- A full, end-to-end regression test of the entire application is still pending and has been noted as an upcoming task.</analysis>
