@@ -810,21 +810,19 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
   useEffect(() => {
     if (!open) return;
 
-    const loadGoogleMaps = () => {
-      if (window.google && window.google.maps) {
-        initMap();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
-      script.async = true;
-      script.onload = initMap;
-      document.head.appendChild(script);
-    };
+    let isMounted = true;
 
     const initMap = () => {
-      if (!mapRef.current || mapInstanceRef.current) return;
+      if (!mapRef.current || !isMounted) return;
+      
+      // Clear any existing map
+      if (mapInstanceRef.current) {
+        if (startMarkerRef.current) startMarkerRef.current.setMap(null);
+        if (endMarkerRef.current) endMarkerRef.current.setMap(null);
+        if (startCircleRef.current) startCircleRef.current.setMap(null);
+        if (endCircleRef.current) endCircleRef.current.setMap(null);
+        mapInstanceRef.current = null;
+      }
 
       const map = new window.google.maps.Map(mapRef.current, {
         center: { lat: formData.start_lat, lng: formData.start_lng },
@@ -884,14 +882,12 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
         const pos = e.latLng;
         setFormData(prev => ({ ...prev, start_lat: pos.lat(), start_lng: pos.lng() }));
         startCircle.setCenter(pos);
-        calculateDistance();
       });
 
       endMarker.addListener('dragend', (e) => {
         const pos = e.latLng;
         setFormData(prev => ({ ...prev, end_lat: pos.lat(), end_lng: pos.lng() }));
         endCircle.setCenter(pos);
-        calculateDistance();
       });
 
       startCircle.addListener('radius_changed', () => {
@@ -911,12 +907,38 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
       map.fitBounds(bounds, { padding: 100 });
 
       setMapLoaded(true);
-      calculateDistance();
+    };
+
+    const loadGoogleMaps = () => {
+      if (window.google && window.google.maps) {
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(initMap, 100);
+        return;
+      }
+
+      // Check if script is already loading
+      if (document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]')) {
+        // Script exists, wait for it to load
+        const checkGoogleMaps = setInterval(() => {
+          if (window.google && window.google.maps) {
+            clearInterval(checkGoogleMaps);
+            setTimeout(initMap, 100);
+          }
+        }, 100);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+      script.async = true;
+      script.onload = () => setTimeout(initMap, 100);
+      document.head.appendChild(script);
     };
 
     loadGoogleMaps();
 
     return () => {
+      isMounted = false;
       // Cleanup
       if (startMarkerRef.current) startMarkerRef.current.setMap(null);
       if (endMarkerRef.current) endMarkerRef.current.setMap(null);
