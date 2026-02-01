@@ -261,6 +261,7 @@ Public:
 - [x] Pricing Module with mileage brackets, time rates, extra fees
 - [x] Map-based fixed routes with Google Maps radius zones
 - [x] Smart quote engine (fixed route priority → mileage fallback)
+- [x] Fleet Management Workflow: driver_price assignment, fleet job visibility, fleet driver/vehicle CRUD, fleet job assignment
 
 ### P1 - High Priority
 - [ ] Invoicing System Enhancement: Full invoice creation/editing/PDF download for customers, fleets, drivers
