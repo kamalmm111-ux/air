@@ -1761,6 +1761,140 @@ async def add_job_comment(booking_id: str, comment_data: JobCommentCreate, user:
     
     return comment.model_dump()
 
+# ==================== CUSTOMER ACCOUNTS ROUTES ====================
+
+@api_router.get("/admin/customers")
+async def get_customer_accounts(
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get all customer accounts"""
+    query = {}
+    if status and status != "all":
+        query["status"] = status
+    if search:
+        query["$or"] = [
+            {"company_name": {"$regex": search, "$options": "i"}},
+            {"contact_person": {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}}
+        ]
+    customers = await db.customer_accounts.find(query, {"_id": 0}).sort("company_name", 1).to_list(500)
+    return customers
+
+@api_router.get("/admin/customers/{customer_id}")
+async def get_customer_account(customer_id: str, user: dict = Depends(get_super_admin)):
+    """Get a single customer account"""
+    customer = await db.customer_accounts.find_one({"id": customer_id}, {"_id": 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+@api_router.post("/admin/customers")
+async def create_customer_account(data: CustomerAccountCreate, user: dict = Depends(get_super_admin)):
+    """Create a new customer account"""
+    customer = CustomerAccount(**data.model_dump())
+    await db.customer_accounts.insert_one(customer.model_dump())
+    return customer.model_dump()
+
+@api_router.put("/admin/customers/{customer_id}")
+async def update_customer_account(customer_id: str, update: CustomerAccountUpdate, user: dict = Depends(get_super_admin)):
+    """Update a customer account"""
+    existing = await db.customer_accounts.find_one({"id": customer_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.customer_accounts.update_one({"id": customer_id}, {"$set": update_data})
+    return await db.customer_accounts.find_one({"id": customer_id}, {"_id": 0})
+
+@api_router.delete("/admin/customers/{customer_id}")
+async def delete_customer_account(customer_id: str, user: dict = Depends(get_super_admin)):
+    """Delete a customer account"""
+    result = await db.customer_accounts.delete_one({"id": customer_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return {"message": "Customer deleted"}
+
+# ==================== BOOKING HISTORY ROUTES ====================
+
+async def log_booking_history(booking_id: str, action: str, description: str, user: dict, old_value: str = None, new_value: str = None):
+    """Helper function to log booking history"""
+    history = BookingHistory(
+        booking_id=booking_id,
+        action=action,
+        description=description,
+        old_value=old_value,
+        new_value=new_value,
+        user_id=user.get("id", user.get("fleet_id", "unknown")),
+        user_name=user.get("name", "Unknown"),
+        user_role=user.get("role", "unknown")
+    )
+    await db.booking_history.insert_one(history.model_dump())
+
+@api_router.get("/admin/bookings/{booking_id}/history")
+async def get_booking_history(booking_id: str, user: dict = Depends(get_super_admin)):
+    """Get booking history/audit trail"""
+    history = await db.booking_history.find(
+        {"booking_id": booking_id}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return history
+
+# ==================== BOOKING NOTES ROUTES ====================
+
+@api_router.get("/admin/bookings/{booking_id}/notes")
+async def get_booking_notes(booking_id: str, user: dict = Depends(get_super_admin)):
+    """Get internal notes for a booking"""
+    notes = await db.booking_notes.find(
+        {"booking_id": booking_id}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return notes
+
+@api_router.post("/admin/bookings/{booking_id}/notes")
+async def add_booking_note(booking_id: str, data: BookingNoteCreate, user: dict = Depends(get_super_admin)):
+    """Add an internal note to a booking"""
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    note = BookingNote(
+        booking_id=booking_id,
+        note=data.note,
+        user_id=user.get("id", "unknown"),
+        user_name=user.get("name", "Unknown")
+    )
+    await db.booking_notes.insert_one(note.model_dump())
+    
+    # Log to history
+    await log_booking_history(booking_id, "note_added", f"Note added by {user.get('name')}", user)
+    
+    return note.model_dump()
+
+@api_router.put("/admin/bookings/{booking_id}/notes/{note_id}")
+async def update_booking_note(booking_id: str, note_id: str, data: BookingNoteCreate, user: dict = Depends(get_super_admin)):
+    """Update a booking note"""
+    existing = await db.booking_notes.find_one({"id": note_id, "booking_id": booking_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    await db.booking_notes.update_one(
+        {"id": note_id},
+        {"$set": {"note": data.note, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return await db.booking_notes.find_one({"id": note_id}, {"_id": 0})
+
+@api_router.delete("/admin/bookings/{booking_id}/notes/{note_id}")
+async def delete_booking_note(booking_id: str, note_id: str, user: dict = Depends(get_super_admin)):
+    """Delete a booking note"""
+    result = await db.booking_notes.delete_one({"id": note_id, "booking_id": booking_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return {"message": "Note deleted"}
+
 # ==================== ADMIN BOOKING ROUTES ====================
 
 @api_router.get("/admin/bookings")
