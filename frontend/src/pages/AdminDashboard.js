@@ -383,10 +383,19 @@ const AdminDashboard = () => {
                   <TableCell className="text-right font-medium text-green-600">£{(booking.profit || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setEditJobDialogOpen(true); }}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => { setSelectedBooking(booking); setViewBookingDialogOpen(true); }}
+                        title="View Details"
+                        data-testid={`view-booking-${booking.booking_ref}`}
+                      >
+                        <Eye className="w-4 h-4 text-[#D4AF37]" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setEditJobDialogOpen(true); }} title="Edit">
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setAssignDialogOpen(true); }}>
+                      <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setAssignDialogOpen(true); }} title="Assign">
                         <Send className="w-4 h-4 text-blue-600" />
                       </Button>
                     </div>
