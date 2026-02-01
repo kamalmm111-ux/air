@@ -985,24 +985,40 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
     }
   }, [mapLoaded, calculateDistance]);
 
-  // Update map when form data changes
+  // Update map markers and circles when form data changes
   useEffect(() => {
-    if (!mapLoaded) return;
+    if (!mapLoaded || !mapInstanceRef.current) return;
     
+    const map = mapInstanceRef.current;
+    
+    // Update start marker and circle
     if (startMarkerRef.current) {
-      startMarkerRef.current.setPosition({ lat: formData.start_lat, lng: formData.start_lng });
+      const startPos = { lat: formData.start_lat, lng: formData.start_lng };
+      startMarkerRef.current.setPosition(startPos);
+      
+      if (startCircleRef.current) {
+        startCircleRef.current.setCenter(startPos);
+        startCircleRef.current.setRadius(formData.start_radius_miles * 1609.34);
+      }
     }
-    if (startCircleRef.current) {
-      startCircleRef.current.setCenter({ lat: formData.start_lat, lng: formData.start_lng });
-      startCircleRef.current.setRadius(formData.start_radius_miles * 1609.34);
-    }
+    
+    // Update end marker and circle
     if (endMarkerRef.current) {
-      endMarkerRef.current.setPosition({ lat: formData.end_lat, lng: formData.end_lng });
+      const endPos = { lat: formData.end_lat, lng: formData.end_lng };
+      endMarkerRef.current.setPosition(endPos);
+      
+      if (endCircleRef.current) {
+        endCircleRef.current.setCenter(endPos);
+        endCircleRef.current.setRadius(formData.end_radius_miles * 1609.34);
+      }
     }
-    if (endCircleRef.current) {
-      endCircleRef.current.setCenter({ lat: formData.end_lat, lng: formData.end_lng });
-      endCircleRef.current.setRadius(formData.end_radius_miles * 1609.34);
-    }
+    
+    // Re-fit bounds to show both markers
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend({ lat: formData.start_lat, lng: formData.start_lng });
+    bounds.extend({ lat: formData.end_lat, lng: formData.end_lng });
+    map.fitBounds(bounds, { padding: 100 });
+    
   }, [formData.start_lat, formData.start_lng, formData.start_radius_miles, 
       formData.end_lat, formData.end_lng, formData.end_radius_miles, mapLoaded]);
 
