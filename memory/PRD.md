@@ -43,6 +43,14 @@ Build a complete airport transfer booking website for Aircabio with:
 - **Impersonation Banner:** Clear indicator when viewing as impersonated user
 - **Audit Logging:** All impersonation sessions are logged with timestamp, admin, fleet, IP
 
+### Phase 6 Requirements (Fleet Management Workflow Fix) - COMPLETED Feb 1, 2026
+- **Driver Price Assignment:** Super Admin can set driver_price (fleet payout) when assigning jobs to fleets
+- **Fleet Job Visibility:** Fleets can see all jobs assigned to them with correct payout amounts
+- **Fleet Driver Management:** Fleets can add, edit, delete their own drivers via "My Drivers" tab
+- **Fleet Vehicle Management:** Fleets can add, edit, delete their own vehicles via "My Vehicles" tab
+- **Fleet Job Assignment:** Fleets can assign their drivers/vehicles to jobs they receive
+- **Admin Visibility:** Super Admin can see fleet-assigned driver name and vehicle plate in bookings list
+
 ## What's Been Implemented
 
 ### Phase 1 (MVP) - Completed
