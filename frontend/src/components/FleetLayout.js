@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "./ui/button";
 import {
-  Car, LayoutDashboard, CalendarDays, DollarSign, LogOut, ChevronLeft, Bell, Truck, FileText, AlertTriangle
+  Car, LayoutDashboard, CalendarDays, DollarSign, LogOut, ChevronLeft, Bell, Truck, FileText, AlertTriangle, Users
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -106,9 +106,10 @@ const FleetLayout = () => {
 
   const sidebarItems = [
     { id: "jobs", name: "Jobs", icon: CalendarDays },
+    { id: "drivers", name: "My Drivers", icon: Users },
+    { id: "vehicles", name: "My Vehicles", icon: Truck },
     { id: "earnings", name: "Earnings", icon: DollarSign },
     { id: "invoices", name: "Invoices", icon: FileText },
-    { id: "vehicles", name: "My Vehicles", icon: Truck },
   ];
 
   return (
