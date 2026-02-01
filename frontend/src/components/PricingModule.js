@@ -950,21 +950,30 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
   }, [open]);
 
   // Calculate distance between points
-  const calculateDistance = () => {
-    if (!window.google) return;
+  const calculateDistance = useCallback(() => {
+    // Check if Google Maps and geometry library are loaded
+    if (!window.google || !window.google.maps || !window.google.maps.geometry) {
+      return;
+    }
     
-    const start = new window.google.maps.LatLng(formData.start_lat, formData.start_lng);
-    const end = new window.google.maps.LatLng(formData.end_lat, formData.end_lng);
-    const distanceMeters = window.google.maps.geometry.spherical.computeDistanceBetween(start, end);
-    const distanceMiles = distanceMeters / 1609.34;
-    
-    setFormData(prev => ({ ...prev, distance_miles: Math.round(distanceMiles * 10) / 10 }));
-  };
-
-  // Calculate distance when coordinates change
-  useEffect(() => {
-    calculateDistance();
+    try {
+      const start = new window.google.maps.LatLng(formData.start_lat, formData.start_lng);
+      const end = new window.google.maps.LatLng(formData.end_lat, formData.end_lng);
+      const distanceMeters = window.google.maps.geometry.spherical.computeDistanceBetween(start, end);
+      const distanceMiles = distanceMeters / 1609.34;
+      
+      setFormData(prev => ({ ...prev, distance_miles: Math.round(distanceMiles * 10) / 10 }));
+    } catch (e) {
+      console.warn("Could not calculate distance:", e);
+    }
   }, [formData.start_lat, formData.start_lng, formData.end_lat, formData.end_lng]);
+
+  // Calculate distance when coordinates change AND map is loaded
+  useEffect(() => {
+    if (mapLoaded) {
+      calculateDistance();
+    }
+  }, [mapLoaded, calculateDistance]);
 
   // Update map when form data changes
   useEffect(() => {
