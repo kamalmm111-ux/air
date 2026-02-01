@@ -936,6 +936,121 @@ async def get_fleet_invoices_admin(fleet_id: str, user: dict = Depends(get_super
     invoices = await db.invoices.find({"entity_id": fleet_id, "invoice_type": "fleet"}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return invoices
 
+# ==================== FLEET IMPERSONATION ====================
+
+class ImpersonationResponse(BaseModel):
+    access_token: str
+    fleet: Dict[str, Any]
+    impersonation_id: str
+    expires_at: str
+
+@api_router.post("/admin/fleets/{fleet_id}/impersonate")
+async def impersonate_fleet(
+    fleet_id: str,
+    request: Request,
+    user: dict = Depends(get_super_admin)
+):
+    """
+    Super Admin impersonates a fleet account.
+    Creates a special token that includes impersonation context.
+    """
+    # Get the fleet
+    fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0})
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+    
+    # Create impersonation audit log
+    impersonation_id = str(uuid.uuid4())
+    audit_entry = {
+        "id": impersonation_id,
+        "action": "fleet_impersonation",
+        "admin_id": user["id"],
+        "admin_email": user["email"],
+        "admin_name": user.get("name", ""),
+        "fleet_id": fleet_id,
+        "fleet_name": fleet.get("name", ""),
+        "fleet_email": fleet.get("email", ""),
+        "ip_address": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("user-agent", "unknown"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "active"
+    }
+    await db.audit_logs.insert_one(audit_entry)
+    
+    # Create impersonation token (includes original admin info)
+    token_data = {
+        "sub": fleet_id,
+        "role": "fleet_admin",
+        "fleet_id": fleet_id,
+        "impersonation": True,
+        "impersonated_by": user["id"],
+        "impersonated_by_email": user["email"],
+        "impersonation_id": impersonation_id,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=2)  # 2 hour session
+    }
+    token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
+    
+    # Remove password from fleet response
+    fleet_response = {k: v for k, v in fleet.items() if k != "password"}
+    
+    return ImpersonationResponse(
+        access_token=token,
+        fleet=fleet_response,
+        impersonation_id=impersonation_id,
+        expires_at=(datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+    )
+
+@api_router.post("/admin/impersonation/{impersonation_id}/exit")
+async def exit_impersonation(
+    impersonation_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Exit impersonation mode and log the exit.
+    """
+    # Update audit log
+    await db.audit_logs.update_one(
+        {"id": impersonation_id},
+        {
+            "$set": {
+                "status": "exited",
+                "exited_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    return {"message": "Impersonation session ended"}
+
+@api_router.get("/admin/audit-logs")
+async def get_audit_logs(
+    action: Optional[str] = None,
+    limit: int = 100,
+    user: dict = Depends(get_super_admin)
+):
+    """
+    Get audit logs for Super Admin.
+    """
+    query = {}
+    if action:
+        query["action"] = action
+    
+    logs = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    return logs
+
+@api_router.get("/admin/audit-logs/impersonations")
+async def get_impersonation_logs(
+    fleet_id: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """
+    Get impersonation audit logs.
+    """
+    query = {"action": "fleet_impersonation"}
+    if fleet_id:
+        query["fleet_id"] = fleet_id
+    
+    logs = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).to_list(100)
+    return logs
+
 # ==================== DRIVER ROUTES ====================
 
 @api_router.get("/drivers")
