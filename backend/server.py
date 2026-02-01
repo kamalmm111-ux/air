@@ -1886,6 +1886,317 @@ async def delete_fixed_route(route_id: str, user: dict = Depends(get_super_admin
         raise HTTPException(status_code=404, detail="Fixed route not found")
     return {"message": "Fixed route deleted"}
 
+# ==================== COMPREHENSIVE PRICING MODULE ====================
+
+@api_router.get("/pricing-schemes")
+async def get_pricing_schemes(user: dict = Depends(get_super_admin)):
+    """Get all pricing schemes with vehicle info"""
+    schemes = await db.pricing_schemes.find({}, {"_id": 0}).to_list(100)
+    vehicles = {v["id"]: v for v in await db.vehicles.find({}, {"_id": 0}).to_list(100)}
+    
+    for scheme in schemes:
+        vehicle = vehicles.get(scheme.get("vehicle_category_id"))
+        if vehicle:
+            scheme["vehicle_name"] = vehicle["name"]
+    
+    return schemes
+
+@api_router.get("/pricing-schemes/{vehicle_id}")
+async def get_pricing_scheme(vehicle_id: str, user: dict = Depends(get_super_admin)):
+    """Get pricing scheme for a specific vehicle class"""
+    scheme = await db.pricing_schemes.find_one({"vehicle_category_id": vehicle_id}, {"_id": 0})
+    if not scheme:
+        # Return default scheme if none exists
+        vehicle = await db.vehicles.find_one({"id": vehicle_id}, {"_id": 0})
+        return {
+            "id": None,
+            "vehicle_category_id": vehicle_id,
+            "vehicle_name": vehicle["name"] if vehicle else vehicle_id,
+            "mileage_brackets": [],
+            "time_rates": {"hourly_rate": 0, "minimum_hours": 2, "daily_rate": 0},
+            "extra_fees": {
+                "additional_pickup_fee": 10.0,
+                "waiting_per_minute": 0.50,
+                "airport_pickup_fee": 10.0,
+                "meet_greet_fee": 15.0,
+                "night_surcharge_percent": 20.0,
+                "weekend_surcharge_percent": 0.0,
+                "child_seat_fee": 10.0
+            },
+            "base_fare": 0,
+            "minimum_fare": 25.0,
+            "currency": "GBP"
+        }
+    
+    vehicle = await db.vehicles.find_one({"id": vehicle_id}, {"_id": 0})
+    scheme["vehicle_name"] = vehicle["name"] if vehicle else vehicle_id
+    return scheme
+
+@api_router.post("/pricing-schemes")
+async def create_pricing_scheme(data: PricingSchemeCreate, user: dict = Depends(get_super_admin)):
+    """Create or update pricing scheme for a vehicle class"""
+    # Check if scheme exists for this vehicle
+    existing = await db.pricing_schemes.find_one({"vehicle_category_id": data.vehicle_category_id})
+    
+    vehicle = await db.vehicles.find_one({"id": data.vehicle_category_id}, {"_id": 0})
+    
+    scheme_data = {
+        "id": existing["id"] if existing else str(uuid.uuid4()),
+        "vehicle_category_id": data.vehicle_category_id,
+        "vehicle_name": vehicle["name"] if vehicle else data.vehicle_category_id,
+        "mileage_brackets": data.mileage_brackets,
+        "time_rates": data.time_rates or {"hourly_rate": 0, "minimum_hours": 2, "daily_rate": 0},
+        "extra_fees": data.extra_fees or {
+            "additional_pickup_fee": 10.0,
+            "waiting_per_minute": 0.50,
+            "airport_pickup_fee": 10.0,
+            "meet_greet_fee": 15.0,
+            "night_surcharge_percent": 20.0,
+            "weekend_surcharge_percent": 0.0,
+            "child_seat_fee": 10.0
+        },
+        "base_fare": data.base_fare,
+        "minimum_fare": data.minimum_fare,
+        "currency": data.currency,
+        "is_active": True,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if not existing:
+        scheme_data["created_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.pricing_schemes.update_one(
+        {"vehicle_category_id": data.vehicle_category_id},
+        {"$set": scheme_data},
+        upsert=True
+    )
+    
+    return scheme_data
+
+@api_router.put("/pricing-schemes/{vehicle_id}")
+async def update_pricing_scheme(vehicle_id: str, update: PricingSchemeUpdate, user: dict = Depends(get_super_admin)):
+    """Update pricing scheme for a vehicle class"""
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.pricing_schemes.update_one(
+        {"vehicle_category_id": vehicle_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Pricing scheme not found")
+    
+    return await db.pricing_schemes.find_one({"vehicle_category_id": vehicle_id}, {"_id": 0})
+
+# ==================== MAP-BASED FIXED ROUTES ====================
+
+@api_router.get("/map-fixed-routes")
+async def get_map_fixed_routes(
+    vehicle_id: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get all map-based fixed routes"""
+    query = {}
+    if vehicle_id:
+        query["vehicle_category_id"] = vehicle_id
+    
+    routes = await db.map_fixed_routes.find(query, {"_id": 0}).sort("priority", -1).to_list(500)
+    vehicles = {v["id"]: v for v in await db.vehicles.find({}, {"_id": 0}).to_list(100)}
+    
+    for route in routes:
+        vehicle = vehicles.get(route.get("vehicle_category_id"))
+        route["vehicle_name"] = vehicle["name"] if vehicle else route.get("vehicle_category_id")
+    
+    return routes
+
+@api_router.get("/map-fixed-routes/{route_id}")
+async def get_map_fixed_route(route_id: str, user: dict = Depends(get_super_admin)):
+    """Get a single map-based fixed route"""
+    route = await db.map_fixed_routes.find_one({"id": route_id}, {"_id": 0})
+    if not route:
+        raise HTTPException(status_code=404, detail="Fixed route not found")
+    
+    vehicle = await db.vehicles.find_one({"id": route.get("vehicle_category_id")}, {"_id": 0})
+    route["vehicle_name"] = vehicle["name"] if vehicle else route.get("vehicle_category_id")
+    return route
+
+@api_router.post("/map-fixed-routes")
+async def create_map_fixed_route(data: MapFixedRouteCreate, user: dict = Depends(get_super_admin)):
+    """Create a new map-based fixed route"""
+    vehicle = await db.vehicles.find_one({"id": data.vehicle_category_id}, {"_id": 0})
+    
+    route = MapFixedRoute(
+        name=data.name,
+        vehicle_category_id=data.vehicle_category_id,
+        vehicle_name=vehicle["name"] if vehicle else data.vehicle_category_id,
+        start_label=data.start_label,
+        start_lat=data.start_lat,
+        start_lng=data.start_lng,
+        start_radius_miles=data.start_radius_miles,
+        end_label=data.end_label,
+        end_lat=data.end_lat,
+        end_lng=data.end_lng,
+        end_radius_miles=data.end_radius_miles,
+        price=data.price,
+        distance_miles=data.distance_miles,
+        duration_minutes=data.duration_minutes,
+        valid_return=data.valid_return,
+        priority=data.priority,
+        route_type="return" if data.valid_return else "one_way"
+    )
+    
+    await db.map_fixed_routes.insert_one(route.model_dump())
+    return route.model_dump()
+
+@api_router.put("/map-fixed-routes/{route_id}")
+async def update_map_fixed_route(route_id: str, update: MapFixedRouteUpdate, user: dict = Depends(get_super_admin)):
+    """Update a map-based fixed route"""
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    if "valid_return" in update_data:
+        update_data["route_type"] = "return" if update_data["valid_return"] else "one_way"
+    
+    result = await db.map_fixed_routes.update_one({"id": route_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Fixed route not found")
+    
+    return await db.map_fixed_routes.find_one({"id": route_id}, {"_id": 0})
+
+@api_router.delete("/map-fixed-routes/{route_id}")
+async def delete_map_fixed_route(route_id: str, user: dict = Depends(get_super_admin)):
+    """Delete a map-based fixed route"""
+    result = await db.map_fixed_routes.delete_one({"id": route_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Fixed route not found")
+    return {"message": "Fixed route deleted"}
+
+@api_router.get("/map-fixed-routes/vehicle/{vehicle_id}")
+async def get_vehicle_fixed_routes(vehicle_id: str, user: dict = Depends(get_super_admin)):
+    """Get all fixed routes for a specific vehicle class"""
+    routes = await db.map_fixed_routes.find(
+        {"vehicle_category_id": vehicle_id, "is_active": True},
+        {"_id": 0}
+    ).sort("priority", -1).to_list(100)
+    return routes
+
+@api_router.get("/pricing-summary/{vehicle_id}")
+async def get_pricing_summary(vehicle_id: str, user: dict = Depends(get_super_admin)):
+    """Get pricing summary for a vehicle class (counts, etc.)"""
+    scheme = await db.pricing_schemes.find_one({"vehicle_category_id": vehicle_id}, {"_id": 0})
+    fixed_routes_count = await db.map_fixed_routes.count_documents({"vehicle_category_id": vehicle_id, "is_active": True})
+    
+    return {
+        "vehicle_category_id": vehicle_id,
+        "mileage_brackets_count": len(scheme.get("mileage_brackets", [])) if scheme else 0,
+        "fixed_routes_count": fixed_routes_count,
+        "has_time_rates": bool(scheme and scheme.get("time_rates", {}).get("hourly_rate", 0) > 0),
+        "has_fees_configured": bool(scheme and scheme.get("extra_fees"))
+    }
+
+# ==================== QUOTE CALCULATION WITH NEW PRICING ====================
+
+def miles_to_km(miles: float) -> float:
+    return miles * 1.60934
+
+def km_to_miles(km: float) -> float:
+    return km / 1.60934
+
+def haversine_miles(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate distance in miles between two points"""
+    R = 3959  # Earth's radius in miles
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+def is_point_in_radius_miles(point_lat: float, point_lng: float, center_lat: float, center_lng: float, radius_miles: float) -> bool:
+    """Check if a point is within a radius (in miles) of a center point"""
+    distance = haversine_miles(point_lat, point_lng, center_lat, center_lng)
+    return distance <= radius_miles
+
+async def find_matching_fixed_route(pickup_lat: float, pickup_lng: float, dropoff_lat: float, dropoff_lng: float, vehicle_id: str):
+    """Find a matching fixed route for the given coordinates"""
+    routes = await db.map_fixed_routes.find(
+        {"vehicle_category_id": vehicle_id, "is_active": True},
+        {"_id": 0}
+    ).sort("priority", -1).to_list(100)
+    
+    for route in routes:
+        # Check if pickup is in start zone and dropoff is in end zone
+        pickup_in_start = is_point_in_radius_miles(
+            pickup_lat, pickup_lng,
+            route["start_lat"], route["start_lng"],
+            route["start_radius_miles"]
+        )
+        dropoff_in_end = is_point_in_radius_miles(
+            dropoff_lat, dropoff_lng,
+            route["end_lat"], route["end_lng"],
+            route["end_radius_miles"]
+        )
+        
+        if pickup_in_start and dropoff_in_end:
+            return route
+        
+        # If valid_return, also check reverse direction
+        if route.get("valid_return"):
+            pickup_in_end = is_point_in_radius_miles(
+                pickup_lat, pickup_lng,
+                route["end_lat"], route["end_lng"],
+                route["end_radius_miles"]
+            )
+            dropoff_in_start = is_point_in_radius_miles(
+                dropoff_lat, dropoff_lng,
+                route["start_lat"], route["start_lng"],
+                route["start_radius_miles"]
+            )
+            
+            if pickup_in_end and dropoff_in_start:
+                return route
+    
+    return None
+
+async def calculate_mileage_price(distance_miles: float, vehicle_id: str) -> Optional[float]:
+    """Calculate price based on mileage brackets"""
+    scheme = await db.pricing_schemes.find_one({"vehicle_category_id": vehicle_id}, {"_id": 0})
+    if not scheme or not scheme.get("mileage_brackets"):
+        return None
+    
+    brackets = sorted(scheme["mileage_brackets"], key=lambda x: x.get("order", 0))
+    total_price = scheme.get("base_fare", 0)
+    remaining_miles = distance_miles
+    
+    for bracket in brackets:
+        min_miles = bracket.get("min_miles", 0)
+        max_miles = bracket.get("max_miles")  # None means unlimited
+        fixed_price = bracket.get("fixed_price")
+        per_mile_rate = bracket.get("per_mile_rate")
+        
+        if distance_miles < min_miles:
+            continue
+        
+        # Calculate miles in this bracket
+        if max_miles is None:
+            miles_in_bracket = max(0, distance_miles - min_miles)
+        else:
+            miles_in_bracket = min(distance_miles, max_miles) - min_miles
+        
+        if miles_in_bracket <= 0:
+            continue
+        
+        if fixed_price is not None and min_miles == 0:
+            # First bracket with fixed price
+            total_price = fixed_price
+        elif per_mile_rate is not None:
+            total_price += miles_in_bracket * per_mile_rate
+        elif fixed_price is not None:
+            total_price += fixed_price
+    
+    minimum_fare = scheme.get("minimum_fare", 25.0)
+    return max(total_price, minimum_fare)
+
 # ==================== RADIUS ZONES & ROUTES ====================
 
 @api_router.get("/radius-zones")
