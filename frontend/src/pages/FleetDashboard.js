@@ -258,14 +258,29 @@ const FleetDashboard = () => {
                     )}
                     {job.status === "accepted" && (
                       <>
-                        <Button onClick={() => updateJobStatus(job.id, "en_route")} className="bg-cyan-600 hover:bg-cyan-700">
-                          <Play className="w-4 h-4 mr-1" /> Start Trip
-                        </Button>
-                        {!job.assigned_driver_name && (
-                          <Button variant="outline" onClick={() => openAssignDialog(job)}>
-                            <UserCheck className="w-4 h-4 mr-1" /> Assign Driver
+                        {/* Show warning if driver/vehicle not assigned */}
+                        {(!job.assigned_driver_id || !job.assigned_vehicle_id) && (
+                          <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700 mb-2">
+                            <AlertTriangle className="w-3 h-3 inline mr-1" />
+                            {!job.assigned_driver_id && !job.assigned_vehicle_id 
+                              ? "Assign driver & vehicle to start"
+                              : !job.assigned_driver_id 
+                                ? "Assign driver to start"
+                                : "Assign vehicle to start"}
+                          </div>
+                        )}
+                        {job.assigned_driver_id && job.assigned_vehicle_id ? (
+                          <Button onClick={() => updateJobStatus(job.id, "en_route")} className="bg-cyan-600 hover:bg-cyan-700">
+                            <Play className="w-4 h-4 mr-1" /> Start Trip
+                          </Button>
+                        ) : (
+                          <Button disabled className="bg-zinc-300 cursor-not-allowed" title="Assign driver and vehicle first">
+                            <Play className="w-4 h-4 mr-1" /> Start Trip
                           </Button>
                         )}
+                        <Button variant="outline" onClick={() => openAssignDialog(job)} className={(!job.assigned_driver_id || !job.assigned_vehicle_id) ? "border-amber-400 text-amber-700" : ""}>
+                          <UserCheck className="w-4 h-4 mr-1" /> {job.assigned_driver_id ? "Change Assignment" : "Assign Driver"}
+                        </Button>
                       </>
                     )}
                     {job.status === "en_route" && (
