@@ -396,6 +396,7 @@ class JobAssignment(BaseModel):
     fleet_id: Optional[str] = None
     driver_id: Optional[str] = None
     vehicle_id: Optional[str] = None
+    driver_price: Optional[float] = None
     notes: Optional[str] = None
 
 # Invoice Model
