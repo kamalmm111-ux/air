@@ -469,6 +469,26 @@ const FleetDashboard = () => {
 
   return (
     <div className="p-8" data-testid="fleet-dashboard">
+      {/* Impersonation Banner */}
+      {isImpersonating && (
+        <div className="mb-6 bg-amber-500 text-white px-4 py-3 rounded-lg flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="font-semibold">
+              Impersonation Mode: You are viewing <strong>{impersonationFleet.name || "Fleet"}</strong> dashboard as Super Admin
+            </span>
+          </div>
+          <Button 
+            onClick={exitImpersonation}
+            variant="outline"
+            className="bg-white text-amber-600 hover:bg-amber-50 border-white"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Exit Impersonation
+          </Button>
+        </div>
+      )}
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#0A0F1C] capitalize" style={{ fontFamily: 'Chivo, sans-serif' }}>
           {activeTab === "jobs" ? "Your Jobs" : activeTab}
