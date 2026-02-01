@@ -1303,6 +1303,15 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict 
             update_data["assigned_vehicle_id"] = assignment.vehicle_id
             update_data["assigned_vehicle_plate"] = vehicle["plate_number"]
     
+    # Save driver_price (fleet payout) and recalculate profit
+    if assignment.driver_price is not None:
+        update_data["driver_price"] = assignment.driver_price
+        customer_price = booking.get("customer_price", booking.get("price", 0))
+        extras = booking.get("extras", [])
+        extras_total = sum(e.get("price", 0) for e in extras)
+        extras_driver = sum(e.get("price", 0) for e in extras if e.get("affects_driver_cost", False))
+        update_data["profit"] = round((customer_price + extras_total) - (assignment.driver_price + extras_driver), 2)
+    
     if assignment.fleet_id or assignment.driver_id:
         update_data["status"] = "assigned"
         update_data["assigned_at"] = datetime.now(timezone.utc).isoformat()
