@@ -2700,37 +2700,373 @@ async def seed_data():
     
     return {"message": "Seed data created successfully"}
 
-# ==================== WEBSITE SETTINGS ====================
+# ==================== COMPLETE CMS SYSTEM ====================
 
+# Media Library Model
+class MediaItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    url: str
+    type: str = "image"  # image, video, document
+    size: int = 0
+    alt_text: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Vehicle Category with full CMS support
+class VehicleCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    passengers: Optional[int] = None
+    luggage: Optional[int] = None
+    features: Optional[List[str]] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+# Page Content Model
+class PageSection(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str  # hero, text, image, features, cta, testimonials, etc.
+    title: str = ""
+    subtitle: str = ""
+    content: str = ""
+    image_url: str = ""
+    button_text: str = ""
+    button_link: str = ""
+    items: List[Dict[str, Any]] = []
+    order: int = 0
+    is_active: bool = True
+
+class PageContent(BaseModel):
+    page_id: str  # home, about, services, fleet, contact, terms, privacy
+    title: str
+    meta_title: str = ""
+    meta_description: str = ""
+    sections: List[PageSection] = []
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Complete Website Settings
 class WebsiteSettings(BaseModel):
+    # Branding
     site_name: str = "Aircabio"
+    logo_url: str = ""
+    favicon_url: str = ""
     tagline: str = "Travel in Style & Comfort"
-    description: str = ""
-    hero_title: str = "Travel in Style & Comfort"
-    hero_subtitle: str = ""
-    hero_background_url: str = ""
+    
+    # Contact
     contact_email: str = ""
     contact_phone: str = ""
     contact_address: str = ""
+    whatsapp_number: str = ""
+    
+    # Social Media
     facebook_url: str = ""
     twitter_url: str = ""
     instagram_url: str = ""
     linkedin_url: str = ""
-    feature_1_title: str = ""
-    feature_1_description: str = ""
-    feature_2_title: str = ""
-    feature_2_description: str = ""
-    feature_3_title: str = ""
-    feature_3_description: str = ""
-    feature_4_title: str = ""
-    feature_4_description: str = ""
-    footer_text: str = ""
+    youtube_url: str = ""
+    
+    # Colors
     primary_color: str = "#D4AF37"
     secondary_color: str = "#0A0F1C"
     accent_color: str = "#1a1a2e"
+    
+    # SEO
     meta_title: str = ""
     meta_description: str = ""
     meta_keywords: str = ""
+    
+    # Footer
+    footer_text: str = ""
+    footer_links: List[Dict[str, str]] = []
+    
+    # Header
+    header_cta_text: str = "Book Now"
+    header_cta_link: str = "/booking"
+
+# ==================== MEDIA LIBRARY ENDPOINTS ====================
+
+@api_router.get("/admin/media")
+async def get_media_library(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    media = await db.media_library.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return media
+
+@api_router.post("/admin/media")
+async def add_media(
+    media: MediaItem,
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    media_dict = media.model_dump()
+    await db.media_library.insert_one(media_dict)
+    return media_dict
+
+@api_router.delete("/admin/media/{media_id}")
+async def delete_media(media_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    await db.media_library.delete_one({"id": media_id})
+    return {"message": "Media deleted"}
+
+# ==================== VEHICLE CATEGORIES CMS ====================
+
+@api_router.get("/admin/vehicle-categories")
+async def get_admin_vehicle_categories(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    categories = await db.vehicles.find({}, {"_id": 0}).sort("display_order", 1).to_list(100)
+    return categories
+
+@api_router.put("/admin/vehicle-categories/{category_id}")
+async def update_vehicle_category(
+    category_id: str,
+    update: VehicleCategoryUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    update_dict = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.vehicles.update_one(
+        {"id": category_id},
+        {"$set": update_dict}
+    )
+    
+    return {"message": "Vehicle category updated"}
+
+@api_router.post("/admin/vehicle-categories")
+async def create_vehicle_category(
+    category: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    category["id"] = category.get("id", str(uuid.uuid4()))
+    category["created_at"] = datetime.now(timezone.utc).isoformat()
+    category["display_order"] = category.get("display_order", 99)
+    category["is_active"] = category.get("is_active", True)
+    
+    await db.vehicles.insert_one(category)
+    return category
+
+@api_router.delete("/admin/vehicle-categories/{category_id}")
+async def delete_vehicle_category(
+    category_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    await db.vehicles.delete_one({"id": category_id})
+    return {"message": "Vehicle category deleted"}
+
+# ==================== PAGE CONTENT CMS ====================
+
+@api_router.get("/admin/pages")
+async def get_all_pages(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    pages = await db.page_content.find({}, {"_id": 0}).to_list(100)
+    return pages
+
+@api_router.get("/admin/pages/{page_id}")
+async def get_page_content(page_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    page = await db.page_content.find_one({"page_id": page_id}, {"_id": 0})
+    if not page:
+        # Return default page structure
+        return get_default_page_content(page_id)
+    return page
+
+@api_router.post("/admin/pages/{page_id}")
+async def save_page_content(
+    page_id: str,
+    content: PageContent,
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    content_dict = content.model_dump()
+    content_dict["page_id"] = page_id
+    content_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.page_content.update_one(
+        {"page_id": page_id},
+        {"$set": content_dict},
+        upsert=True
+    )
+    
+    return {"message": "Page content saved"}
+
+# Public endpoint for page content
+@api_router.get("/pages/{page_id}")
+async def get_public_page_content(page_id: str):
+    page = await db.page_content.find_one({"page_id": page_id}, {"_id": 0})
+    if not page:
+        return get_default_page_content(page_id)
+    return page
+
+def get_default_page_content(page_id: str) -> dict:
+    """Return default content for each page"""
+    defaults = {
+        "home": {
+            "page_id": "home",
+            "title": "Home",
+            "meta_title": "Aircabio - Premium Airport Transfers",
+            "meta_description": "Book reliable airport transfers with Aircabio",
+            "sections": [
+                {
+                    "id": "hero",
+                    "type": "hero",
+                    "title": "Travel in Style & Comfort",
+                    "subtitle": "Premium airport transfers with professional chauffeurs. Book your ride in minutes.",
+                    "image_url": "",
+                    "button_text": "Book Now",
+                    "button_link": "#booking",
+                    "order": 0,
+                    "is_active": True
+                },
+                {
+                    "id": "features",
+                    "type": "features",
+                    "title": "Why Choose Us",
+                    "items": [
+                        {"icon": "Shield", "title": "Professional Chauffeurs", "description": "Experienced, vetted drivers ensuring your safety and comfort"},
+                        {"icon": "Car", "title": "Luxury Fleet", "description": "Premium vehicles maintained to the highest standards"},
+                        {"icon": "Clock", "title": "24/7 Service", "description": "Round-the-clock availability for all your transfer needs"},
+                        {"icon": "DollarSign", "title": "Fixed Prices", "description": "No hidden fees, no surge pricing - just transparent rates"}
+                    ],
+                    "order": 1,
+                    "is_active": True
+                },
+                {
+                    "id": "how-it-works",
+                    "type": "steps",
+                    "title": "How It Works",
+                    "items": [
+                        {"step": "1", "title": "Book Online", "description": "Enter your journey details and choose your vehicle"},
+                        {"step": "2", "title": "Confirm", "description": "Review your booking and complete payment"},
+                        {"step": "3", "title": "Relax", "description": "Your chauffeur will be waiting for you"}
+                    ],
+                    "order": 2,
+                    "is_active": True
+                }
+            ]
+        },
+        "about": {
+            "page_id": "about",
+            "title": "About Us",
+            "meta_title": "About Aircabio - Premium Airport Transfer Service",
+            "sections": [
+                {
+                    "id": "intro",
+                    "type": "text",
+                    "title": "About Aircabio",
+                    "content": "Aircabio is a premium airport transfer service dedicated to providing exceptional travel experiences. With years of experience in the industry, we have built a reputation for reliability, comfort, and professionalism.",
+                    "image_url": "",
+                    "order": 0,
+                    "is_active": True
+                },
+                {
+                    "id": "mission",
+                    "type": "text",
+                    "title": "Our Mission",
+                    "content": "To make airport transfers seamless, comfortable, and stress-free for every passenger.",
+                    "order": 1,
+                    "is_active": True
+                }
+            ]
+        },
+        "services": {
+            "page_id": "services",
+            "title": "Our Services",
+            "sections": [
+                {
+                    "id": "intro",
+                    "type": "text",
+                    "title": "Premium Transfer Services",
+                    "content": "We offer a comprehensive range of airport transfer services to meet all your travel needs.",
+                    "order": 0,
+                    "is_active": True
+                }
+            ]
+        },
+        "fleet": {
+            "page_id": "fleet",
+            "title": "Join Our Fleet",
+            "sections": [
+                {
+                    "id": "intro",
+                    "type": "text",
+                    "title": "Become a Fleet Partner",
+                    "content": "Join our growing network of professional drivers and fleet operators.",
+                    "image_url": "",
+                    "order": 0,
+                    "is_active": True
+                }
+            ]
+        },
+        "contact": {
+            "page_id": "contact",
+            "title": "Contact Us",
+            "sections": [
+                {
+                    "id": "intro",
+                    "type": "text",
+                    "title": "Get In Touch",
+                    "content": "We're here to help with any questions about our services.",
+                    "order": 0,
+                    "is_active": True
+                }
+            ]
+        },
+        "terms": {
+            "page_id": "terms",
+            "title": "Terms & Conditions",
+            "sections": [
+                {
+                    "id": "content",
+                    "type": "text",
+                    "title": "Terms of Service",
+                    "content": "Please read these terms carefully before using our services.",
+                    "order": 0,
+                    "is_active": True
+                }
+            ]
+        },
+        "privacy": {
+            "page_id": "privacy",
+            "title": "Privacy Policy",
+            "sections": [
+                {
+                    "id": "content",
+                    "type": "text",
+                    "title": "Privacy Policy",
+                    "content": "Your privacy is important to us. This policy outlines how we collect and use your data.",
+                    "order": 0,
+                    "is_active": True
+                }
+            ]
+        }
+    }
+    return defaults.get(page_id, {"page_id": page_id, "title": page_id.title(), "sections": []})
+
+# ==================== WEBSITE SETTINGS ====================
 
 @api_router.get("/admin/website-settings")
 async def get_website_settings(current_user: dict = Depends(get_current_user)):
@@ -2741,40 +3077,47 @@ async def get_website_settings(current_user: dict = Depends(get_current_user)):
     if settings:
         del settings["_id"]
         return settings
-    return {}
+    return WebsiteSettings().model_dump()
 
 @api_router.post("/admin/website-settings")
 async def save_website_settings(
-    settings: WebsiteSettings,
+    settings: Dict[str, Any],
     current_user: dict = Depends(get_current_user)
 ):
     if current_user.get("role") != "super_admin":
         raise HTTPException(status_code=403, detail="Super admin access required")
     
-    settings_dict = settings.model_dump()
-    settings_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    settings["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.website_settings.update_one(
         {"_id": "main"},
-        {"$set": settings_dict},
+        {"$set": settings},
         upsert=True
     )
     
     return {"message": "Settings saved successfully"}
 
-# Public endpoint to get website settings for frontend
+# Public endpoints
 @api_router.get("/website-settings")
 async def get_public_website_settings():
     settings = await db.website_settings.find_one({"_id": "main"})
     if settings:
         del settings["_id"]
         return settings
-    # Return default settings
     return WebsiteSettings().model_dump()
+
+# Get active vehicles for public
+@api_router.get("/vehicles")
+async def get_vehicles():
+    vehicles = await db.vehicles.find(
+        {"$or": [{"is_active": True}, {"is_active": {"$exists": False}}]},
+        {"_id": 0}
+    ).sort("display_order", 1).to_list(100)
+    return vehicles
 
 @api_router.get("/")
 async def root():
-    return {"message": "Aircabio Airport Transfers API", "version": "3.0.0"}
+    return {"message": "Aircabio Airport Transfers API", "version": "4.0.0"}
 
 # Include the router in the main app
 app.include_router(api_router)
