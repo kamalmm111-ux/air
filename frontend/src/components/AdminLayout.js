@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "./ui/button";
 import {
-  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin
+  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin, Briefcase
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -37,6 +37,7 @@ const AdminLayout = () => {
   const sidebarItems = [
     { id: "dashboard", name: "Dashboard", icon: LayoutDashboard },
     { id: "bookings", name: "Jobs / Bookings", icon: CalendarDays },
+    { id: "customers", name: "Customers (B2B)", icon: Briefcase },
     { id: "fleets", name: "Fleets", icon: Building2 },
     { id: "drivers", name: "Drivers", icon: Users },
     { id: "vehicles", name: "Vehicles", icon: Truck },
