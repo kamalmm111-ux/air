@@ -1515,7 +1515,19 @@ async def update_booking_status(booking_id: str, status: str, user: dict = Depen
     elif status == "completed":
         update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
     
+    old_status = booking.get("status")
     await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    
+    # Log status change to history
+    await log_booking_history(
+        booking_id,
+        "status_changed",
+        f"Status changed from {old_status} to {status}",
+        user,
+        old_value=old_status,
+        new_value=status
+    )
+    
     return {"message": f"Status updated to {status}"}
 
 # ==================== FLEET DASHBOARD ROUTES ====================
