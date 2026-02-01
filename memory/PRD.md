@@ -237,19 +237,26 @@ Public:
 
 ## Prioritized Backlog
 
+### P0 - Immediate (Recently Completed)
+- [x] Pricing Module with mileage brackets, time rates, extra fees
+- [x] Map-based fixed routes with Google Maps radius zones
+- [x] Smart quote engine (fixed route priority → mileage fallback)
+
 ### P1 - High Priority
-- [ ] Real Google Places autocomplete integration
-- [ ] Real Google Distance Matrix API integration
+- [ ] Invoicing System Enhancement: Full invoice creation/editing/PDF download for customers, fleets, drivers
+- [ ] Fleet Portal Invoice Section: View/download fleet invoices
+- [ ] Real Google Places autocomplete integration for booking engine
 - [ ] Email notifications (booking confirmations, job assignments)
-- [ ] Interactive map for drawing radius zones
 - [ ] Booking export to CSV
+- [ ] Refactor server.py (2500+ lines) into proper structure (models, routes, services)
 
 ### P2 - Medium Priority
 - [ ] SMS/WhatsApp notifications
 - [ ] Round-trip discount configuration (currently hardcoded 10%)
-- [ ] Day/night pricing surcharges
+- [ ] Day/night pricing surcharges (fees are configured but not applied in quote)
 - [ ] Multi-currency support
 - [ ] Driver mobile app/portal
+- [ ] Refactor AdminDashboard.js (1800+ lines) into smaller components
 
 ### P3 - Nice to Have
 - [ ] Flight tracking integration
@@ -257,3 +264,4 @@ Public:
 - [ ] Corporate account management
 - [ ] Analytics dashboard
 - [ ] Real-time WebSocket notifications
+- [ ] Bulk import/export for pricing rules and fixed routes
