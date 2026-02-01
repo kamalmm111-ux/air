@@ -46,6 +46,7 @@ const JOB_STATUSES = {
 const AdminDashboard = () => {
   const { activeTab } = useOutletContext();
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -57,6 +58,7 @@ const AdminDashboard = () => {
   const [invoices, setInvoices] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [impersonating, setImpersonating] = useState(false);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState("all");
