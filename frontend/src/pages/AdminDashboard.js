@@ -1307,6 +1307,7 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
   const [fleetId, setFleetId] = useState("");
   const [driverId, setDriverId] = useState("");
   const [vehicleId, setVehicleId] = useState("");
+  const [driverPrice, setDriverPrice] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -1314,18 +1315,25 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
       setFleetId(booking.assigned_fleet_id || "");
       setDriverId(booking.assigned_driver_id || "");
       setVehicleId(booking.assigned_vehicle_id || "");
+      setDriverPrice(booking.driver_price || 0);
     }
   }, [booking]);
 
   if (!booking) return null;
 
   const handleAssign = async () => {
+    if (fleetId && fleetId !== "none" && driverPrice <= 0) {
+      toast.error("Please set a driver price (fleet payout) before assigning");
+      return;
+    }
+    
     setLoading(true);
     try {
       await axios.post(`${API}/bookings/${booking.id}/assign`, {
         fleet_id: fleetId && fleetId !== "none" ? fleetId : null,
         driver_id: driverId && driverId !== "none" ? driverId : null,
-        vehicle_id: vehicleId && vehicleId !== "none" ? vehicleId : null
+        vehicle_id: vehicleId && vehicleId !== "none" ? vehicleId : null,
+        driver_price: driverPrice
       }, { headers });
       toast.success("Job assigned successfully!");
       onClose();
@@ -1353,7 +1361,7 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Assign Job - {booking.booking_ref}</DialogTitle>
         </DialogHeader>
@@ -1361,7 +1369,9 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
           <div className="p-3 bg-zinc-50 rounded-sm text-sm">
             <div><strong>Route:</strong> {booking.pickup_location} → {booking.dropoff_location}</div>
             <div><strong>Date:</strong> {booking.pickup_date} {booking.pickup_time}</div>
+            <div><strong>Customer Price:</strong> £{(booking.customer_price || 0).toFixed(2)}</div>
           </div>
+          
           <div>
             <Label>Assign to Fleet</Label>
             <Select value={fleetId} onValueChange={setFleetId}>
@@ -1372,22 +1382,45 @@ const AssignDialog = ({ open, onClose, booking, fleets, drivers, allVehicles, he
               </SelectContent>
             </Select>
           </div>
+          
+          {fleetId && fleetId !== "none" && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-sm">
+              <Label className="text-amber-800 font-semibold">Driver Price (Fleet Payout) *</Label>
+              <p className="text-xs text-amber-600 mb-2">This is the amount you will pay the fleet for this job</p>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold">£</span>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  value={driverPrice} 
+                  onChange={(e) => setDriverPrice(parseFloat(e.target.value) || 0)}
+                  className="text-lg font-bold"
+                  data-testid="assign-driver-price"
+                />
+              </div>
+              <p className="text-xs text-zinc-500 mt-2">
+                Profit: £{((booking.customer_price || 0) - driverPrice).toFixed(2)}
+              </p>
+            </div>
+          )}
+          
           <div>
-            <Label>Assign to Driver</Label>
+            <Label>Assign to Driver (Optional)</Label>
             <Select value={driverId} onValueChange={setDriverId}>
               <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="none">None (Fleet will assign)</SelectItem>
                 {drivers.filter(d => d.status === "active").map(d => <SelectItem key={d.id} value={d.id}>{d.name} ({d.driver_type})</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+          
           <div>
-            <Label>Assign Vehicle</Label>
+            <Label>Assign Vehicle (Optional)</Label>
             <Select value={vehicleId} onValueChange={setVehicleId}>
               <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="none">None (Fleet will assign)</SelectItem>
                 {allVehicles.filter(v => v.status === "active").map(v => <SelectItem key={v.id} value={v.id}>{v.plate_number} - {v.name || v.make}</SelectItem>)}
               </SelectContent>
             </Select>
