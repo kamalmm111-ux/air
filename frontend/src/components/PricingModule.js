@@ -911,24 +911,34 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
     };
 
     const loadGoogleMaps = () => {
-      if (window.google && window.google.maps) {
-        // Use setTimeout to ensure DOM is ready
+      // Check if already loaded with geometry library
+      if (window.google && window.google.maps && window.google.maps.geometry) {
         setTimeout(initMap, 100);
         return;
       }
 
-      // Check if script is already loading
-      if (document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]')) {
-        // Script exists, wait for it to load
+      // Check if script is already loading (from PlacesAutocomplete)
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+      if (existingScript) {
+        // Script exists, wait for it to load with geometry
         const checkGoogleMaps = setInterval(() => {
-          if (window.google && window.google.maps) {
+          if (window.google && window.google.maps && window.google.maps.geometry) {
             clearInterval(checkGoogleMaps);
             setTimeout(initMap, 100);
           }
         }, 100);
+        
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          clearInterval(checkGoogleMaps);
+          if (window.google && window.google.maps) {
+            setTimeout(initMap, 100);
+          }
+        }, 10000);
         return;
       }
 
+      // Load script with both places and geometry libraries
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
       script.async = true;
