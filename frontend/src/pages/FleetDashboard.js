@@ -3,12 +3,17 @@ import { useOutletContext, useSearchParams, useNavigate } from "react-router-dom
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
 import { 
   Calendar, DollarSign, Clock, CheckCircle, TrendingUp, MapPin, Users, 
-  Briefcase, Play, Check, Eye, FileText, Download, LogOut, AlertTriangle
+  Briefcase, Play, Check, Eye, FileText, Download, LogOut, AlertTriangle,
+  Plus, Edit, Trash2, Car, User, Phone, Mail, UserCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -33,8 +38,19 @@ const FleetDashboard = () => {
   const [stats, setStats] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [vehicleCategories, setVehicleCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Dialog states
+  const [driverDialogOpen, setDriverDialogOpen] = useState(false);
+  const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [editingDriver, setEditingDriver] = useState(null);
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -54,14 +70,20 @@ const FleetDashboard = () => {
   const fetchData = async () => {
     if (!token) return;
     try {
-      const [statsRes, jobsRes, invoicesRes] = await Promise.all([
+      const [statsRes, jobsRes, invoicesRes, driversRes, vehiclesRes, categoriesRes] = await Promise.all([
         axios.get(`${API}/fleet/stats`, { headers }),
         axios.get(`${API}/fleet/jobs`, { headers }),
-        axios.get(`${API}/invoices`, { headers })
+        axios.get(`${API}/invoices`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/fleet/drivers`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/fleet/vehicles`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/vehicles`).catch(() => ({ data: [] }))
       ]);
       setStats(statsRes.data);
       setJobs(jobsRes.data);
       setInvoices(invoicesRes.data);
+      setDrivers(driversRes.data);
+      setVehicles(vehiclesRes.data);
+      setVehicleCategories(categoriesRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -71,17 +93,15 @@ const FleetDashboard = () => {
 
   const exitImpersonation = async () => {
     try {
-      // Log the exit
       if (impersonationId) {
         const adminToken = sessionStorage.getItem("admin_token");
         await axios.post(
           `${API}/admin/impersonation/${impersonationId}/exit`,
           {},
           { headers: { Authorization: `Bearer ${adminToken}` } }
-        ).catch(() => {}); // Don't fail if this doesn't work
+        ).catch(() => {});
       }
       
-      // Clear impersonation data
       sessionStorage.removeItem("impersonation_token");
       sessionStorage.removeItem("impersonation_fleet");
       sessionStorage.removeItem("impersonation_id");
@@ -91,7 +111,6 @@ const FleetDashboard = () => {
       window.location.href = "/admin?tab=fleets";
     } catch (error) {
       console.error("Exit impersonation error:", error);
-      // Still clear and redirect
       sessionStorage.clear();
       window.location.href = "/admin";
     }
@@ -117,12 +136,9 @@ const FleetDashboard = () => {
     }
   };
 
-  const startJob = async (bookingId) => {
-    await updateJobStatus(bookingId, "en_route");
-  };
-
-  const completeJob = async (bookingId) => {
-    await updateJobStatus(bookingId, "completed");
+  const openAssignDialog = (job) => {
+    setSelectedJob(job);
+    setAssignDialogOpen(true);
   };
 
   const getStatusBadge = (status) => {
@@ -146,7 +162,7 @@ const FleetDashboard = () => {
       driver_no_show: "Driver No Show",
       customer_no_show: "Customer No Show"
     };
-    return <Badge className={styles[status] || "bg-zinc-100"}>{labels[status] || status.replace("_", " ")}</Badge>;
+    return <Badge className={styles[status] || "bg-zinc-100"}>{labels[status] || status?.replace("_", " ")}</Badge>;
   };
 
   const filteredJobs = jobs.filter(j => {
@@ -162,195 +178,265 @@ const FleetDashboard = () => {
     );
   }
 
+  // ==================== JOBS TAB ====================
   const renderJobs = () => (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="New Jobs" value={stats?.new_jobs || 0} icon={Calendar} color="bg-yellow-500" />
-        <StatCard title="Accepted" value={stats?.accepted_jobs || 0} icon={CheckCircle} color="bg-blue-500" />
-        <StatCard title="In Progress" value={stats?.in_progress_jobs || 0} icon={Play} color="bg-purple-500" />
-        <StatCard title="Completed" value={stats?.completed_jobs || 0} icon={Check} color="bg-green-500" />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("all")}>
+            All ({jobs.length})
+          </Button>
+          <Button variant={statusFilter === "assigned" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("assigned")} className="text-purple-700">
+            New ({jobs.filter(j => j.status === "assigned").length})
+          </Button>
+          <Button variant={statusFilter === "accepted" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("accepted")}>
+            Accepted ({jobs.filter(j => j.status === "accepted").length})
+          </Button>
+          <Button variant={statusFilter === "completed" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("completed")} className="text-green-700">
+            Completed ({jobs.filter(j => j.status === "completed").length})
+          </Button>
+        </div>
       </div>
 
-      {/* Filter */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-[#0A0F1C]">Assigned Jobs</h2>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Jobs</SelectItem>
-            <SelectItem value="assigned">New</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
-            <SelectItem value="en_route">En Route</SelectItem>
-            <SelectItem value="arrived">Arrived</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Jobs List */}
-      <div className="space-y-4">
-        {filteredJobs.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Calendar className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-zinc-600">No jobs found</h3>
-              <p className="text-zinc-400">Jobs assigned to your fleet will appear here</p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredJobs.map((job) => (
-            <Card key={job.id} className="border-l-4 border-l-[#D4AF37]" data-testid={`fleet-job-${job.id}`}>
+      {filteredJobs.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Briefcase className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-zinc-600">No jobs found</h3>
+            <p className="text-zinc-400">Jobs assigned to you will appear here</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {filteredJobs.map((job) => (
+            <Card key={job.id} className="hover:shadow-md transition-shadow" data-testid={`job-card-${job.id}`}>
               <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    {/* Header */}
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-1 min-w-[280px]">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="font-mono text-sm bg-zinc-100 px-2 py-1 rounded">{job.booking_ref || job.id.slice(0, 8).toUpperCase()}</span>
                       {getStatusBadge(job.status)}
-                      <span className="font-mono text-sm text-zinc-500">
-                        {job.booking_ref || job.id.slice(0, 8).toUpperCase()}
-                      </span>
+                      <span className="text-xl font-bold text-[#D4AF37]">£{job.price?.toFixed(2)}</span>
                     </div>
-
-                    {/* Route */}
-                    <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2 text-sm">
                       <div className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 text-green-600 mt-1" />
-                        <div>
-                          <p className="text-xs text-zinc-500">PICKUP</p>
-                          <p className="font-medium">{job.pickup_location}</p>
-                        </div>
+                        <Calendar className="w-4 h-4 text-zinc-400 mt-0.5" />
+                        <span>{job.pickup_date} at {job.pickup_time}</span>
                       </div>
                       <div className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 text-red-600 mt-1" />
-                        <div>
-                          <p className="text-xs text-zinc-500">DROP-OFF</p>
-                          <p className="font-medium">{job.dropoff_location}</p>
-                        </div>
+                        <MapPin className="w-4 h-4 text-green-500 mt-0.5" />
+                        <span className="text-zinc-600">{job.pickup_location}</span>
                       </div>
-                    </div>
-
-                    {/* Details */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-600">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {job.pickup_date} at {job.pickup_time}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {job.passengers} pax
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="w-4 h-4" />
-                        {job.luggage} bags
-                      </span>
-                      <span className="font-medium">{job.vehicle_name}</span>
-                    </div>
-
-                    {/* Passenger */}
-                    <div className="text-sm">
-                      <span className="text-zinc-500">Passenger: </span>
-                      <span className="font-medium">{job.customer_name || job.passenger_name}</span>
-                      <span className="text-zinc-400 ml-2">{job.customer_phone || job.passenger_phone}</span>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-red-500 mt-0.5" />
+                        <span className="text-zinc-600">{job.dropoff_location}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-zinc-500">
+                        <span><Users className="w-4 h-4 inline mr-1" />{job.passengers} pax</span>
+                        <span>{job.vehicle_name}</span>
+                      </div>
+                      {/* Show assigned driver/vehicle */}
+                      {job.assigned_driver_name && (
+                        <div className="flex items-center gap-2 text-green-600 font-medium mt-2">
+                          <UserCheck className="w-4 h-4" />
+                          <span>Assigned: {job.assigned_driver_name}</span>
+                          {job.assigned_vehicle_plate && <span>({job.assigned_vehicle_plate})</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {/* Price & Actions */}
-                  <div className="flex flex-col items-end gap-3">
-                    <p className="text-2xl font-bold text-[#0A0F1C]">£{job.price?.toFixed(2)}</p>
-                    
+                  <div className="flex flex-col gap-2">
                     {job.status === "assigned" && (
-                      <Button
-                        onClick={() => acceptJob(job.id)}
-                        className="bg-green-600 hover:bg-green-700"
-                        data-testid={`accept-job-${job.id}`}
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Accept Job
-                      </Button>
+                      <>
+                        <Button onClick={() => acceptJob(job.id)} className="bg-green-600 hover:bg-green-700" data-testid={`accept-job-${job.id}`}>
+                          <Check className="w-4 h-4 mr-1" /> Accept
+                        </Button>
+                        <Button variant="outline" onClick={() => openAssignDialog(job)} data-testid={`assign-driver-${job.id}`}>
+                          <UserCheck className="w-4 h-4 mr-1" /> Assign Driver
+                        </Button>
+                      </>
                     )}
-                    
                     {job.status === "accepted" && (
-                      <Button
-                        onClick={() => startJob(job.id)}
-                        className="bg-blue-600 hover:bg-blue-700"
-                        data-testid={`start-job-${job.id}`}
-                      >
-                        <Play className="w-4 h-4 mr-2" />
-                        En Route
-                      </Button>
+                      <>
+                        <Button onClick={() => updateJobStatus(job.id, "en_route")} className="bg-cyan-600 hover:bg-cyan-700">
+                          <Play className="w-4 h-4 mr-1" /> Start Trip
+                        </Button>
+                        {!job.assigned_driver_name && (
+                          <Button variant="outline" onClick={() => openAssignDialog(job)}>
+                            <UserCheck className="w-4 h-4 mr-1" /> Assign Driver
+                          </Button>
+                        )}
+                      </>
                     )}
-                    
                     {job.status === "en_route" && (
-                      <Button
-                        onClick={() => updateJobStatus(job.id, "arrived")}
-                        className="bg-teal-600 hover:bg-teal-700"
-                        data-testid={`arrived-job-${job.id}`}
-                      >
-                        <MapPin className="w-4 h-4 mr-2" />
-                        Arrived
+                      <Button onClick={() => updateJobStatus(job.id, "arrived")} className="bg-teal-600 hover:bg-teal-700">
+                        Arrived at Pickup
                       </Button>
                     )}
-
                     {job.status === "arrived" && (
-                      <Button
-                        onClick={() => updateJobStatus(job.id, "in_progress")}
-                        className="bg-purple-600 hover:bg-purple-700"
-                        data-testid={`start-trip-${job.id}`}
-                      >
-                        <Play className="w-4 h-4 mr-2" />
-                        Start Trip
+                      <Button onClick={() => updateJobStatus(job.id, "in_progress")} className="bg-orange-600 hover:bg-orange-700">
+                        Start Journey
                       </Button>
                     )}
-                    
                     {job.status === "in_progress" && (
-                      <Button
-                        onClick={() => completeJob(job.id)}
-                        className="bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A0F1C]"
-                        data-testid={`complete-job-${job.id}`}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Complete
+                      <Button onClick={() => updateJobStatus(job.id, "completed")} className="bg-green-600 hover:bg-green-700">
+                        <CheckCircle className="w-4 h-4 mr-1" /> Complete
                       </Button>
                     )}
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
+  // ==================== DRIVERS TAB ====================
+  const renderDrivers = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-[#0A0F1C]">My Drivers</h2>
+        <Button onClick={() => { setEditingDriver(null); setDriverDialogOpen(true); }} className="bg-[#0A0F1C]" data-testid="add-driver-btn">
+          <Plus className="w-4 h-4 mr-1" /> Add Driver
+        </Button>
+      </div>
+      
+      {drivers.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Users className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-zinc-600">No drivers yet</h3>
+            <p className="text-zinc-400 mb-4">Add drivers to assign them to jobs</p>
+            <Button onClick={() => { setEditingDriver(null); setDriverDialogOpen(true); }} className="bg-[#0A0F1C]">
+              <Plus className="w-4 h-4 mr-1" /> Add Your First Driver
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>License</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {drivers.map((driver) => (
+                  <TableRow key={driver.id} data-testid={`driver-row-${driver.id}`}>
+                    <TableCell className="font-medium">{driver.name}</TableCell>
+                    <TableCell>{driver.phone}</TableCell>
+                    <TableCell>{driver.email || "-"}</TableCell>
+                    <TableCell>{driver.license_number || "-"}</TableCell>
+                    <TableCell>
+                      <Badge className={driver.status === "active" ? "bg-green-100 text-green-800" : "bg-zinc-100"}>
+                        {driver.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingDriver(driver); setDriverDialogOpen(true); }}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteDriver(driver.id)} className="text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // ==================== VEHICLES TAB ====================
+  const renderVehicles = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-[#0A0F1C]">My Vehicles</h2>
+        <Button onClick={() => { setEditingVehicle(null); setVehicleDialogOpen(true); }} className="bg-[#0A0F1C]" data-testid="add-vehicle-btn">
+          <Plus className="w-4 h-4 mr-1" /> Add Vehicle
+        </Button>
+      </div>
+      
+      {vehicles.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Car className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-zinc-600">No vehicles yet</h3>
+            <p className="text-zinc-400 mb-4">Add vehicles to assign them to jobs</p>
+            <Button onClick={() => { setEditingVehicle(null); setVehicleDialogOpen(true); }} className="bg-[#0A0F1C]">
+              <Plus className="w-4 h-4 mr-1" /> Add Your First Vehicle
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Plate Number</TableHead>
+                  <TableHead>Make/Model</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Capacity</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vehicles.map((vehicle) => (
+                  <TableRow key={vehicle.id} data-testid={`vehicle-row-${vehicle.id}`}>
+                    <TableCell className="font-mono font-medium">{vehicle.plate_number}</TableCell>
+                    <TableCell>{vehicle.make} {vehicle.model} {vehicle.year ? `(${vehicle.year})` : ""}</TableCell>
+                    <TableCell>{vehicleCategories.find(c => c.id === vehicle.category_id)?.name || vehicle.category_id}</TableCell>
+                    <TableCell>{vehicle.passenger_capacity} pax / {vehicle.luggage_capacity} bags</TableCell>
+                    <TableCell>
+                      <Badge className={vehicle.status === "active" ? "bg-green-100 text-green-800" : "bg-zinc-100"}>
+                        {vehicle.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingVehicle(vehicle); setVehicleDialogOpen(true); }}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteVehicle(vehicle.id)} className="text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // ==================== EARNINGS TAB ====================
   const renderEarnings = () => (
     <div className="space-y-6">
-      {/* Earnings Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-[#D4AF37] to-[#B8860B]">
-          <CardContent className="p-6 text-[#0A0F1C]">
-            <p className="text-sm opacity-80">Total Earnings</p>
-            <p className="text-4xl font-bold mt-2">£{stats?.total_earnings?.toFixed(2) || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-zinc-500">Net Earnings (After Commission)</p>
-            <p className="text-4xl font-bold text-green-600 mt-2">£{stats?.net_earnings?.toFixed(2) || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-zinc-500">Completed Jobs</p>
-            <p className="text-4xl font-bold text-[#0A0F1C] mt-2">{stats?.completed_jobs || 0}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="Total Jobs" value={stats?.total_jobs || 0} icon={Briefcase} color="bg-blue-500" />
+        <StatCard title="Completed" value={stats?.completed_jobs || 0} icon={CheckCircle} color="bg-green-500" />
+        <StatCard title="Total Earnings" value={`£${(stats?.total_earnings || 0).toFixed(2)}`} icon={DollarSign} color="bg-[#D4AF37]" />
+        <StatCard title="Net Earnings" value={`£${(stats?.net_earnings || 0).toFixed(2)}`} icon={TrendingUp} color="bg-emerald-500" />
       </div>
 
-      {/* Recent Completed Jobs */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Completed Jobs</CardTitle>
@@ -359,7 +445,7 @@ const FleetDashboard = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
+                <TableHead>Ref</TableHead>
                 <TableHead>Route</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Earnings</TableHead>
@@ -383,6 +469,7 @@ const FleetDashboard = () => {
     </div>
   );
 
+  // ==================== INVOICES TAB ====================
   const renderInvoices = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-[#0A0F1C]">Your Invoices</h2>
@@ -449,22 +536,35 @@ const FleetDashboard = () => {
     </div>
   );
 
-  const renderVehicles = () => (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold text-[#0A0F1C]">Coming Soon</h2>
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-zinc-500">Vehicle management will be available in the next update</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  // ==================== CRUD HANDLERS ====================
+  const deleteDriver = async (driverId) => {
+    if (!window.confirm("Are you sure you want to delete this driver?")) return;
+    try {
+      await axios.delete(`${API}/fleet/drivers/${driverId}`, { headers });
+      toast.success("Driver deleted");
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to delete driver");
+    }
+  };
+
+  const deleteVehicle = async (vehicleId) => {
+    if (!window.confirm("Are you sure you want to delete this vehicle?")) return;
+    try {
+      await axios.delete(`${API}/fleet/vehicles/${vehicleId}`, { headers });
+      toast.success("Vehicle deleted");
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to delete vehicle");
+    }
+  };
 
   const content = {
     jobs: renderJobs(),
+    drivers: renderDrivers(),
+    vehicles: renderVehicles(),
     earnings: renderEarnings(),
-    invoices: renderInvoices(),
-    vehicles: renderVehicles()
+    invoices: renderInvoices()
   };
 
   return (
@@ -491,11 +591,375 @@ const FleetDashboard = () => {
       
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#0A0F1C] capitalize" style={{ fontFamily: 'Chivo, sans-serif' }}>
-          {activeTab === "jobs" ? "Your Jobs" : activeTab}
+          {activeTab === "jobs" ? "Your Jobs" : activeTab === "drivers" ? "My Drivers" : activeTab === "vehicles" ? "My Vehicles" : activeTab}
         </h1>
       </div>
       {content[activeTab] || content.jobs}
+      
+      {/* Driver Dialog */}
+      <DriverDialog
+        open={driverDialogOpen}
+        onClose={() => setDriverDialogOpen(false)}
+        driver={editingDriver}
+        headers={headers}
+        onSuccess={fetchData}
+      />
+      
+      {/* Vehicle Dialog */}
+      <VehicleDialog
+        open={vehicleDialogOpen}
+        onClose={() => setVehicleDialogOpen(false)}
+        vehicle={editingVehicle}
+        categories={vehicleCategories}
+        headers={headers}
+        onSuccess={fetchData}
+      />
+      
+      {/* Assign Driver Dialog */}
+      <AssignDriverDialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        job={selectedJob}
+        drivers={drivers}
+        vehicles={vehicles}
+        headers={headers}
+        onSuccess={fetchData}
+      />
     </div>
+  );
+};
+
+// ==================== DIALOGS ====================
+
+const DriverDialog = ({ open, onClose, driver, headers, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    license_number: "",
+    license_expiry: "",
+    notes: "",
+    status: "active"
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (driver) {
+      setFormData({ ...driver });
+    } else {
+      setFormData({
+        name: "",
+        phone: "",
+        email: "",
+        license_number: "",
+        license_expiry: "",
+        notes: "",
+        status: "active"
+      });
+    }
+  }, [driver, open]);
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.phone) {
+      toast.error("Name and phone are required");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (driver) {
+        await axios.put(`${API}/fleet/drivers/${driver.id}`, formData, { headers });
+        toast.success("Driver updated");
+      } else {
+        await axios.post(`${API}/fleet/drivers`, formData, { headers });
+        toast.success("Driver created");
+      }
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save driver");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{driver ? "Edit Driver" : "Add Driver"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label>Name *</Label>
+            <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} data-testid="driver-name-input" />
+          </div>
+          <div>
+            <Label>Phone *</Label>
+            <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} data-testid="driver-phone-input" />
+          </div>
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={formData.email || ""} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+          </div>
+          <div>
+            <Label>License Number</Label>
+            <Input value={formData.license_number || ""} onChange={(e) => setFormData({...formData, license_number: e.target.value})} />
+          </div>
+          <div>
+            <Label>License Expiry</Label>
+            <Input type="date" value={formData.license_expiry || ""} onChange={(e) => setFormData({...formData, license_expiry: e.target.value})} />
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={formData.notes || ""} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading} className="bg-[#0A0F1C]" data-testid="save-driver-btn">
+            {loading ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const VehicleDialog = ({ open, onClose, vehicle, categories, headers, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    plate_number: "",
+    make: "",
+    model: "",
+    year: "",
+    color: "",
+    category_id: "",
+    passenger_capacity: 4,
+    luggage_capacity: 2,
+    notes: "",
+    status: "active"
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (vehicle) {
+      setFormData({ ...vehicle, year: vehicle.year || "" });
+    } else {
+      setFormData({
+        plate_number: "",
+        make: "",
+        model: "",
+        year: "",
+        color: "",
+        category_id: categories[0]?.id || "",
+        passenger_capacity: 4,
+        luggage_capacity: 2,
+        notes: "",
+        status: "active"
+      });
+    }
+  }, [vehicle, open, categories]);
+
+  const handleSubmit = async () => {
+    if (!formData.plate_number || !formData.category_id) {
+      toast.error("Plate number and category are required");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = { ...formData, year: formData.year ? parseInt(formData.year) : null };
+      if (vehicle) {
+        await axios.put(`${API}/fleet/vehicles/${vehicle.id}`, data, { headers });
+        toast.success("Vehicle updated");
+      } else {
+        await axios.post(`${API}/fleet/vehicles`, data, { headers });
+        toast.success("Vehicle created");
+      }
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save vehicle");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{vehicle ? "Edit Vehicle" : "Add Vehicle"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label>Plate Number *</Label>
+            <Input value={formData.plate_number} onChange={(e) => setFormData({...formData, plate_number: e.target.value})} data-testid="vehicle-plate-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Make</Label>
+              <Input value={formData.make || ""} onChange={(e) => setFormData({...formData, make: e.target.value})} placeholder="e.g. Toyota" />
+            </div>
+            <div>
+              <Label>Model</Label>
+              <Input value={formData.model || ""} onChange={(e) => setFormData({...formData, model: e.target.value})} placeholder="e.g. Camry" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Year</Label>
+              <Input type="number" value={formData.year || ""} onChange={(e) => setFormData({...formData, year: e.target.value})} placeholder="e.g. 2022" />
+            </div>
+            <div>
+              <Label>Color</Label>
+              <Input value={formData.color || ""} onChange={(e) => setFormData({...formData, color: e.target.value})} placeholder="e.g. Black" />
+            </div>
+          </div>
+          <div>
+            <Label>Category *</Label>
+            <Select value={formData.category_id} onValueChange={(v) => setFormData({...formData, category_id: v})}>
+              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+              <SelectContent>
+                {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Passengers</Label>
+              <Input type="number" min="1" value={formData.passenger_capacity} onChange={(e) => setFormData({...formData, passenger_capacity: parseInt(e.target.value) || 1})} />
+            </div>
+            <div>
+              <Label>Luggage</Label>
+              <Input type="number" min="0" value={formData.luggage_capacity} onChange={(e) => setFormData({...formData, luggage_capacity: parseInt(e.target.value) || 0})} />
+            </div>
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={formData.notes || ""} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading} className="bg-[#0A0F1C]" data-testid="save-vehicle-btn">
+            {loading ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, onSuccess }) => {
+  const [driverId, setDriverId] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (job) {
+      setDriverId(job.assigned_driver_id || "");
+      setVehicleId(job.assigned_vehicle_id || "");
+    }
+  }, [job, open]);
+
+  if (!job) return null;
+
+  const handleAssign = async () => {
+    if (!driverId) {
+      toast.error("Please select a driver");
+      return;
+    }
+    setLoading(true);
+    try {
+      await axios.put(`${API}/fleet/jobs/${job.id}/assign-driver`, {
+        driver_id: driverId,
+        vehicle_id: vehicleId || null
+      }, { headers });
+      toast.success("Driver assigned to job!");
+      onClose();
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to assign driver");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Assign Driver to Job</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="p-3 bg-zinc-50 rounded-sm text-sm">
+            <div className="font-mono text-xs mb-2">{job.booking_ref}</div>
+            <div><strong>Route:</strong> {job.pickup_location} → {job.dropoff_location}</div>
+            <div><strong>Date:</strong> {job.pickup_date} at {job.pickup_time}</div>
+            <div><strong>Payout:</strong> £{job.price?.toFixed(2)}</div>
+          </div>
+          
+          {drivers.length === 0 ? (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-sm text-center">
+              <p className="text-amber-700">You haven't added any drivers yet.</p>
+              <p className="text-sm text-amber-600 mt-1">Go to the "Drivers" tab to add drivers first.</p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <Label>Select Driver *</Label>
+                <Select value={driverId} onValueChange={setDriverId}>
+                  <SelectTrigger data-testid="select-driver-dropdown"><SelectValue placeholder="Choose a driver" /></SelectTrigger>
+                  <SelectContent>
+                    {drivers.filter(d => d.status === "active").map(d => (
+                      <SelectItem key={d.id} value={d.id}>{d.name} ({d.phone})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Select Vehicle (Optional)</Label>
+                <Select value={vehicleId} onValueChange={setVehicleId}>
+                  <SelectTrigger><SelectValue placeholder="Choose a vehicle" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No specific vehicle</SelectItem>
+                    {vehicles.filter(v => v.status === "active").map(v => (
+                      <SelectItem key={v.id} value={v.id}>{v.plate_number} - {v.make} {v.model}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleAssign} disabled={loading || drivers.length === 0} className="bg-[#0A0F1C]" data-testid="confirm-assign-driver-btn">
+            {loading ? "Assigning..." : "Assign Driver"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
