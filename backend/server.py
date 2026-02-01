@@ -251,6 +251,7 @@ class BookingExtra(BaseModel):
 class ManualBookingCreate(BaseModel):
     # Customer info
     customer_id: Optional[str] = None
+    customer_account_id: Optional[str] = None  # B2B Customer Account
     customer_name: str
     customer_email: Optional[str] = None
     customer_phone: str
