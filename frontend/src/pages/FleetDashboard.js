@@ -942,7 +942,7 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
                 <Select value={vehicleId} onValueChange={setVehicleId}>
                   <SelectTrigger><SelectValue placeholder="Choose a vehicle" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific vehicle</SelectItem>
+                    <SelectItem value="none">No specific vehicle</SelectItem>
                     {vehicles.filter(v => v.status === "active").map(v => (
                       <SelectItem key={v.id} value={v.id}>{v.plate_number} - {v.make} {v.model}</SelectItem>
                     ))}
