@@ -25,6 +25,15 @@ Build a complete airport transfer booking website for Aircabio with:
 - **Working Fleet/Driver/Vehicle Forms:** All CRUD operations functional
 - **Return Booking Feature:** Customer can book return journeys with 10% discount
 
+### Phase 4 Requirements (Pricing Module) - COMPLETED Feb 1, 2026
+- **Unified Pricing Section:** Single "Pricing" tab in admin sidebar consolidating all pricing controls
+- **Vehicle Class-Based Pricing:** Each vehicle class has its own configurable pricing card
+- **Mileage Brackets:** Tiered pricing based on distance (e.g., 0-6mi=£40, 6-20mi=£2.50/mi)
+- **Hourly/Daily Rates:** Configurable time-based pricing per vehicle
+- **Extra Fees:** Configurable fees (airport pickup, waiting time, meet & greet, night/weekend surcharges)
+- **Map-Based Fixed Routes:** Google Maps integration for defining fixed-price routes with radius zones
+- **Smart Quote Logic:** Quote engine prioritizes fixed routes if journey matches, falls back to mileage pricing
+
 ## What's Been Implemented
 
 ### Phase 1 (MVP) - Completed
