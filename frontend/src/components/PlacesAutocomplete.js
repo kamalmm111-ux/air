@@ -3,7 +3,7 @@ import { Input } from "./ui/input";
 
 const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
 
-// Load Google Maps script
+// Load Google Maps script with all required libraries
 const loadGoogleMapsScript = () => {
   return new Promise((resolve, reject) => {
     if (window.google && window.google.maps && window.google.maps.places) {
@@ -11,21 +11,32 @@ const loadGoogleMapsScript = () => {
       return;
     }
 
-    const existingScript = document.getElementById("google-maps-script");
+    // Check if script is already loading/loaded
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
     if (existingScript) {
-      existingScript.addEventListener("load", () => {
+      // Wait for it to load
+      const checkInterval = setInterval(() => {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          clearInterval(checkInterval);
+          resolve(window.google);
+        }
+      }, 100);
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
         if (window.google && window.google.maps) {
           resolve(window.google);
         } else {
-          reject(new Error("Google Maps failed to initialize"));
+          reject(new Error("Google Maps load timeout"));
         }
-      });
+      }, 10000);
       return;
     }
 
     const script = document.createElement("script");
     script.id = "google-maps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initGoogleMaps`;
     script.async = true;
     script.defer = true;
     
