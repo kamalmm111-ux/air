@@ -681,7 +681,10 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     token = authorization.split(" ")[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = payload["user_id"]
+        # Support both 'user_id' (regular tokens) and 'sub' (impersonation tokens)
+        user_id = payload.get("user_id") or payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token: no user identifier")
         role = payload.get("role")
         
         # For fleet_admin, look in fleets collection
@@ -695,7 +698,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
                     "phone": fleet.get("phone"),
                     "role": "fleet_admin",
                     "fleet_id": fleet["id"],
-                    "created_at": fleet["created_at"]
+                    "created_at": fleet["created_at"],
+                    "impersonation": payload.get("impersonation", False)
                 }
         
         # For other roles, look in users collection
