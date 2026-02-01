@@ -25,7 +25,12 @@ export const BookingProvider = ({ children }) => {
     flight_number: "",
     meet_greet: false,
     distance_km: 0,
-    duration_minutes: 0
+    duration_minutes: 0,
+    // Return journey fields
+    is_return: false,
+    return_date: "",
+    return_time: "",
+    return_flight_number: ""
   });
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -50,7 +55,11 @@ export const BookingProvider = ({ children }) => {
       flight_number: "",
       meet_greet: false,
       distance_km: 0,
-      duration_minutes: 0
+      duration_minutes: 0,
+      is_return: false,
+      return_date: "",
+      return_time: "",
+      return_flight_number: ""
     });
     setSelectedVehicle(null);
     setQuotes([]);
