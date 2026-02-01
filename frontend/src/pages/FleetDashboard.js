@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useAuth } from "../context/AuthContext";
 import { 
   Calendar, DollarSign, Clock, CheckCircle, TrendingUp, MapPin, Users, 
-  Briefcase, Play, Check, Eye, FileText, Download
+  Briefcase, Play, Check, Eye, FileText, Download, LogOut, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -17,7 +17,19 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const FleetDashboard = () => {
   const { activeTab } = useOutletContext();
-  const { token } = useAuth();
+  const { token: authToken } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Check for impersonation mode
+  const isImpersonating = searchParams.get("impersonate") === "true" || sessionStorage.getItem("impersonation_token");
+  const impersonationToken = sessionStorage.getItem("impersonation_token");
+  const impersonationFleet = JSON.parse(sessionStorage.getItem("impersonation_fleet") || "{}");
+  const impersonationId = sessionStorage.getItem("impersonation_id");
+  
+  // Use impersonation token if in impersonation mode, otherwise use regular auth token
+  const token = isImpersonating ? impersonationToken : authToken;
+  
   const [stats, setStats] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -27,6 +39,12 @@ const FleetDashboard = () => {
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
+    if (!token) {
+      if (!isImpersonating) {
+        navigate("/fleet/login");
+      }
+      return;
+    }
     fetchData();
     // Poll for updates every 30 seconds
     const interval = setInterval(fetchData, 30000);
@@ -34,6 +52,7 @@ const FleetDashboard = () => {
   }, [token]);
 
   const fetchData = async () => {
+    if (!token) return;
     try {
       const [statsRes, jobsRes, invoicesRes] = await Promise.all([
         axios.get(`${API}/fleet/stats`, { headers }),
@@ -47,6 +66,34 @@ const FleetDashboard = () => {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const exitImpersonation = async () => {
+    try {
+      // Log the exit
+      if (impersonationId) {
+        const adminToken = sessionStorage.getItem("admin_token");
+        await axios.post(
+          `${API}/admin/impersonation/${impersonationId}/exit`,
+          {},
+          { headers: { Authorization: `Bearer ${adminToken}` } }
+        ).catch(() => {}); // Don't fail if this doesn't work
+      }
+      
+      // Clear impersonation data
+      sessionStorage.removeItem("impersonation_token");
+      sessionStorage.removeItem("impersonation_fleet");
+      sessionStorage.removeItem("impersonation_id");
+      sessionStorage.removeItem("admin_token");
+      
+      toast.success("Exited impersonation mode");
+      window.location.href = "/admin?tab=fleets";
+    } catch (error) {
+      console.error("Exit impersonation error:", error);
+      // Still clear and redirect
+      sessionStorage.clear();
+      window.location.href = "/admin";
     }
   };
 
