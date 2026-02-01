@@ -881,7 +881,9 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
       setFormData({
         customer_name: "", customer_email: "", customer_phone: "", customer_reference: "",
         pickup_date: "", pickup_time: "", pickup_location: "", pickup_postcode: "",
-        dropoff_location: "", dropoff_postcode: "", vehicle_category_id: "", passengers: 1,
+        pickup_lat: null, pickup_lng: null,
+        dropoff_location: "", dropoff_postcode: "", dropoff_lat: null, dropoff_lng: null,
+        vehicle_category_id: "", passengers: 1,
         small_bags: 0, large_bags: 0, flight_number: "", meet_greet: false,
         customer_price: 0, driver_price: 0, extras: [], pickup_notes: "", dropoff_notes: "",
         admin_notes: "", assigned_fleet_id: "", assigned_driver_id: ""
