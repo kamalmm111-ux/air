@@ -710,7 +710,7 @@ const AdminDashboard = () => {
     vehicles: renderVehicles(),
     pricing: renderPricing(),
     invoices: renderInvoices(),
-    settings: <div className="p-8 text-center text-zinc-500">Settings panel coming soon</div>
+    settings: <WebsiteSettings token={token} />
   };
 
   return (
