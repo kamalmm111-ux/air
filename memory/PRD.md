@@ -187,6 +187,13 @@ Admin:
 /api/admin/vehicles - Vehicle management CRUD
 /api/admin/vehicle-categories - Vehicle categories CRUD
 
+Pricing Module (NEW):
+/api/pricing-schemes - Get all pricing schemes
+/api/pricing-schemes/{vehicle_id} - Get/update pricing scheme for vehicle
+/api/map-fixed-routes - CRUD map-based fixed routes
+/api/map-fixed-routes/vehicle/{vehicle_id} - Get routes for specific vehicle
+/api/pricing-summary/{vehicle_id} - Get pricing summary counts
+
 Resources:
 /api/fleets - CRUD fleets
 /api/drivers - CRUD drivers
@@ -208,21 +215,21 @@ Fleet Portal:
 Public:
 /api/vehicles - Vehicle list
 /api/pricing - Pricing rules
-/api/quote - Get price quote
+/api/quote - Get price quote (NEW: prioritizes fixed routes, falls back to mileage)
 /api/bookings - Create/view bookings
 ```
 
 ## Technical Notes
 
 ### Mocked Features
-- Google Places: Using plain text input
-- Distance calculation: User provides distance or mock values
+- Google Places: Using plain text input (but Google Maps works in route builder)
 - Email notifications: Not sent (logged only)
 - Stripe: Using test keys (sk_test_emergent)
 
 ### Key Files
-- `/app/backend/server.py` - All backend routes and models (~1800 lines)
-- `/app/frontend/src/pages/AdminDashboard.js` - Super admin dashboard (~1750 lines)
+- `/app/backend/server.py` - All backend routes and models (~2500 lines)
+- `/app/frontend/src/pages/AdminDashboard.js` - Super admin dashboard (~1800 lines)
+- `/app/frontend/src/components/PricingModule.js` - Comprehensive pricing module (NEW)
 - `/app/frontend/src/pages/FleetDashboard.js` - Fleet dashboard
 - `/app/frontend/src/components/BookingEngine.js` - Booking engine with return journey
 - `/app/frontend/src/pages/SearchResultsPage.js` - Search results with return pricing
