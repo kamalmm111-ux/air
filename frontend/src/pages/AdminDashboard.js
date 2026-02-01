@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import PricingModule from "../components/PricingModule";
 import PlacesAutocomplete from "../components/PlacesAutocomplete";
-import WebsiteSettings from "../components/WebsiteSettings";
+import CMSManager from "../components/CMSManager";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
