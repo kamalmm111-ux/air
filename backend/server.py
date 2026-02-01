@@ -399,6 +399,68 @@ class JobAssignment(BaseModel):
     driver_price: Optional[float] = None
     notes: Optional[str] = None
 
+# Customer Account Model (B2B)
+class CustomerAccount(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_name: str
+    contact_person: str
+    email: str
+    phone: str
+    billing_address: Optional[str] = None
+    notes: Optional[str] = None
+    payment_terms: Optional[str] = None  # e.g., "Net 30", "Net 15", "On Booking"
+    credit_limit: Optional[float] = None
+    status: str = "active"  # active, inactive, suspended
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class CustomerAccountCreate(BaseModel):
+    company_name: str
+    contact_person: str
+    email: str
+    phone: str
+    billing_address: Optional[str] = None
+    notes: Optional[str] = None
+    payment_terms: Optional[str] = None
+    credit_limit: Optional[float] = None
+
+class CustomerAccountUpdate(BaseModel):
+    company_name: Optional[str] = None
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    billing_address: Optional[str] = None
+    notes: Optional[str] = None
+    payment_terms: Optional[str] = None
+    credit_limit: Optional[float] = None
+    status: Optional[str] = None
+
+# Booking History/Audit Model
+class BookingHistory(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    booking_id: str
+    action: str  # created, status_changed, price_updated, driver_assigned, etc.
+    description: str
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    user_id: str
+    user_name: str
+    user_role: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Booking Note Model (Admin Internal Notes)
+class BookingNote(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    booking_id: str
+    note: str
+    user_id: str
+    user_name: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: Optional[str] = None
+
+class BookingNoteCreate(BaseModel):
+    note: str
+
 # Job Comment Model
 class JobComment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
