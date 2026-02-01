@@ -892,7 +892,7 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
     try {
       await axios.put(`${API}/fleet/jobs/${job.id}/assign-driver`, {
         driver_id: driverId,
-        vehicle_id: vehicleId || null
+        vehicle_id: vehicleId && vehicleId !== "none" ? vehicleId : null
       }, { headers });
       toast.success("Driver assigned to job!");
       onClose();
