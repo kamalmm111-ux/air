@@ -439,7 +439,138 @@ class InvoiceUpdate(BaseModel):
     tax: Optional[float] = None
     total: Optional[float] = None
 
-# Radius Zone for Fixed Pricing
+# ==================== COMPREHENSIVE PRICING MODELS ====================
+
+# Mileage Bracket (distance-based pricing tier)
+class MileageBracket(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    min_miles: float = 0
+    max_miles: Optional[float] = None  # None means unlimited
+    fixed_price: Optional[float] = None  # If set, use this fixed price for the bracket
+    per_mile_rate: Optional[float] = None  # If set, charge per mile in this bracket
+    order: int = 0
+
+class MileageBracketCreate(BaseModel):
+    min_miles: float = 0
+    max_miles: Optional[float] = None
+    fixed_price: Optional[float] = None
+    per_mile_rate: Optional[float] = None
+    order: int = 0
+
+# Time-based rates (hourly/daily)
+class TimeRates(BaseModel):
+    hourly_rate: float = 0.0
+    minimum_hours: int = 2
+    daily_rate: float = 0.0
+
+# Extra fees configuration
+class ExtraFees(BaseModel):
+    additional_pickup_fee: float = 10.0
+    waiting_per_minute: float = 0.50
+    airport_pickup_fee: float = 10.0
+    meet_greet_fee: float = 15.0
+    night_surcharge_percent: float = 20.0
+    weekend_surcharge_percent: float = 0.0
+    child_seat_fee: float = 10.0
+
+# Complete pricing scheme for a vehicle class
+class PricingScheme(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    vehicle_category_id: str
+    vehicle_name: Optional[str] = None
+    mileage_brackets: List[Dict] = []  # List of MileageBracket
+    time_rates: Dict = {}  # TimeRates as dict
+    extra_fees: Dict = {}  # ExtraFees as dict
+    base_fare: float = 0.0
+    minimum_fare: float = 25.0
+    currency: str = "GBP"
+    is_active: bool = True
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class PricingSchemeCreate(BaseModel):
+    vehicle_category_id: str
+    mileage_brackets: List[Dict] = []
+    time_rates: Optional[Dict] = None
+    extra_fees: Optional[Dict] = None
+    base_fare: float = 0.0
+    minimum_fare: float = 25.0
+    currency: str = "GBP"
+
+class PricingSchemeUpdate(BaseModel):
+    mileage_brackets: Optional[List[Dict]] = None
+    time_rates: Optional[Dict] = None
+    extra_fees: Optional[Dict] = None
+    base_fare: Optional[float] = None
+    minimum_fare: Optional[float] = None
+    is_active: Optional[bool] = None
+
+# Map-based Fixed Route with radius circles
+class MapFixedRoute(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    vehicle_category_id: str
+    vehicle_name: Optional[str] = None
+    # Start point
+    start_label: str
+    start_lat: float
+    start_lng: float
+    start_radius_miles: float = 3.0
+    # End point
+    end_label: str
+    end_lat: float
+    end_lng: float
+    end_radius_miles: float = 3.0
+    # Pricing
+    price: float
+    currency: str = "GBP"
+    # Distance
+    distance_miles: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    # Options
+    valid_return: bool = False  # If true, applies to both A->B and B->A
+    priority: int = 0  # Higher priority = used first when multiple routes match
+    route_type: str = "one_way"  # one_way or return
+    is_active: bool = True
+    # Timestamps
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class MapFixedRouteCreate(BaseModel):
+    name: str
+    vehicle_category_id: str
+    start_label: str
+    start_lat: float
+    start_lng: float
+    start_radius_miles: float = 3.0
+    end_label: str
+    end_lat: float
+    end_lng: float
+    end_radius_miles: float = 3.0
+    price: float
+    distance_miles: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    valid_return: bool = False
+    priority: int = 0
+
+class MapFixedRouteUpdate(BaseModel):
+    name: Optional[str] = None
+    start_label: Optional[str] = None
+    start_lat: Optional[float] = None
+    start_lng: Optional[float] = None
+    start_radius_miles: Optional[float] = None
+    end_label: Optional[str] = None
+    end_lat: Optional[float] = None
+    end_lng: Optional[float] = None
+    end_radius_miles: Optional[float] = None
+    price: Optional[float] = None
+    distance_miles: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    valid_return: Optional[bool] = None
+    priority: Optional[int] = None
+    is_active: Optional[bool] = None
 class RadiusZone(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
