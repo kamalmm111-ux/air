@@ -1290,8 +1290,17 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
     else:
         status = "unassigned"
     
+    # Get customer account info if provided
+    customer_account_name = None
+    if booking_data.customer_account_id:
+        customer_account = await db.customer_accounts.find_one({"id": booking_data.customer_account_id}, {"_id": 0})
+        if customer_account:
+            customer_account_name = customer_account.get("company_name")
+    
     booking = Booking(
         customer_id=booking_data.customer_id,
+        customer_account_id=booking_data.customer_account_id,
+        customer_account_name=customer_account_name,
         customer_name=booking_data.customer_name,
         customer_email=booking_data.customer_email,
         customer_phone=booking_data.customer_phone,
