@@ -1,10 +1,38 @@
+import { useState, useEffect } from "react";
 import BookingEngine from "../components/BookingEngine";
 import { CheckCircle, Clock, Shield, Globe, Star, Phone } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const [siteSettings, setSiteSettings] = useState({});
+  const [pageContent, setPageContent] = useState(null);
+
+  useEffect(() => {
+    // Fetch website settings and page content from CMS
+    const fetchCMSContent = async () => {
+      try {
+        const [settingsRes, pageRes] = await Promise.all([
+          axios.get(`${API}/website-settings`),
+          axios.get(`${API}/pages/home`)
+        ]);
+        setSiteSettings(settingsRes.data || {});
+        setPageContent(pageRes.data || null);
+      } catch (error) {
+        console.log("Using default content");
+      }
+    };
+    fetchCMSContent();
+  }, []);
+
+  // Get content from CMS or use defaults
+  const heroTitle = siteSettings.hero_title || pageContent?.sections?.find(s => s.type === "hero")?.title || "Travel in Style & Comfort";
+  const heroSubtitle = siteSettings.hero_subtitle || pageContent?.sections?.find(s => s.type === "hero")?.subtitle || "Book your airport transfer with Aircabio. Professional drivers, premium vehicles, and guaranteed on-time service worldwide.";
+  const heroImage = siteSettings.hero_background_url || pageContent?.sections?.find(s => s.type === "hero")?.image_url || "https://images.unsplash.com/photo-1641736950490-ebb6533422d9?crop=entropy&cs=srgb&fm=jpg&q=85";
 
   const features = [
     {
