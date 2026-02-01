@@ -710,7 +710,7 @@ const AdminDashboard = () => {
     vehicles: renderVehicles(),
     pricing: renderPricing(),
     invoices: renderInvoices(),
-    settings: <WebsiteSettings token={token} />
+    settings: <CMSManager token={token} />
   };
 
   return (
