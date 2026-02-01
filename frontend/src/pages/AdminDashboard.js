@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import { 
   Calendar, DollarSign, Users, Car, Download, Eye, Edit, Plus, Search, Filter,
   Clock, CheckCircle, Building2, Truck, FileText, MapPin, Send, X, Minus,
-  Plane, User, Phone, Mail, Hash, AlertTriangle, TrendingUp, UserCheck
+  Plane, User, Phone, Mail, Hash, AlertTriangle, TrendingUp, UserCheck, LogIn, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
