@@ -1335,6 +1335,15 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
     
     await db.bookings.insert_one(booking.model_dump())
     
+    # Log booking creation to history
+    await log_booking_history(
+        booking.id, 
+        "created", 
+        f"Booking created by {user.get('name')}", 
+        user,
+        new_value=f"Status: {status}, Customer: {booking_data.customer_name}"
+    )
+    
     # Create notification for fleet if assigned
     if booking_data.assigned_fleet_id:
         await db.notifications.insert_one({
@@ -1346,6 +1355,15 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
             "read": False,
             "created_at": datetime.now(timezone.utc).isoformat()
         })
+        
+        # Log assignment to history
+        await log_booking_history(
+            booking.id,
+            "fleet_assigned",
+            f"Assigned to fleet: {assigned_fleet_name}",
+            user,
+            new_value=assigned_fleet_name
+        )
     
     return booking.model_dump()
 
