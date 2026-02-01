@@ -97,7 +97,7 @@ const AdminDashboard = () => {
         axios.get(`${API}/drivers`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/admin/vehicles`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/invoices`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/customers`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${API}/admin/customers`, { headers }).catch(() => ({ data: [] }))
       ]);
       setStats(statsRes.data);
       setBookings(bookingsRes.data);
