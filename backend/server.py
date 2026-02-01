@@ -294,6 +294,8 @@ class Booking(BaseModel):
     booking_ref: str = Field(default_factory=lambda: f"AC{str(uuid.uuid4())[:6].upper()}")
     # Customer info
     customer_id: Optional[str] = None
+    customer_account_id: Optional[str] = None  # B2B Customer Account
+    customer_account_name: Optional[str] = None  # Denormalized for display
     customer_name: str = ""
     customer_email: Optional[str] = None
     customer_phone: str = ""
