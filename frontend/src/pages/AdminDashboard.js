@@ -77,6 +77,7 @@ const AdminDashboard = () => {
   const [fleetDialogOpen, setFleetDialogOpen] = useState(false);
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [viewBookingDialogOpen, setViewBookingDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [editingFleet, setEditingFleet] = useState(null);
   const [editingDriver, setEditingDriver] = useState(null);
