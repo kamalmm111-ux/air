@@ -79,10 +79,18 @@ const PlacesAutocomplete = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
+  // Store latest callback in ref to avoid stale closure
+  const onPlaceSelectRef = useRef(onPlaceSelect);
+  useEffect(() => {
+    onPlaceSelectRef.current = onPlaceSelect;
+  }, [onPlaceSelect]);
+
   const handlePlaceSelect = useCallback(() => {
     if (!autocompleteRef.current) return;
     
     const place = autocompleteRef.current.getPlace();
+    console.log("Place selected:", place);
+    
     if (place && place.geometry) {
       const location = {
         address: place.formatted_address || place.name,
@@ -90,9 +98,12 @@ const PlacesAutocomplete = ({
         lng: place.geometry.location.lng(),
         placeId: place.place_id
       };
-      onPlaceSelect(location);
+      console.log("Calling onPlaceSelect with:", location);
+      if (onPlaceSelectRef.current) {
+        onPlaceSelectRef.current(location);
+      }
     }
-  }, [onPlaceSelect]);
+  }, []);
 
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) {
@@ -113,7 +124,15 @@ const PlacesAutocomplete = ({
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !inputRef.current || autocompleteRef.current || loadError) return;
+    if (!isLoaded || !inputRef.current || loadError) return;
+    
+    // Cleanup existing autocomplete
+    if (autocompleteRef.current) {
+      try {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      } catch (e) {}
+      autocompleteRef.current = null;
+    }
 
     try {
       const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
@@ -132,9 +151,7 @@ const PlacesAutocomplete = ({
       if (autocompleteRef.current && window.google && window.google.maps) {
         try {
           window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
-        } catch (e) {
-          // Ignore cleanup errors
-        }
+        } catch (e) {}
       }
     };
   }, [isLoaded, loadError, handlePlaceSelect]);
