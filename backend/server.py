@@ -1654,6 +1654,51 @@ async def fleet_assign_driver_to_job(booking_id: str, assignment: FleetDriverAss
     await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
     return {"message": "Driver assigned to job successfully"}
 
+# ==================== JOB COMMENTS ROUTES ====================
+
+@api_router.get("/bookings/{booking_id}/comments")
+async def get_job_comments(booking_id: str, user: dict = Depends(get_admin_or_fleet)):
+    """Get all comments for a job"""
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Fleet can only see comments for their jobs
+    if user.get("role") == "fleet_admin":
+        if booking.get("assigned_fleet_id") != user.get("fleet_id"):
+            raise HTTPException(status_code=403, detail="Not authorized to view this job")
+    
+    comments = await db.job_comments.find(
+        {"booking_id": booking_id}, 
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(100)
+    
+    return comments
+
+@api_router.post("/bookings/{booking_id}/comments")
+async def add_job_comment(booking_id: str, comment_data: JobCommentCreate, user: dict = Depends(get_admin_or_fleet)):
+    """Add a comment to a job"""
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Fleet can only comment on their jobs
+    if user.get("role") == "fleet_admin":
+        if booking.get("assigned_fleet_id") != user.get("fleet_id"):
+            raise HTTPException(status_code=403, detail="Not authorized to comment on this job")
+    
+    comment = JobComment(
+        booking_id=booking_id,
+        user_id=user.get("id") or user.get("fleet_id"),
+        user_name=user.get("name", "Unknown"),
+        user_role=user.get("role", "unknown"),
+        comment=comment_data.comment
+    )
+    
+    await db.job_comments.insert_one(comment.model_dump())
+    
+    return comment.model_dump()
+
 # ==================== ADMIN BOOKING ROUTES ====================
 
 @api_router.get("/admin/bookings")
