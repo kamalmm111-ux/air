@@ -635,40 +635,7 @@ const AdminDashboard = () => {
   );
 
   const renderPricing = () => (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold">Mileage-Based Pricing Rules</h2>
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Vehicle</TableHead>
-                <TableHead>Base Fee</TableHead>
-                <TableHead>Per KM</TableHead>
-                <TableHead>Minimum Fare</TableHead>
-                <TableHead>Airport</TableHead>
-                <TableHead>Meet & Greet</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pricingRules.map((rule) => {
-                const vehicle = vehicles.find(v => v.id === rule.vehicle_category_id);
-                return (
-                  <TableRow key={rule.id}>
-                    <TableCell className="font-medium">{vehicle?.name || rule.vehicle_category_id}</TableCell>
-                    <TableCell>£{rule.base_fee?.toFixed(2)}</TableCell>
-                    <TableCell>£{rule.per_km_rate?.toFixed(2)}</TableCell>
-                    <TableCell>£{rule.minimum_fare?.toFixed(2)}</TableCell>
-                    <TableCell>£{rule.airport_surcharge?.toFixed(2)}</TableCell>
-                    <TableCell>£{rule.meet_greet_fee?.toFixed(2)}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+    <PricingModule token={token} />
   );
 
   const renderRoutes = () => (

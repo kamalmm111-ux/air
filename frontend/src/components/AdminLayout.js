@@ -40,9 +40,7 @@ const AdminLayout = () => {
     { id: "fleets", name: "Fleets", icon: Building2 },
     { id: "drivers", name: "Drivers", icon: Users },
     { id: "vehicles", name: "Vehicles", icon: Truck },
-    { id: "pricing", name: "Pricing Rules", icon: DollarSign },
-    { id: "routes", name: "Fixed Routes", icon: Route },
-    { id: "vehicle-categories", name: "Vehicle Classes", icon: Car },
+    { id: "pricing", name: "Pricing", icon: DollarSign },
     { id: "invoices", name: "Invoices", icon: FileText },
     { id: "settings", name: "Settings", icon: Settings },
   ];
