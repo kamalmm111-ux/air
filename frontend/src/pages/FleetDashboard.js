@@ -1234,8 +1234,8 @@ const AssignDriverDialog = ({ open, onClose, job, drivers, vehicles, headers, on
             <div className="p-4 bg-amber-50 border border-amber-200 rounded text-center">
               <AlertTriangle className="w-6 h-6 text-amber-500 mx-auto mb-2" />
               <p className="text-amber-700 font-medium">Setup Required</p>
-              {!hasDrivers && <p className="text-sm text-amber-600">Add drivers in "My Drivers" tab</p>}
-              {!hasVehicles && <p className="text-sm text-amber-600">Add vehicles in "My Vehicles" tab</p>}
+              {!hasDrivers && <p className="text-sm text-amber-600">Add drivers in &quot;My Drivers&quot; tab</p>}
+              {!hasVehicles && <p className="text-sm text-amber-600">Add vehicles in &quot;My Vehicles&quot; tab</p>}
             </div>
           ) : (
             <>
