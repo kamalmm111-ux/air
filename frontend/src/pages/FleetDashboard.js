@@ -702,7 +702,7 @@ const FleetDashboard = () => {
       
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#0A0F1C] capitalize" style={{ fontFamily: 'Chivo, sans-serif' }}>
-          {activeTab === "jobs" ? "Job Dashboard" : activeTab === "drivers" ? "My Drivers" : activeTab === "vehicles" ? "My Vehicles" : activeTab}
+          {activeTab === "jobs" ? "Job Dashboard" : activeTab === "drivers" ? "My Drivers" : activeTab === "vehicles" ? "My Vehicles" : activeTab === "invoices" ? "My Invoices" : activeTab}
         </h1>
       </div>
       
