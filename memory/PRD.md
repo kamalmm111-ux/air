@@ -262,6 +262,10 @@ Public:
 - [x] Map-based fixed routes with Google Maps radius zones
 - [x] Smart quote engine (fixed route priority → mileage fallback)
 - [x] Fleet Management Workflow: driver_price assignment, fleet job visibility, fleet driver/vehicle CRUD, fleet job assignment
+- [x] **Post-Deployment Bug Fixes (Feb 2, 2026)**:
+  - [x] Fleet Impersonation Fixed: "Login As" button now correctly navigates to fleet dashboard
+  - [x] Invoice Download Fixed: Changed from window.open to axios blob download with proper auth headers
+  - [x] Driver Invoice Feature: Verified working - "Driver Payout" option available in Create Invoice dialog
 - [x] **Booking Dashboard Accuracy & Feature Upgrade (Feb 2, 2026)**:
   - [x] B2B Customer Accounts system with full CRUD (Add, Edit, View, Delete)
   - [x] Customer Accounts tab in Admin Dashboard sidebar
