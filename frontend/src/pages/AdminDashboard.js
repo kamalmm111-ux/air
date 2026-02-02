@@ -936,7 +936,8 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
       const submitData = {
         ...formData,
         assigned_fleet_id: formData.assigned_fleet_id === "none" ? null : formData.assigned_fleet_id || null,
-        assigned_driver_id: formData.assigned_driver_id === "none" ? null : formData.assigned_driver_id || null
+        assigned_driver_id: formData.assigned_driver_id === "none" ? null : formData.assigned_driver_id || null,
+        customer_account_id: formData.customer_account_id === "none" ? null : formData.customer_account_id || null
       };
       await axios.post(`${API}/admin/bookings/manual`, submitData, { headers });
       toast.success("Job created successfully!");
@@ -944,6 +945,7 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
       onSuccess();
       setFormData({
         customer_name: "", customer_email: "", customer_phone: "", customer_reference: "",
+        customer_account_id: "",
         pickup_date: "", pickup_time: "", pickup_location: "", pickup_postcode: "",
         pickup_lat: null, pickup_lng: null,
         dropoff_location: "", dropoff_postcode: "", dropoff_lat: null, dropoff_lng: null,
