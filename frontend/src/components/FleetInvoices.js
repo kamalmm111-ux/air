@@ -321,7 +321,7 @@ export const FleetInvoices = ({ token, fleetId }) => {
                     <Clock className="w-5 h-5 text-yellow-600 mt-0.5" />
                     <div>
                       <p className="font-semibold text-yellow-800">Awaiting Admin Approval</p>
-                      <p className="text-sm text-yellow-700">This invoice is currently under review. You will be notified once it's approved.</p>
+                      <p className="text-sm text-yellow-700">This invoice is currently under review. You will be notified once it is approved.</p>
                     </div>
                   </div>
                 )}
