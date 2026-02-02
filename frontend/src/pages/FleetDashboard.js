@@ -46,7 +46,7 @@ const STATUS_LABELS = {
 
 const FleetDashboard = () => {
   const { activeTab } = useOutletContext();
-  const { token: authToken } = useAuth();
+  const { token: authToken, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
