@@ -157,6 +157,30 @@ const AdminDashboard = () => {
     }
   };
 
+  const resetFleetPassword = async (fleet) => {
+    if (!window.confirm(`Reset password for ${fleet.name}? A new password will be generated and emailed to ${fleet.email}.`)) {
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `${API}/fleets/${fleet.id}/reset-password`,
+        {},
+        { headers }
+      );
+      toast.success(
+        <div>
+          <p>Password reset successful!</p>
+          <p className="text-xs mt-1 font-mono bg-zinc-100 p-1 rounded">{response.data.temporary_password}</p>
+          <p className="text-xs mt-1 text-zinc-500">Email sent to {fleet.email}</p>
+        </div>,
+        { duration: 10000 }
+      );
+    } catch (error) {
+      console.error("Password reset error:", error);
+      toast.error("Failed to reset password");
+    }
+  };
+
   const getStatusBadge = (status) => {
     const config = JOB_STATUSES[status] || { label: status, color: "bg-zinc-100 text-zinc-800" };
     return <Badge className={config.color}>{config.label}</Badge>;
