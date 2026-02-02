@@ -1566,7 +1566,7 @@ async def unassign_booking(booking_id: str, user: dict = Depends(get_super_admin
     return {"message": "Booking unassigned"}
 
 @api_router.put("/bookings/{booking_id}/status")
-async def update_booking_status(booking_id: str, status: str, user: dict = Depends(get_admin_or_fleet)):
+async def update_booking_status(booking_id: str, status: str, background_tasks: BackgroundTasks, user: dict = Depends(get_admin_or_fleet)):
     """Update booking status with role-based permissions"""
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
@@ -1620,6 +1620,16 @@ async def update_booking_status(booking_id: str, status: str, user: dict = Depen
         old_value=old_status,
         new_value=status
     )
+    
+    # Send email notifications for key status changes
+    updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if updated_booking and updated_booking.get("customer_email"):
+        if status in ["en_route", "arrived", "in_progress"]:
+            background_tasks.add_task(send_status_update, updated_booking, status)
+        elif status == "completed":
+            background_tasks.add_task(send_booking_completed, updated_booking)
+        elif status == "cancelled":
+            background_tasks.add_task(send_booking_cancelled, updated_booking)
     
     return {"message": f"Status updated to {status}"}
 
