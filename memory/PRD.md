@@ -294,12 +294,19 @@ Public:
   - [x] Download PDF functionality
   - [x] FleetInvoices component for Fleet Dashboard
   - [x] Fleet can view and download their invoices
+- [x] **Email Notification System & Fleet Password Management (Feb 2, 2026)**:
+  - [x] Comprehensive email service module (`/app/backend/email_service.py`)
+  - [x] Email templates for: Booking confirmation, Job alerts to fleet, Driver assignment, Status updates, Invoice issued, Payment success/failed, Fleet suspended/reactivated
+  - [x] Integrated email sending into booking/status/invoice/fleet endpoints using BackgroundTasks
+  - [x] Fleet Password Management: Reset Password button in Admin Fleet table
+  - [x] Auto-generate temporary password on fleet creation
+  - [x] Send password via email to fleet
+  - [x] **NOTE:** Email service requires valid Resend API key (starts with `re_`) - currently in LOG-ONLY mode
 
 ### P1 - High Priority
-- [ ] Email notifications (booking confirmations, job assignments) - using Resend
+- [ ] Get valid Resend API key to enable actual email sending
 - [ ] Real Google Places autocomplete integration for booking engine
 - [ ] Booking export to CSV
-- [ ] Fleet password management (allow setting/resetting fleet passwords)
 - [ ] Refactor server.py (2500+ lines) into proper structure (models, routes, services)
 
 ### P2 - Medium Priority
