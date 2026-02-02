@@ -83,24 +83,21 @@ def get_base_template(content: str, title: str = "Aircabio") -> str:
 
 
 async def send_email(to: str, subject: str, html_content: str, cc: Optional[List[str]] = None) -> Dict:
-    """Send an email using Resend (non-blocking)"""
-    if not RESEND_API_KEY or not RESEND_AVAILABLE:
+    """Send an email using Resend via emergentintegrations (non-blocking)"""
+    if not EMAIL_AVAILABLE or not resend_email:
         logger.info(f"[EMAIL LOG] To: {to}, Subject: {subject}")
-        return {"status": "logged", "message": "Email logged (Resend not configured)"}
+        return {"status": "logged", "message": "Email logged (service not configured)"}
     
     try:
-        params = {
-            "from": f"{COMPANY_NAME} <{SENDER_EMAIL}>",
-            "to": [to] if isinstance(to, str) else to,
-            "subject": subject,
-            "html": html_content
-        }
-        if cc:
-            params["cc"] = cc
-        
-        result = await asyncio.to_thread(resend.Emails.send, params)
+        result = await asyncio.to_thread(
+            resend_email.send_email,
+            from_email=f"{COMPANY_NAME} <{SENDER_EMAIL}>",
+            to_email=to,
+            subject=subject,
+            html_content=html_content
+        )
         logger.info(f"Email sent to {to}: {subject}")
-        return {"status": "success", "email_id": result.get("id")}
+        return {"status": "success", "result": result}
     except Exception as e:
         logger.error(f"Failed to send email to {to}: {str(e)}")
         return {"status": "error", "message": str(e)}
