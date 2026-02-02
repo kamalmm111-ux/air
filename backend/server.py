@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -19,6 +19,15 @@ import io
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Import email service
+from email_service import (
+    send_booking_confirmation, send_booking_updated, send_booking_cancelled, send_booking_completed,
+    send_job_alert_to_fleet, send_driver_assigned_to_customer, send_status_update,
+    send_fleet_suspended, send_fleet_reactivated, send_fleet_password_reset,
+    send_invoice_issued, send_payment_success, send_payment_failed,
+    send_admin_alert
+)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
