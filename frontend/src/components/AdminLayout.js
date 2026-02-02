@@ -131,26 +131,37 @@ const AdminLayout = () => {
               <p className="text-xs text-zinc-500">{user?.email}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <Button
               variant="ghost"
               size="sm"
-              className="flex-1 text-zinc-400 hover:text-white"
-              onClick={() => navigate("/")}
+              className="w-full justify-start text-zinc-400 hover:text-white"
+              onClick={() => setPasswordDialogOpen(true)}
             >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Site
+              <Key className="w-4 h-4 mr-2" />
+              Change Password
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1 text-zinc-400 hover:text-white"
-              onClick={handleLogout}
-              data-testid="admin-logout-btn"
-            >
-              <LogOut className="w-4 h-4 mr-1" />
-              Logout
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 text-zinc-400 hover:text-white"
+                onClick={() => navigate("/")}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Site
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 text-zinc-400 hover:text-white"
+                onClick={handleLogout}
+                data-testid="admin-logout-btn"
+              >
+                <LogOut className="w-4 h-4 mr-1" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </aside>
@@ -159,6 +170,52 @@ const AdminLayout = () => {
       <main className="flex-1 overflow-auto">
         <Outlet context={{ activeTab, setActiveTab }} />
       </main>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" /> Change Password
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Current Password</Label>
+              <Input 
+                type="password" 
+                value={passwords.current} 
+                onChange={(e) => setPasswords({...passwords, current: e.target.value})}
+                placeholder="Enter current password"
+              />
+            </div>
+            <div>
+              <Label>New Password</Label>
+              <Input 
+                type="password" 
+                value={passwords.new} 
+                onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                placeholder="Enter new password"
+              />
+            </div>
+            <div>
+              <Label>Confirm New Password</Label>
+              <Input 
+                type="password" 
+                value={passwords.confirm} 
+                onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                placeholder="Confirm new password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleChangePassword} disabled={changingPassword} className="bg-[#0A0F1C]">
+              {changingPassword ? "Changing..." : "Change Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
