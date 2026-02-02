@@ -424,83 +424,179 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderFleets = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Fleet Management</h2>
-        <Button onClick={() => { setEditingFleet(null); setFleetDialogOpen(true); }} className="bg-[#0A0F1C]">
-          <Plus className="w-4 h-4 mr-2" /> Add Fleet
-        </Button>
-      </div>
+  const renderFleets = () => {
+    // Filter fleets based on search and status
+    const filteredFleets = fleets.filter(fleet => {
+      const matchesSearch = fleetSearchTerm === "" || 
+        fleet.name?.toLowerCase().includes(fleetSearchTerm.toLowerCase()) ||
+        fleet.email?.toLowerCase().includes(fleetSearchTerm.toLowerCase()) ||
+        fleet.contact_person?.toLowerCase().includes(fleetSearchTerm.toLowerCase()) ||
+        fleet.city?.toLowerCase().includes(fleetSearchTerm.toLowerCase());
+      const matchesStatus = fleetStatusFilter === "all" || fleet.status === fleetStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fleet Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Commission</TableHead>
-                <TableHead>Payment Terms</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fleets.map((fleet) => (
-                <TableRow key={fleet.id}>
-                  <TableCell>
-                    <div className="font-medium">{fleet.name}</div>
-                    <div className="text-xs text-zinc-500">{fleet.email}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div>{fleet.contact_person}</div>
-                    <div className="text-xs text-zinc-500">{fleet.phone}</div>
-                  </TableCell>
-                  <TableCell>{fleet.city}</TableCell>
-                  <TableCell>
-                    {fleet.commission_type === "percentage" ? `${fleet.commission_value}%` : `£${fleet.commission_value}`}
-                  </TableCell>
-                  <TableCell className="capitalize">{fleet.payment_terms}</TableCell>
-                  <TableCell>
-                    <Badge className={fleet.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                      {fleet.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => { setEditingFleet(fleet); setFleetDialogOpen(true); }} title="Edit Fleet">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" title="View Details">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => impersonateFleet(fleet)}
-                        disabled={impersonating}
-                        className="text-[#D4AF37] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
-                        title="Access Fleet Dashboard"
-                      >
-                        <LogIn className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {fleets.length === 0 && (
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <h2 className="text-xl font-bold">Fleet Management</h2>
+          <Button onClick={() => { setEditingFleet(null); setFleetDialogOpen(true); }} className="bg-[#0A0F1C]">
+            <Plus className="w-4 h-4 mr-2" /> Add Fleet
+          </Button>
+        </div>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-zinc-500">Total Fleets</p>
+              <p className="text-2xl font-bold text-[#0A0F1C]">{fleets.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-zinc-500">Active</p>
+              <p className="text-2xl font-bold text-green-600">{fleets.filter(f => f.status === "active").length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-zinc-500">Inactive</p>
+              <p className="text-2xl font-bold text-zinc-500">{fleets.filter(f => f.status === "inactive").length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-zinc-500">Suspended</p>
+              <p className="text-2xl font-bold text-red-600">{fleets.filter(f => f.status === "suspended").length}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Search and Filters */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex-1 min-w-[200px]">
+                <Label className="text-xs text-zinc-500">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <Input
+                    placeholder="Search by name, email, contact, city..."
+                    value={fleetSearchTerm}
+                    onChange={(e) => setFleetSearchTerm(e.target.value)}
+                    className="pl-10"
+                    data-testid="fleet-search-input"
+                  />
+                </div>
+              </div>
+              <div className="w-[160px]">
+                <Label className="text-xs text-zinc-500">Status</Label>
+                <Select value={fleetStatusFilter} onValueChange={setFleetStatusFilter}>
+                  <SelectTrigger data-testid="fleet-status-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => { setFleetSearchTerm(""); setFleetStatusFilter("all"); }}
+              >
+                Clear
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Fleet Table */}
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-zinc-500">No fleets added yet</TableCell>
+                  <TableHead>Fleet Name</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>Commission</TableHead>
+                  <TableHead>Payment Terms</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+              </TableHeader>
+              <TableBody>
+                {filteredFleets.map((fleet) => (
+                  <TableRow key={fleet.id}>
+                    <TableCell>
+                      <div className="font-medium">{fleet.name}</div>
+                      <div className="text-xs text-zinc-500">{fleet.email}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div>{fleet.contact_person}</div>
+                      <div className="text-xs text-zinc-500">{fleet.phone}</div>
+                    </TableCell>
+                    <TableCell>{fleet.city}</TableCell>
+                    <TableCell>
+                      {fleet.commission_type === "percentage" ? `${fleet.commission_value}%` : `£${fleet.commission_value}`}
+                    </TableCell>
+                    <TableCell className="capitalize">{fleet.payment_terms}</TableCell>
+                    <TableCell>
+                      <Badge className={
+                        fleet.status === "active" ? "bg-green-100 text-green-800" : 
+                        fleet.status === "suspended" ? "bg-red-100 text-red-800" :
+                        "bg-zinc-100 text-zinc-800"
+                      }>
+                        {fleet.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => { setSelectedFleet(fleet); setViewFleetDialogOpen(true); }} 
+                          title="View Details"
+                          data-testid={`view-fleet-${fleet.id}`}
+                        >
+                          <Eye className="w-4 h-4 text-[#D4AF37]" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingFleet(fleet); setFleetDialogOpen(true); }} title="Edit Fleet">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => impersonateFleet(fleet)}
+                          disabled={impersonating || fleet.status === "suspended"}
+                          className="text-[#D4AF37] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                          title={fleet.status === "suspended" ? "Cannot access suspended fleet" : "Access Fleet Dashboard"}
+                        >
+                          <LogIn className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredFleets.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-zinc-500">
+                      {fleets.length === 0 ? "No fleets added yet" : "No fleets match your search"}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   const renderDrivers = () => (
     <div className="space-y-6">
