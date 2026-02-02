@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "../components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAuth } from "../context/AuthContext";
+import FleetInvoices from "../components/FleetInvoices";
 import { 
   Calendar as CalendarIcon, DollarSign, Clock, CheckCircle, TrendingUp, MapPin, Users, 
   Briefcase, Play, Check, Eye, FileText, Download, LogOut, AlertTriangle,
