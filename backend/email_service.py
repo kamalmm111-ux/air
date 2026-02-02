@@ -1,6 +1,6 @@
 """
 Email Service Module for Aircabio
-Handles all transactional email notifications using Resend via Emergent Integrations
+Handles all transactional email notifications using Resend
 """
 
 import os
@@ -18,23 +18,22 @@ COMPANY_NAME = "Aircabio"
 COMPANY_PHONE = "+44 20 1234 5678"
 COMPANY_EMAIL = "info@aircabio.com"
 
-# Try to import emergentintegrations email module
+# Try to import resend
 EMAIL_AVAILABLE = False
-resend_email = None
-
 try:
-    from emergentintegrations.email.resend import ResendEmail
-    if RESEND_API_KEY:
-        resend_email = ResendEmail(RESEND_API_KEY)
+    import resend
+    # Only enable if we have a valid Resend API key (starts with re_)
+    if RESEND_API_KEY and RESEND_API_KEY.startswith("re_"):
+        resend.api_key = RESEND_API_KEY
         EMAIL_AVAILABLE = True
-        logger.info("Resend email service initialized via emergentintegrations")
+        logger.info("Resend email service initialized")
+    else:
+        logger.warning("Valid Resend API key not configured (key should start with 're_')")
 except ImportError:
-    logger.warning("emergentintegrations email module not available")
-except Exception as e:
-    logger.warning(f"Failed to initialize email service: {e}")
+    logger.warning("Resend library not installed")
 
 if not EMAIL_AVAILABLE:
-    logger.warning("Email service not configured - emails will be logged only")
+    logger.info("Email service running in LOG-ONLY mode. Set RESEND_API_KEY with a valid key to enable actual email sending.")
 
 
 def get_base_template(content: str, title: str = "Aircabio") -> str:
