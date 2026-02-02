@@ -2191,6 +2191,31 @@ async def get_invoices(
     invoices = await db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     return invoices
 
+@api_router.get("/invoices/uninvoiced-bookings")
+async def get_uninvoiced_bookings(
+    invoice_type: str,
+    entity_id: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get bookings that haven't been invoiced yet"""
+    query = {"status": "completed"}
+    
+    if invoice_type == "customer":
+        query["customer_invoice_id"] = {"$in": [None, ""]}
+    elif invoice_type == "fleet":
+        query["fleet_invoice_id"] = {"$in": [None, ""]}
+        if entity_id:
+            query["assigned_fleet_id"] = entity_id
+        else:
+            query["assigned_fleet_id"] = {"$ne": None}
+    elif invoice_type == "driver":
+        query["driver_invoice_id"] = {"$in": [None, ""]}
+        if entity_id:
+            query["assigned_driver_id"] = entity_id
+    
+    bookings = await db.bookings.find(query, {"_id": 0}).sort("pickup_date", -1).to_list(500)
+    return bookings
+
 @api_router.get("/invoices/{invoice_id}")
 async def get_invoice(invoice_id: str, user: dict = Depends(get_admin_or_fleet)):
     invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
