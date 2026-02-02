@@ -1047,7 +1047,7 @@ async def update_fleet(fleet_id: str, update: FleetUpdate, background_tasks: Bac
     return fleet
 
 @api_router.post("/fleets/{fleet_id}/reset-password")
-async def reset_fleet_password(fleet_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
+async def reset_fleet_password(fleet_id: str, request: Request, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
     fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0})
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
@@ -1059,8 +1059,15 @@ async def reset_fleet_password(fleet_id: str, background_tasks: BackgroundTasks,
         {"$set": {"password": hash_password(new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     
-    # Send email with new password
-    background_tasks.add_task(send_fleet_password_reset, fleet, new_password)
+    # Get base URL for login link
+    base_url = str(request.base_url).rstrip('/')
+    # Remove /api if present and construct login URL
+    if '/api' in base_url:
+        base_url = base_url.replace('/api', '')
+    dashboard_url = f"{base_url}/login"
+    
+    # Send email with new password and login link
+    background_tasks.add_task(send_fleet_password_reset, fleet, new_password, dashboard_url)
     
     return {"message": "Password reset successful", "temporary_password": new_password}
 
