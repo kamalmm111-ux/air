@@ -627,6 +627,27 @@ const FleetDashboard = () => {
   );
 
   // ==================== INVOICES TAB ====================
+  const downloadInvoice = async (invoiceId) => {
+    try {
+      const response = await axios.get(`${API}/invoices/${invoiceId}/pdf`, {
+        headers,
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice_${invoiceId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Invoice downloaded");
+    } catch (error) {
+      toast.error("Failed to download invoice");
+    }
+  };
+
   const renderInvoices = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-[#0A0F1C]">Your Invoices</h2>
@@ -664,7 +685,7 @@ const FleetDashboard = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => window.open(`${API}/invoices/${invoice.id}/pdf`, '_blank')}>
+                      <Button variant="ghost" size="sm" onClick={() => downloadInvoice(invoice.id)}>
                         <Download className="w-4 h-4" />
                       </Button>
                     </TableCell>
