@@ -573,6 +573,15 @@ const AdminDashboard = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
+                          onClick={() => resetFleetPassword(fleet)}
+                          className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          title="Reset Password"
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
                           onClick={() => impersonateFleet(fleet)}
                           disabled={impersonating || fleet.status === "suspended"}
                           className="text-[#D4AF37] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
