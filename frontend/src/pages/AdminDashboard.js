@@ -973,6 +973,39 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
           <div className="space-y-4">
             <h3 className="font-semibold flex items-center gap-2"><User className="w-4 h-4" /> Customer Details</h3>
             <div className="space-y-3">
+              {/* B2B Customer Account Dropdown */}
+              {customers && customers.length > 0 && (
+                <div className="bg-blue-50 p-3 rounded-sm border border-blue-200">
+                  <Label className="text-blue-700 font-semibold">B2B Customer Account</Label>
+                  <Select 
+                    value={formData.customer_account_id} 
+                    onValueChange={(v) => {
+                      const account = customers.find(c => c.id === v);
+                      if (account && v !== "none") {
+                        setFormData({
+                          ...formData, 
+                          customer_account_id: v,
+                          customer_name: account.contact_person || formData.customer_name,
+                          customer_email: account.email || formData.customer_email,
+                          customer_phone: account.phone || formData.customer_phone
+                        });
+                      } else {
+                        setFormData({...formData, customer_account_id: v});
+                      }
+                    }}
+                  >
+                    <SelectTrigger data-testid="customer-account-select">
+                      <SelectValue placeholder="Select B2B customer (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (Direct Customer)</SelectItem>
+                      {customers.filter(c => c.status === "active").map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label>Customer Name *</Label>
                 <Input value={formData.customer_name} onChange={(e) => setFormData({...formData, customer_name: e.target.value})} placeholder="John Smith" />
