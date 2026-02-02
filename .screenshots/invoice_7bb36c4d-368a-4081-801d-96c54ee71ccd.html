@@ -1,0 +1,86 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 40px; border-bottom: 2px solid #0A0F1C; padding-bottom: 20px; }
+            .logo { font-size: 28px; font-weight: bold; color: #0A0F1C; }
+            .invoice-title { text-align: right; }
+            .invoice-title h1 { margin: 0; color: #0A0F1C; }
+            .invoice-details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .invoice-details div { flex: 1; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th { background: #0A0F1C; color: white; padding: 12px; text-align: left; }
+            td { border-bottom: 1px solid #ddd; padding: 12px; }
+            .total-section { margin-top: 20px; text-align: right; }
+            .total-row { font-size: 18px; margin: 5px 0; }
+            .total-row.final { font-size: 24px; font-weight: bold; color: #0A0F1C; border-top: 2px solid #0A0F1C; padding-top: 10px; }
+            .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; }
+            .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; }
+            .status-draft { background: #fef3c7; color: #92400e; }
+            .status-issued { background: #dbeafe; color: #1e40af; }
+            .status-paid { background: #dcfce7; color: #166534; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="logo">AIRCABIO</div>
+            <div class="invoice-title">
+                <h1>INVOICE</h1>
+                <p>#INV-C-202602-0001</p>
+                <span class="status status-paid">PAID</span>
+            </div>
+        </div>
+        
+        <div class="invoice-details">
+            <div>
+                <strong>Bill To:</strong><br>
+                Test Customer New<br>
+                newtest@test.com
+            </div>
+            <div style="text-align: right;">
+                <strong>Invoice Date:</strong> 2026-02-02<br>
+                <strong>Due Date:</strong> 2026-02-16<br>
+                <strong>Type:</strong> Customer
+            </div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Booking Ref</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr>
+                    <td>AC66EBA4</td>
+                    <td>Gatwick Airport → Central London Hotel</td>
+                    <td>2026-02-05</td>
+                    <td style="text-align: right;">£150.00</td>
+                </tr>
+        
+            </tbody>
+        </table>
+        
+        <div class="total-section">
+            <div class="total-row">Subtotal: £150.00</div>
+    
+            <div class="total-row">Tax: £30.00</div>
+        
+            <div class="total-row final">Total: £180.00</div>
+        </div>
+        
+        <p><strong>Notes:</strong> Test invoice for workflow testing</p>
+        
+        <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>Aircabio Airport Transfers | info@aircabio.com | +44 20 1234 5678</p>
+        </div>
+    </body>
+    </html>
+    
