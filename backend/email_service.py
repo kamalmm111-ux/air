@@ -1,6 +1,6 @@
 """
 Email Service Module for Aircabio
-Handles all transactional email notifications using Resend
+Handles all transactional email notifications using Resend via Emergent Integrations
 """
 
 import os
@@ -9,26 +9,32 @@ import logging
 from typing import Optional, List, Dict
 from datetime import datetime
 
-try:
-    import resend
-    RESEND_AVAILABLE = True
-except ImportError:
-    RESEND_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
 
-# Initialize Resend
+# Initialize Email Service
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 COMPANY_NAME = "Aircabio"
 COMPANY_PHONE = "+44 20 1234 5678"
 COMPANY_EMAIL = "info@aircabio.com"
 
-if RESEND_API_KEY and RESEND_AVAILABLE:
-    resend.api_key = RESEND_API_KEY
-    logger.info("Resend email service initialized")
-else:
-    logger.warning("Resend not configured - emails will be logged only")
+# Try to import emergentintegrations email module
+EMAIL_AVAILABLE = False
+resend_email = None
+
+try:
+    from emergentintegrations.email.resend import ResendEmail
+    if RESEND_API_KEY:
+        resend_email = ResendEmail(RESEND_API_KEY)
+        EMAIL_AVAILABLE = True
+        logger.info("Resend email service initialized via emergentintegrations")
+except ImportError:
+    logger.warning("emergentintegrations email module not available")
+except Exception as e:
+    logger.warning(f"Failed to initialize email service: {e}")
+
+if not EMAIL_AVAILABLE:
+    logger.warning("Email service not configured - emails will be logged only")
 
 
 def get_base_template(content: str, title: str = "Aircabio") -> str:
