@@ -1314,7 +1314,7 @@ async def delete_vehicle_admin(vehicle_id: str, user: dict = Depends(get_super_a
 # ==================== MANUAL BOOKING CREATION ====================
 
 @api_router.post("/admin/bookings/manual")
-async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = Depends(get_super_admin)):
+async def create_manual_booking(booking_data: ManualBookingCreate, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
     """Create a manual booking with dual pricing (customer price + driver price)"""
     
     # Get vehicle info
@@ -1332,6 +1332,7 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
     assigned_fleet_name = None
     assigned_driver_name = None
     assigned_vehicle_plate = None
+    fleet = None
     
     if booking_data.assigned_fleet_id:
         fleet = await db.fleets.find_one({"id": booking_data.assigned_fleet_id}, {"_id": 0})
@@ -1413,6 +1414,12 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
     
     await db.bookings.insert_one(booking.model_dump())
     
+    booking_dict = booking.model_dump()
+    
+    # Send booking confirmation email
+    admin_email = user.get("email")
+    background_tasks.add_task(send_booking_confirmation, booking_dict, admin_email)
+    
     # Log booking creation to history
     await log_booking_history(
         booking.id, 
@@ -1423,7 +1430,7 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
     )
     
     # Create notification for fleet if assigned
-    if booking_data.assigned_fleet_id:
+    if booking_data.assigned_fleet_id and fleet:
         await db.notifications.insert_one({
             "id": str(uuid.uuid4()),
             "fleet_id": booking_data.assigned_fleet_id,
@@ -1434,6 +1441,9 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         
+        # Send email to fleet
+        background_tasks.add_task(send_job_alert_to_fleet, booking_dict, fleet)
+        
         # Log assignment to history
         await log_booking_history(
             booking.id,
@@ -1443,7 +1453,7 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
             new_value=assigned_fleet_name
         )
     
-    return booking.model_dump()
+    return booking_dict
 
 # ==================== JOB ASSIGNMENT ROUTES ====================
 
