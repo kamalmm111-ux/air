@@ -262,8 +262,18 @@ Public:
 - [x] Map-based fixed routes with Google Maps radius zones
 - [x] Smart quote engine (fixed route priority → mileage fallback)
 - [x] Fleet Management Workflow: driver_price assignment, fleet job visibility, fleet driver/vehicle CRUD, fleet job assignment
+- [x] **Booking Dashboard Accuracy & Feature Upgrade (Feb 2, 2026)**:
+  - [x] B2B Customer Accounts system with full CRUD (Add, Edit, View, Delete)
+  - [x] Customer Accounts tab in Admin Dashboard sidebar
+  - [x] BookingViewDialog modal with Details/Notes/History tabs
+  - [x] View button (eye icon) on bookings table opens detailed booking modal
+  - [x] Internal Notes system for bookings (add, view, delete notes)
+  - [x] Full Booking History/Audit trail showing all changes
+  - [x] B2B Customer Account dropdown in New Job dialog with auto-fill
+  - [x] B2B customer account badge displayed in bookings table
 
 ### P1 - High Priority
+- [ ] **Fleet Management Module Improvements**: Fix "View Fleet" button, add search/filters to fleet list, block job assignments to suspended fleets
 - [ ] Invoicing System Enhancement: Full invoice creation/editing/PDF download for customers, fleets, drivers
 - [ ] Fleet Portal Invoice Section: View/download fleet invoices
 - [ ] Real Google Places autocomplete integration for booking engine
