@@ -71,6 +71,10 @@ const AdminDashboard = () => {
   const [fleetFilter, setFleetFilter] = useState("all");
   const [driverFilter, setDriverFilter] = useState("all");
   
+  // Fleet filters
+  const [fleetSearchTerm, setFleetSearchTerm] = useState("");
+  const [fleetStatusFilter, setFleetStatusFilter] = useState("all");
+  
   // Dialogs
   const [newJobDialogOpen, setNewJobDialogOpen] = useState(false);
   const [editJobDialogOpen, setEditJobDialogOpen] = useState(false);
@@ -79,7 +83,9 @@ const AdminDashboard = () => {
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [viewBookingDialogOpen, setViewBookingDialogOpen] = useState(false);
+  const [viewFleetDialogOpen, setViewFleetDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedFleet, setSelectedFleet] = useState(null);
   const [editingFleet, setEditingFleet] = useState(null);
   const [editingDriver, setEditingDriver] = useState(null);
   const [editingVehicle, setEditingVehicle] = useState(null);
