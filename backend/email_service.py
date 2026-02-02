@@ -406,11 +406,14 @@ async def send_fleet_reactivated(fleet: Dict):
     await send_email(fleet_email, "Aircabio Fleet Account Reactivated", html)
 
 
-async def send_fleet_password_reset(fleet: Dict, temp_password: str):
+async def send_fleet_password_reset(fleet: Dict, temp_password: str, dashboard_url: str = ""):
     """Send password reset notification to fleet"""
     fleet_email = fleet.get("email")
     if not fleet_email:
         return
+    
+    # Use provided URL or default
+    login_url = dashboard_url or "https://aircabio.com/login"
     
     content = f"""
     <h2 style="color: #0A0F1C; margin: 0 0 24px 0;">Password Reset</h2>
@@ -420,15 +423,27 @@ async def send_fleet_password_reset(fleet: Dict, temp_password: str):
     <table width="100%" cellpadding="16" cellspacing="0" style="background-color: #fef3c7; border-radius: 8px; margin: 24px 0; text-align: center;">
         <tr>
             <td>
+                <strong style="color: #666;">Your Login Email</strong><br>
+                <span style="color: #0A0F1C; font-size: 18px; font-weight: bold;">{fleet_email}</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="border-top: 1px solid #e5e5e5;">
                 <strong style="color: #666;">Your New Temporary Password</strong><br>
                 <span style="color: #0A0F1C; font-size: 24px; font-weight: bold; font-family: monospace;">{temp_password}</span>
             </td>
         </tr>
     </table>
     
-    <p style="color: #dc2626; font-weight: bold;">Please change this password after logging in.</p>
-    <p style="color: #666; margin-top: 16px;">
-        If you did not request this password reset, please contact us immediately.
+    <div style="text-align: center; margin: 32px 0;">
+        <a href="{login_url}" style="display: inline-block; background-color: #0A0F1C; color: #D4AF37; text-decoration: none; padding: 14px 32px; border-radius: 4px; font-weight: bold; font-size: 16px;">
+            Login to Fleet Dashboard
+        </a>
+    </div>
+    
+    <p style="color: #dc2626; font-weight: bold; text-align: center;">Please change this password after logging in.</p>
+    <p style="color: #666; margin-top: 16px; font-size: 12px;">
+        If you did not request this password reset, please contact us immediately at {COMPANY_EMAIL}.
     </p>
     """
     html = get_base_template(content, "Password Reset")
