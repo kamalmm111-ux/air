@@ -345,7 +345,7 @@ const AdminDashboard = () => {
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-right">Cost</TableHead>
                 <TableHead className="text-right">Profit</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -359,6 +359,9 @@ const AdminDashboard = () => {
                   <TableCell>
                     <div className="text-sm font-medium">{booking.customer_name}</div>
                     <div className="text-xs text-zinc-500">{booking.customer_phone}</div>
+                    {booking.customer_account_name && (
+                      <Badge className="mt-1 bg-blue-100 text-blue-800 text-xs">{booking.customer_account_name}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="max-w-[120px]">
                     <div className="truncate text-sm" title={booking.pickup_location}>{booking.pickup_location}</div>
