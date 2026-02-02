@@ -2340,6 +2340,190 @@ async def update_invoice(invoice_id: str, update: InvoiceUpdate, user: dict = De
     
     return await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
 
+@api_router.post("/invoices/{invoice_id}/approve")
+async def approve_invoice(invoice_id: str, user: dict = Depends(get_super_admin)):
+    """Approve a pending invoice"""
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    if invoice["status"] not in ["draft", "pending_approval"]:
+        raise HTTPException(status_code=400, detail="Invoice cannot be approved in current status")
+    
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {
+            "status": "approved",
+            "approved_by": user.get("email", "admin"),
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+
+@api_router.post("/invoices/{invoice_id}/issue")
+async def issue_invoice(invoice_id: str, user: dict = Depends(get_super_admin)):
+    """Issue an approved invoice (makes it official)"""
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Can issue from draft or approved
+    if invoice["status"] not in ["draft", "approved"]:
+        raise HTTPException(status_code=400, detail="Invoice must be draft or approved to be issued")
+    
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {
+            "status": "issued",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+
+@api_router.post("/invoices/{invoice_id}/mark-paid")
+async def mark_invoice_paid(invoice_id: str, user: dict = Depends(get_super_admin)):
+    """Mark an invoice as paid"""
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {
+            "status": "paid",
+            "paid_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+
+@api_router.post("/invoices/auto-generate-fleet")
+async def auto_generate_fleet_invoices(user: dict = Depends(get_super_admin)):
+    """Auto-generate invoices for all fleets for the last 15-day period"""
+    today = datetime.now(timezone.utc)
+    
+    # Determine period: 1st-15th or 16th-end of month
+    if today.day <= 15:
+        period_start = today.replace(day=1).strftime("%Y-%m-%d")
+        period_end = today.replace(day=15).strftime("%Y-%m-%d")
+    else:
+        period_start = today.replace(day=16).strftime("%Y-%m-%d")
+        # Last day of month
+        next_month = today.replace(day=28) + timedelta(days=4)
+        period_end = (next_month - timedelta(days=next_month.day)).strftime("%Y-%m-%d")
+    
+    generated_invoices = []
+    fleets = await db.fleets.find({"status": "active"}, {"_id": 0}).to_list(100)
+    
+    for fleet in fleets:
+        # Find completed jobs for this fleet in the period that haven't been invoiced
+        completed_jobs = await db.bookings.find({
+            "assigned_fleet_id": fleet["id"],
+            "status": "completed",
+            "pickup_date": {"$gte": period_start, "$lte": period_end},
+            "fleet_invoice_id": {"$in": [None, ""]}
+        }, {"_id": 0}).to_list(500)
+        
+        if not completed_jobs:
+            continue
+        
+        booking_ids = [j["id"] for j in completed_jobs]
+        subtotal = sum(j.get("driver_price", 0) for j in completed_jobs)
+        
+        # Calculate commission
+        commission_type = fleet.get("commission_type", "percentage")
+        commission_value = fleet.get("commission_value", 0)
+        if commission_type == "percentage":
+            commission = subtotal * (commission_value / 100)
+        else:
+            commission = len(completed_jobs) * commission_value
+        
+        # Build line items
+        line_items = []
+        for b in completed_jobs:
+            line_items.append({
+                "booking_id": b["id"],
+                "booking_ref": b.get("booking_ref", b["id"][:8].upper()),
+                "description": f"{b['pickup_location']} → {b['dropoff_location']}",
+                "date": b["pickup_date"],
+                "pickup_time": b.get("pickup_time", ""),
+                "customer_name": b.get("customer_name", ""),
+                "vehicle_class": b.get("vehicle_name", b.get("vehicle_category_id", "")),
+                "amount": b.get("driver_price", 0)
+            })
+        
+        total = subtotal - commission
+        
+        invoice = Invoice(
+            invoice_number=await generate_invoice_number("fleet"),
+            invoice_type="fleet",
+            entity_id=fleet["id"],
+            entity_name=fleet["name"],
+            entity_email=fleet["email"],
+            entity_phone=fleet.get("phone", ""),
+            entity_address=fleet.get("city", ""),
+            booking_ids=booking_ids,
+            line_items=line_items,
+            subtotal=round(subtotal, 2),
+            commission=round(commission, 2),
+            commission_type=commission_type,
+            commission_value=commission_value,
+            total=round(total, 2),
+            payment_terms=fleet.get("payment_terms", "Net 14"),
+            due_date=(today + timedelta(days=get_payment_term_days(fleet.get("payment_terms", "Net 14")))).strftime("%Y-%m-%d"),
+            status="pending_approval",
+            period_start=period_start,
+            period_end=period_end,
+            created_by="system"
+        )
+        
+        await db.invoices.insert_one(invoice.model_dump())
+        
+        # Update bookings with invoice reference
+        await db.bookings.update_many(
+            {"id": {"$in": booking_ids}},
+            {"$set": {"fleet_invoice_id": invoice.id}}
+        )
+        
+        generated_invoices.append({
+            "fleet_name": fleet["name"],
+            "invoice_number": invoice.invoice_number,
+            "total": invoice.total,
+            "jobs_count": len(completed_jobs)
+        })
+    
+    return {
+        "message": f"Generated {len(generated_invoices)} fleet invoices",
+        "period": f"{period_start} to {period_end}",
+        "invoices": generated_invoices
+    }
+
+@api_router.get("/invoices/uninvoiced-bookings")
+async def get_uninvoiced_bookings(
+    invoice_type: str,
+    entity_id: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get bookings that haven't been invoiced yet"""
+    query = {"status": "completed"}
+    
+    if invoice_type == "customer":
+        query["customer_invoice_id"] = {"$in": [None, ""]}
+    elif invoice_type == "fleet":
+        query["fleet_invoice_id"] = {"$in": [None, ""]}
+        if entity_id:
+            query["assigned_fleet_id"] = entity_id
+        else:
+            query["assigned_fleet_id"] = {"$ne": None}
+    elif invoice_type == "driver":
+        query["driver_invoice_id"] = {"$in": [None, ""]}
+        if entity_id:
+            query["assigned_driver_id"] = entity_id
+    
+    bookings = await db.bookings.find(query, {"_id": 0}).sort("pickup_date", -1).to_list(500)
+    return bookings
+
 @api_router.delete("/invoices/{invoice_id}")
 async def delete_invoice(invoice_id: str, user: dict = Depends(get_super_admin)):
     result = await db.invoices.delete_one({"id": invoice_id})
