@@ -1,15 +1,25 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import {
-  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin, Briefcase
+  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin, Briefcase, Key
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import axios from "axios";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const AdminLayout = () => {
-  const { user, logout, isSuperAdmin, loading } = useAuth();
+  const { user, logout, isSuperAdmin, loading, token } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || !isSuperAdmin)) {
@@ -20,6 +30,33 @@ const AdminLayout = () => {
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  const handleChangePassword = async () => {
+    if (passwords.new !== passwords.confirm) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    if (passwords.new.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    
+    setChangingPassword(true);
+    try {
+      await axios.post(`${API}/auth/change-password`, {
+        current_password: passwords.current,
+        new_password: passwords.new
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      
+      toast.success("Password changed successfully!");
+      setPasswordDialogOpen(false);
+      setPasswords({ current: "", new: "", confirm: "" });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to change password");
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   if (loading) {
