@@ -1273,7 +1273,11 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
     
     if booking_data.assigned_fleet_id:
         fleet = await db.fleets.find_one({"id": booking_data.assigned_fleet_id}, {"_id": 0})
-        assigned_fleet_name = fleet["name"] if fleet else None
+        if fleet:
+            # CRITICAL: Block assignments to suspended fleets
+            if fleet.get("status") == "suspended":
+                raise HTTPException(status_code=400, detail="Cannot assign jobs to suspended fleets. Please activate the fleet first.")
+            assigned_fleet_name = fleet["name"]
     
     if booking_data.assigned_driver_id:
         driver = await db.drivers.find_one({"id": booking_data.assigned_driver_id}, {"_id": 0})
