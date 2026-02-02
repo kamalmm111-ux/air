@@ -2202,58 +2202,96 @@ async def get_invoice(invoice_id: str, user: dict = Depends(get_admin_or_fleet))
     
     return invoice
 
+def get_payment_term_days(payment_terms: str) -> int:
+    """Convert payment terms to days"""
+    terms_map = {"Net 7": 7, "Net 14": 14, "Net 30": 30}
+    return terms_map.get(payment_terms, 14)
+
 @api_router.post("/invoices/generate")
 async def generate_invoice(
-    invoice_type: str,
-    entity_id: str,
-    booking_ids: List[str],
-    notes: Optional[str] = None,
+    data: InvoiceCreate,
     user: dict = Depends(get_super_admin)
 ):
-    """Generate an invoice for customer, fleet, or driver"""
+    """Generate an invoice for customer, fleet, or driver with profit tracking"""
+    invoice_type = data.invoice_type
+    entity_id = data.entity_id
+    booking_ids = data.booking_ids
+    
     bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(100)
     if not bookings:
         raise HTTPException(status_code=400, detail="No valid bookings found")
     
+    entity_phone = None
+    entity_address = None
+    commission = 0
+    commission_type = None
+    commission_value = None
+    profit_total = None
+    
     if invoice_type == "customer":
+        # Group by customer or use first booking's customer
         entity_name = bookings[0]["customer_name"]
         entity_email = bookings[0].get("customer_email", "")
+        entity_phone = bookings[0].get("customer_phone", "")
         subtotal = sum(b.get("customer_price", b.get("price", 0)) for b in bookings)
-        commission = 0
+        # Calculate profit for customer invoices
+        total_driver_cost = sum(b.get("driver_price", 0) for b in bookings)
+        profit_total = subtotal - total_driver_cost
+        
     elif invoice_type == "fleet":
         fleet = await db.fleets.find_one({"id": entity_id}, {"_id": 0})
         if not fleet:
             raise HTTPException(status_code=404, detail="Fleet not found")
         entity_name = fleet["name"]
         entity_email = fleet["email"]
+        entity_phone = fleet.get("phone", "")
+        entity_address = fleet.get("city", "")
         subtotal = sum(b.get("driver_price", 0) for b in bookings)
-        if fleet.get("commission_type") == "percentage":
-            commission = subtotal * (fleet.get("commission_value", 0) / 100)
+        commission_type = fleet.get("commission_type", "percentage")
+        commission_value = fleet.get("commission_value", 0)
+        if commission_type == "percentage":
+            commission = subtotal * (commission_value / 100)
         else:
-            commission = len(bookings) * fleet.get("commission_value", 0)
+            commission = len(bookings) * commission_value
+            
     elif invoice_type == "driver":
         driver = await db.drivers.find_one({"id": entity_id}, {"_id": 0})
         if not driver:
             raise HTTPException(status_code=404, detail="Driver not found")
         entity_name = driver["name"]
         entity_email = driver.get("email", "")
+        entity_phone = driver.get("phone", "")
         subtotal = sum(b.get("driver_price", 0) for b in bookings)
-        commission = 0
     else:
         raise HTTPException(status_code=400, detail="Invalid invoice type")
     
+    # Build line items with more details
     line_items = []
     for b in bookings:
-        amount = b.get("customer_price", b.get("price", 0)) if invoice_type == "customer" else b.get("driver_price", 0)
+        customer_price = b.get("customer_price", b.get("price", 0))
+        driver_price = b.get("driver_price", 0)
+        amount = customer_price if invoice_type == "customer" else driver_price
+        profit = customer_price - driver_price if invoice_type == "customer" else None
+        
         line_items.append({
             "booking_id": b["id"],
             "booking_ref": b.get("booking_ref", b["id"][:8].upper()),
             "description": f"{b['pickup_location']} → {b['dropoff_location']}",
             "date": b["pickup_date"],
-            "amount": amount
+            "pickup_time": b.get("pickup_time", ""),
+            "customer_name": b.get("customer_name", ""),
+            "vehicle_class": b.get("vehicle_name", b.get("vehicle_category_id", "")),
+            "amount": amount,
+            "driver_price": driver_price if invoice_type == "customer" else None,
+            "profit": profit
         })
     
-    total = subtotal - commission if invoice_type == "fleet" else subtotal
+    # Calculate tax
+    tax = subtotal * (data.tax_rate / 100) if data.tax_rate else 0
+    total = subtotal - commission + tax if invoice_type == "fleet" else subtotal + tax
+    
+    # Due date based on payment terms
+    due_days = get_payment_term_days(data.payment_terms)
     
     invoice = Invoice(
         invoice_number=await generate_invoice_number(invoice_type),
@@ -2261,13 +2299,23 @@ async def generate_invoice(
         entity_id=entity_id,
         entity_name=entity_name,
         entity_email=entity_email,
+        entity_phone=entity_phone,
+        entity_address=entity_address,
         booking_ids=booking_ids,
         line_items=line_items,
         subtotal=round(subtotal, 2),
         commission=round(commission, 2),
+        commission_type=commission_type,
+        commission_value=commission_value,
+        tax_rate=data.tax_rate,
+        tax=round(tax, 2),
         total=round(total, 2),
-        notes=notes,
-        due_date=(datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
+        profit_total=round(profit_total, 2) if profit_total is not None else None,
+        notes=data.notes,
+        internal_notes=data.internal_notes,
+        payment_terms=data.payment_terms,
+        due_date=(datetime.now(timezone.utc) + timedelta(days=due_days)).strftime("%Y-%m-%d"),
+        created_by=user.get("email", "admin")
     )
     
     await db.invoices.insert_one(invoice.model_dump())
