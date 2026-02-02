@@ -1396,6 +1396,9 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict 
         fleet = await db.fleets.find_one({"id": assignment.fleet_id}, {"_id": 0})
         if not fleet:
             raise HTTPException(status_code=404, detail="Fleet not found")
+        # CRITICAL: Block assignments to suspended fleets
+        if fleet.get("status") == "suspended":
+            raise HTTPException(status_code=400, detail="Cannot assign jobs to suspended fleets. Please activate the fleet first.")
         update_data["assigned_fleet_id"] = assignment.fleet_id
         update_data["assigned_fleet_name"] = fleet["name"]
     
