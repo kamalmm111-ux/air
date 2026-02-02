@@ -22,6 +22,7 @@ import PlacesAutocomplete from "../components/PlacesAutocomplete";
 import CMSManager from "../components/CMSManager";
 import BookingViewDialog from "../components/BookingViewDialog";
 import CustomerAccounts from "../components/CustomerAccounts";
+import FleetViewDialog from "../components/FleetViewDialog";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
