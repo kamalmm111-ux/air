@@ -678,12 +678,15 @@ const FleetDashboard = () => {
     </div>
   );
 
+  // Determine fleet ID - use impersonation fleet ID if impersonating, otherwise from user
+  const fleetId = isImpersonating ? impersonationFleet.id : user?.fleet_id;
+
   const content = {
     jobs: renderJobs(),
     drivers: renderDrivers(),
     vehicles: renderVehicles(),
     earnings: renderEarnings(),
-    invoices: <FleetInvoices token={token} fleetId={user?.fleet_id} />
+    invoices: <FleetInvoices token={token} fleetId={fleetId} />
   };
 
   return (
