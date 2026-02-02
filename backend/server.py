@@ -483,7 +483,12 @@ class InvoiceLineItem(BaseModel):
     booking_ref: str
     description: str
     date: str
+    pickup_time: Optional[str] = None
+    customer_name: Optional[str] = None
+    vehicle_class: Optional[str] = None
     amount: float
+    driver_price: Optional[float] = None  # For profit calculation
+    profit: Optional[float] = None  # For customer invoices
 
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -493,28 +498,53 @@ class Invoice(BaseModel):
     entity_id: str
     entity_name: str
     entity_email: str
+    entity_phone: Optional[str] = None
+    entity_address: Optional[str] = None
     booking_ids: List[str] = []
     line_items: List[Dict] = []
     subtotal: float
     commission: float = 0.0
+    commission_type: Optional[str] = None  # percentage, flat
+    commission_value: Optional[float] = None
+    tax_rate: float = 0.0  # VAT percentage
     tax: float = 0.0
     total: float
+    profit_total: Optional[float] = None  # Total profit (for customer invoices)
     currency: str = "GBP"
-    status: str = "draft"  # draft, issued, paid, overdue
+    status: str = "draft"  # draft, pending_approval, approved, issued, paid, overdue, cancelled
+    payment_terms: str = "Net 14"  # Net 7, Net 14, Net 30
     due_date: Optional[str] = None
     paid_date: Optional[str] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[str] = None
     notes: Optional[str] = None
+    internal_notes: Optional[str] = None  # Admin-only notes
+    period_start: Optional[str] = None  # For auto-generated fleet invoices
+    period_end: Optional[str] = None
+    created_by: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class InvoiceCreate(BaseModel):
+    invoice_type: str  # customer, fleet, driver
+    entity_id: str
+    booking_ids: List[str]
+    tax_rate: float = 0.0
+    payment_terms: str = "Net 14"
+    notes: Optional[str] = None
+    internal_notes: Optional[str] = None
 
 class InvoiceUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
+    internal_notes: Optional[str] = None
     due_date: Optional[str] = None
     paid_date: Optional[str] = None
+    payment_terms: Optional[str] = None
     line_items: Optional[List[Dict]] = None
     subtotal: Optional[float] = None
     commission: Optional[float] = None
+    tax_rate: Optional[float] = None
     tax: Optional[float] = None
     total: Optional[float] = None
 
