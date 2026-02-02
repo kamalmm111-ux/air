@@ -2441,7 +2441,7 @@ async def approve_invoice(invoice_id: str, user: dict = Depends(get_super_admin)
     return await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
 
 @api_router.post("/invoices/{invoice_id}/issue")
-async def issue_invoice(invoice_id: str, user: dict = Depends(get_super_admin)):
+async def issue_invoice(invoice_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
     """Issue an approved invoice (makes it official)"""
     invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not invoice:
@@ -2458,7 +2458,13 @@ async def issue_invoice(invoice_id: str, user: dict = Depends(get_super_admin)):
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
-    return await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    
+    updated_invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    
+    # Send email notification
+    background_tasks.add_task(send_invoice_issued, updated_invoice)
+    
+    return updated_invoice
 
 @api_router.post("/invoices/{invoice_id}/mark-paid")
 async def mark_invoice_paid(invoice_id: str, user: dict = Depends(get_super_admin)):
