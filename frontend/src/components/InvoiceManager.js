@@ -160,8 +160,28 @@ export const InvoiceManager = ({ token }) => {
     }
   };
 
-  const downloadPdf = (invoiceId) => {
-    window.open(`${API}/invoices/${invoiceId}/pdf?token=${token}`, '_blank');
+  const downloadPdf = async (invoiceId) => {
+    try {
+      const response = await axios.get(`${API}/invoices/${invoiceId}/pdf`, {
+        headers,
+        responseType: 'blob'
+      });
+      
+      // Create blob and download
+      const blob = new Blob([response.data], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice_${invoiceId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Invoice downloaded");
+    } catch (error) {
+      toast.error("Failed to download invoice");
+      console.error("Download error:", error);
+    }
   };
 
   if (loading) {
