@@ -683,7 +683,7 @@ const FleetDashboard = () => {
     drivers: renderDrivers(),
     vehicles: renderVehicles(),
     earnings: renderEarnings(),
-    invoices: renderInvoices()
+    invoices: <FleetInvoices token={token} fleetId={user?.fleet_id} />
   };
 
   return (
