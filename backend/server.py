@@ -990,7 +990,7 @@ async def get_fleet(fleet_id: str, user: dict = Depends(get_admin_or_fleet)):
     return fleet
 
 @api_router.post("/fleets", response_model=Fleet)
-async def create_fleet(fleet_data: FleetCreate, user: dict = Depends(get_super_admin)):
+async def create_fleet(fleet_data: FleetCreate, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
     # Check if email already exists
     existing = await db.fleets.find_one({"email": fleet_data.email})
     if existing:
@@ -1005,6 +1005,9 @@ async def create_fleet(fleet_data: FleetCreate, user: dict = Depends(get_super_a
     )
     await db.fleets.insert_one(fleet.model_dump())
     
+    # Send welcome email with password
+    background_tasks.add_task(send_fleet_password_reset, fleet.model_dump(), password)
+    
     # Return fleet with temporary password (only shown once)
     fleet_response = fleet.model_dump()
     fleet_response["temporary_password"] = password
@@ -1012,7 +1015,12 @@ async def create_fleet(fleet_data: FleetCreate, user: dict = Depends(get_super_a
     return fleet_response
 
 @api_router.put("/fleets/{fleet_id}")
-async def update_fleet(fleet_id: str, update: FleetUpdate, user: dict = Depends(get_super_admin)):
+async def update_fleet(fleet_id: str, update: FleetUpdate, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
+    # Get current fleet for comparison
+    current_fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0})
+    if not current_fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+    
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
     
     # Hash password if being updated
@@ -1021,23 +1029,38 @@ async def update_fleet(fleet_id: str, update: FleetUpdate, user: dict = Depends(
     
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
+    # Check for status change
+    old_status = current_fleet.get("status")
+    new_status = update_data.get("status")
+    
     result = await db.fleets.update_one({"id": fleet_id}, {"$set": update_data})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Fleet not found")
     
     fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0, "password": 0})
+    
+    # Send email notifications for status changes
+    if new_status and old_status != new_status:
+        if new_status == "suspended":
+            background_tasks.add_task(send_fleet_suspended, fleet)
+        elif new_status == "active" and old_status == "suspended":
+            background_tasks.add_task(send_fleet_reactivated, fleet)
+    
     return fleet
 
 @api_router.post("/fleets/{fleet_id}/reset-password")
-async def reset_fleet_password(fleet_id: str, user: dict = Depends(get_super_admin)):
+async def reset_fleet_password(fleet_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
+    fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0})
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+    
     new_password = f"fleet{str(uuid.uuid4())[:8]}"
     
-    result = await db.fleets.update_one(
+    await db.fleets.update_one(
         {"id": fleet_id},
         {"$set": {"password": hash_password(new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Fleet not found")
+    
+    # Send email with new password
+    background_tasks.add_task(send_fleet_password_reset, fleet, new_password)
     
     return {"message": "Password reset successful", "temporary_password": new_password}
 
