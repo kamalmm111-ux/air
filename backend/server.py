@@ -1448,7 +1448,7 @@ async def create_manual_booking(booking_data: ManualBookingCreate, user: dict = 
 # ==================== JOB ASSIGNMENT ROUTES ====================
 
 @api_router.post("/bookings/{booking_id}/assign")
-async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict = Depends(get_super_admin)):
+async def assign_booking(booking_id: str, assignment: JobAssignment, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
     """Assign a booking to a fleet and/or driver"""
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
@@ -1457,6 +1457,10 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict 
     update_data = {
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
+    
+    fleet = None
+    driver = None
+    vehicle = None
     
     if assignment.fleet_id:
         fleet = await db.fleets.find_one({"id": assignment.fleet_id}, {"_id": 0})
@@ -1496,17 +1500,21 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict 
     
     await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
     
+    # Get updated booking for emails
+    updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    
     # Log assignment to history
-    if assignment.fleet_id:
-        fleet = await db.fleets.find_one({"id": assignment.fleet_id}, {"_id": 0})
+    if assignment.fleet_id and fleet:
         await log_booking_history(
             booking_id,
             "fleet_assigned",
-            f"Assigned to fleet: {fleet['name'] if fleet else assignment.fleet_id}",
+            f"Assigned to fleet: {fleet['name']}",
             user,
             old_value=booking.get("assigned_fleet_name"),
-            new_value=fleet['name'] if fleet else assignment.fleet_id
+            new_value=fleet['name']
         )
+        # Send email to fleet
+        background_tasks.add_task(send_job_alert_to_fleet, updated_booking, fleet)
     
     if assignment.driver_price is not None:
         await log_booking_history(
@@ -1517,6 +1525,10 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, user: dict 
             old_value=str(booking.get("driver_price")),
             new_value=str(assignment.driver_price)
         )
+    
+    # Send driver assignment notification to customer
+    if driver and booking.get("customer_email"):
+        background_tasks.add_task(send_driver_assigned_to_customer, updated_booking, driver, vehicle)
     
     # Create notification for fleet
     if assignment.fleet_id:
