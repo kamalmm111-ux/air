@@ -104,12 +104,6 @@ const LoginPage = () => {
               Create Account
             </Link>
           </div>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-zinc-100 rounded-sm">
-            <p className="text-xs text-zinc-500 mb-2">Demo Admin Credentials:</p>
-            <p className="text-sm font-mono">admin@aircabio.com / admin123</p>
-          </div>
         </CardContent>
       </Card>
     </div>
