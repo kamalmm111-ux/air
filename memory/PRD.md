@@ -280,13 +280,26 @@ Public:
   - [x] **Critical:** Backend blocks job assignments to suspended fleets (HTTP 400)
   - [x] Frontend dropdowns filter out suspended fleets (only show active)
   - [x] Login As button disabled for suspended fleets
+- [x] **Comprehensive Invoice System (Feb 2, 2026)**:
+  - [x] InvoiceManager component for Super Admin with full CRUD
+  - [x] Create invoices for Customers, Fleets, Drivers
+  - [x] Select completed bookings to include in invoice
+  - [x] Profit margin tracking on customer invoices
+  - [x] VAT/Tax calculation with configurable rate
+  - [x] Payment terms: Net 7, Net 14, Net 30
+  - [x] Invoice workflow: Draft → Pending Approval → Approved → Issued → Paid
+  - [x] Auto-Generate Fleet Invoices button (1st-15th or 16th-end of month periods)
+  - [x] Invoice approval workflow for fleet invoices
+  - [x] View/Edit/Delete invoice capabilities
+  - [x] Download PDF functionality
+  - [x] FleetInvoices component for Fleet Dashboard
+  - [x] Fleet can view and download their invoices
 
 ### P1 - High Priority
-- [ ] Invoicing System Enhancement: Full invoice creation/editing/PDF download for customers, fleets, drivers
-- [ ] Fleet Portal Invoice Section: View/download fleet invoices
 - [ ] Email notifications (booking confirmations, job assignments) - using Resend
 - [ ] Real Google Places autocomplete integration for booking engine
 - [ ] Booking export to CSV
+- [ ] Fleet password management (allow setting/resetting fleet passwords)
 - [ ] Refactor server.py (2500+ lines) into proper structure (models, routes, services)
 
 ### P2 - Medium Priority
