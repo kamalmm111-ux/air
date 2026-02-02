@@ -957,6 +957,14 @@ const AdminDashboard = () => {
         token={token}
         onRefresh={fetchData}
       />
+
+      {/* Fleet View Dialog */}
+      <FleetViewDialog
+        open={viewFleetDialogOpen}
+        onClose={() => { setViewFleetDialogOpen(false); setSelectedFleet(null); }}
+        fleet={selectedFleet}
+        token={token}
+      />
     </div>
   );
 };
