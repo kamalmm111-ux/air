@@ -271,13 +271,21 @@ Public:
   - [x] Full Booking History/Audit trail showing all changes
   - [x] B2B Customer Account dropdown in New Job dialog with auto-fill
   - [x] B2B customer account badge displayed in bookings table
+- [x] **Fleet Management Module Improvements (Feb 2, 2026)**:
+  - [x] FleetViewDialog modal with Overview/Drivers/Vehicles/Jobs tabs
+  - [x] View Fleet button (eye icon) opens detailed fleet info
+  - [x] Fleet search bar (by name, email, contact, city)
+  - [x] Fleet status filter dropdown (Active/Inactive/Suspended)
+  - [x] Stats cards showing Total/Active/Inactive/Suspended counts
+  - [x] **Critical:** Backend blocks job assignments to suspended fleets (HTTP 400)
+  - [x] Frontend dropdowns filter out suspended fleets (only show active)
+  - [x] Login As button disabled for suspended fleets
 
 ### P1 - High Priority
-- [ ] **Fleet Management Module Improvements**: Fix "View Fleet" button, add search/filters to fleet list, block job assignments to suspended fleets
 - [ ] Invoicing System Enhancement: Full invoice creation/editing/PDF download for customers, fleets, drivers
 - [ ] Fleet Portal Invoice Section: View/download fleet invoices
+- [ ] Email notifications (booking confirmations, job assignments) - using Resend
 - [ ] Real Google Places autocomplete integration for booking engine
-- [ ] Email notifications (booking confirmations, job assignments)
 - [ ] Booking export to CSV
 - [ ] Refactor server.py (2500+ lines) into proper structure (models, routes, services)
 
