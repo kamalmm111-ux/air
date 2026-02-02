@@ -952,6 +952,37 @@ async def get_me(user: dict = Depends(get_current_user)):
         created_at=user["created_at"]
     )
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+@api_router.post("/auth/change-password")
+async def change_password(data: PasswordChange, user: dict = Depends(get_current_user)):
+    """Change password for current logged-in user (admin or fleet)"""
+    # Verify current password
+    if user.get("role") == "fleet_admin":
+        # Fleet user - check fleet collection
+        fleet = await db.fleets.find_one({"id": user.get("fleet_id")}, {"_id": 0})
+        if not fleet or not verify_password(data.current_password, fleet.get("password", "")):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        await db.fleets.update_one(
+            {"id": user.get("fleet_id")},
+            {"$set": {"password": hash_password(data.new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    else:
+        # Regular user (admin/customer) - check users collection
+        db_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+        if not db_user or not verify_password(data.current_password, db_user.get("password", "")):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"password": hash_password(data.new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return {"message": "Password changed successfully"}
+
 # ==================== CUSTOMER ROUTES ====================
 
 @api_router.get("/customers")
