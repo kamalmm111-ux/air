@@ -94,12 +94,6 @@ const FleetLoginPage = () => {
             </Button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-zinc-800 rounded-sm">
-            <p className="text-xs text-zinc-500 mb-2">Demo Fleet Credentials:</p>
-            <p className="text-sm font-mono text-zinc-300">fleet1@aircabio.com / fleet123</p>
-          </div>
-
           <div className="mt-6 text-center">
             <Link to="/" className="text-sm text-zinc-400 hover:text-white">
               ← Back to Main Site
