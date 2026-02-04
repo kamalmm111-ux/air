@@ -3783,15 +3783,31 @@ async def generate_tracking_link(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    # Check if driver is assigned
+    # Check if driver is assigned - support both driver_id and assigned_driver_name
     driver_id = booking.get("driver_id")
-    if not driver_id:
+    driver_name = booking.get("assigned_driver_name")
+    driver = None
+    
+    if driver_id:
+        driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+    elif driver_name:
+        # Try to find driver by name
+        driver = await db.drivers.find_one({"name": driver_name}, {"_id": 0})
+        if driver:
+            driver_id = driver.get("id")
+    
+    # If still no driver, check if at least name is available
+    if not driver and not driver_name:
         raise HTTPException(status_code=400, detail="No driver assigned to this booking")
     
-    # Get driver details
-    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
-    if not driver:
-        raise HTTPException(status_code=404, detail="Driver not found")
+    # Use driver data if found, otherwise use booking's assigned driver name
+    if driver:
+        driver_id = driver.get("id")
+        driver_name = driver.get("name", driver_name)
+        driver_email = driver.get("email", "")
+    else:
+        driver_id = f"driver-{booking_id[:8]}"  # Generate pseudo ID
+        driver_email = ""
     
     # Check for existing tracking session
     existing = await db.tracking_sessions.find_one({
@@ -3812,7 +3828,7 @@ async def generate_tracking_link(
     session = TrackingSession(
         booking_id=booking_id,
         driver_id=driver_id,
-        driver_name=driver.get("name", "Unknown Driver")
+        driver_name=driver_name
     )
     
     await db.tracking_sessions.insert_one(session.model_dump())
