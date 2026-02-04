@@ -598,3 +598,67 @@ async def send_unassigned_job_reminder(booking: Dict, admin_email: str, minutes_
     """
     html = get_base_template(content, "Unassigned Job Alert")
     await send_email(admin_email, f"[URGENT] Unassigned Job - {booking.get('booking_ref')}", html)
+
+
+# ==================== DRIVER TRACKING NOTIFICATIONS ====================
+
+async def send_driver_tracking_link(
+    driver_email: str,
+    driver_name: str,
+    booking_ref: str,
+    pickup_location: str,
+    dropoff_location: str,
+    pickup_date: str,
+    pickup_time: str,
+    tracking_url: str,
+    site_name: str = "Aircabio"
+):
+    """Send tracking link to driver"""
+    if not driver_email:
+        logger.warning("No driver email provided for tracking link")
+        return
+    
+    content = f"""
+    <h2 style="color: #0A0F1C; margin: 0 0 24px 0;">📍 Start Tracking Your Trip</h2>
+    <p style="color: #333;">Hi {driver_name},</p>
+    <p style="color: #333;">You have been assigned to a new job. Please click the button below to start location tracking when you begin the journey.</p>
+    
+    <table width="100%" cellpadding="16" cellspacing="0" style="background-color: #f8f8f8; border-radius: 8px; margin: 24px 0; border-left: 4px solid #D4AF37;">
+        <tr><td>
+            <strong style="color: #666;">Booking Reference</strong><br>
+            <span style="color: #0A0F1C; font-size: 20px; font-weight: bold;">{booking_ref}</span>
+        </td></tr>
+        <tr><td style="border-top: 1px solid #e5e5e5;">
+            <strong style="color: #666;">Pickup Date & Time</strong><br>
+            <span style="color: #0A0F1C; font-size: 16px;">{pickup_date} at {pickup_time}</span>
+        </td></tr>
+        <tr><td style="border-top: 1px solid #e5e5e5;">
+            <strong style="color: #666;">Route</strong><br>
+            <span style="color: #0A0F1C;">📍 {pickup_location}</span><br>
+            <span style="color: #666;">↓</span><br>
+            <span style="color: #0A0F1C;">📍 {dropoff_location}</span>
+        </td></tr>
+    </table>
+    
+    <div style="text-align: center; margin: 32px 0;">
+        <a href="{tracking_url}" style="display: inline-block; background-color: #16a34a; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 18px;">
+            🚗 Start Tracking
+        </a>
+    </div>
+    
+    <p style="color: #666; font-size: 14px; text-align: center;">
+        Click the button above when you start driving to enable live location tracking.
+    </p>
+    
+    <table width="100%" cellpadding="12" cellspacing="0" style="background-color: #fef3c7; border-radius: 8px; margin: 24px 0;">
+        <tr><td style="text-align: center;">
+            <strong style="color: #92400e;">⚠️ Important</strong><br>
+            <span style="color: #92400e; font-size: 13px;">
+                Your location will be shared with {site_name} dispatch team for this journey only.
+                You can stop tracking at any time after completing the trip.
+            </span>
+        </td></tr>
+    </table>
+    """
+    html = get_base_template(content, "Start Tracking")
+    await send_email(driver_email, f"🚗 Start Tracking - Job {booking_ref}", html)
