@@ -7,7 +7,8 @@ import { Textarea } from "./ui/textarea";
 import { 
   User, Phone, Mail, MapPin, Calendar, Clock, Car, Users, Plane, 
   DollarSign, UserCheck, Building2, FileText, Send, Edit, Trash2,
-  History, StickyNote, AlertTriangle, CheckCircle, XCircle
+  History, StickyNote, AlertTriangle, CheckCircle, XCircle, Navigation,
+  Download, Copy, ExternalLink, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
