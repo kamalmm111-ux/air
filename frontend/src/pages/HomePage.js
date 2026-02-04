@@ -89,7 +89,7 @@ const HomePage = () => {
               {/* Hero Text */}
               <div className="text-white animate-fadeInUp">
                 <p className="text-xs uppercase tracking-widest font-semibold text-[#D4AF37] mb-4">
-                  {siteSettings.tagline || "Premium Airport Transfers"}
+                  {tagline}
                 </p>
                 <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-6" style={{ fontFamily: 'Chivo, sans-serif' }}>
                   {heroTitle.includes("Style") ? (
@@ -109,7 +109,7 @@ const HomePage = () => {
                     onClick={() => document.getElementById('booking-section').scrollIntoView({ behavior: 'smooth' })}
                     data-testid="book-now-hero-btn"
                   >
-                    Book Now
+                    {heroCtaText}
                   </Button>
                   <Button
                     size="lg"
