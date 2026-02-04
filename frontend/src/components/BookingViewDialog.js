@@ -372,6 +372,147 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
             </div>
           </TabsContent>
 
+          {/* TRACKING TAB */}
+          <TabsContent value="tracking" className="mt-4">
+            <div className="space-y-4">
+              {/* Check if driver is assigned */}
+              {!booking.assigned_driver_name ? (
+                <div className="text-center py-8 bg-amber-50 rounded-lg border border-amber-200">
+                  <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+                  <h3 className="font-bold text-amber-800 mb-1">No Driver Assigned</h3>
+                  <p className="text-sm text-amber-700">Assign a driver to this booking to enable tracking.</p>
+                </div>
+              ) : !trackingData?.session ? (
+                // No tracking session yet
+                <div className="text-center py-8 bg-zinc-50 rounded-lg">
+                  <Navigation className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
+                  <h3 className="font-bold text-zinc-700 mb-2">Tracking Not Started</h3>
+                  <p className="text-sm text-zinc-500 mb-4">
+                    Generate a tracking link for driver <strong>{booking.assigned_driver_name}</strong>
+                  </p>
+                  <Button onClick={generateTrackingLink} disabled={trackingLoading} className="bg-[#0A0F1C]">
+                    {trackingLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Navigation className="w-4 h-4 mr-2" />}
+                    Generate Tracking Link
+                  </Button>
+                </div>
+              ) : (
+                // Tracking session exists
+                <div className="space-y-4">
+                  {/* Status */}
+                  <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        trackingData.session.status === "active" ? "bg-green-500 animate-pulse" :
+                        trackingData.session.status === "completed" ? "bg-blue-500" : "bg-amber-500"
+                      }`} />
+                      <div>
+                        <p className="font-medium">{trackingData.session.driver_name}</p>
+                        <p className="text-sm text-zinc-500">
+                          Status: <span className="font-medium capitalize">{trackingData.session.status}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className={
+                      trackingData.session.status === "active" ? "bg-green-100 text-green-800" :
+                      trackingData.session.status === "completed" ? "bg-blue-100 text-blue-800" :
+                      "bg-amber-100 text-amber-800"
+                    }>
+                      {trackingData.session.status === "active" ? "LIVE TRACKING" : 
+                       trackingData.session.status === "completed" ? "COMPLETED" : "PENDING"}
+                    </Badge>
+                  </div>
+
+                  {/* Tracking Link Actions */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button variant="outline" onClick={copyTrackingLink} className="w-full">
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy Link
+                    </Button>
+                    <Button variant="outline" onClick={sendTrackingEmail} disabled={trackingLoading}>
+                      {trackingLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                      Email Driver
+                    </Button>
+                  </div>
+
+                  {/* Open Tracking Page */}
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => window.open(`/driver-tracking/${trackingData.session.token}`, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Tracking Page
+                  </Button>
+
+                  {/* Latest Location */}
+                  {trackingData.latest_location && (
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-bold text-sm text-green-800 mb-2 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" /> Latest Location
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-zinc-500">Latitude:</span>{" "}
+                          <span className="font-mono">{trackingData.latest_location.latitude?.toFixed(6)}</span>
+                        </div>
+                        <div>
+                          <span className="text-zinc-500">Longitude:</span>{" "}
+                          <span className="font-mono">{trackingData.latest_location.longitude?.toFixed(6)}</span>
+                        </div>
+                        {trackingData.latest_location.speed && (
+                          <div>
+                            <span className="text-zinc-500">Speed:</span>{" "}
+                            <span>{trackingData.latest_location.speed?.toFixed(1)} km/h</span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-zinc-500">Updated:</span>{" "}
+                          <span>{trackingData.latest_location.timestamp?.slice(11, 19)}</span>
+                        </div>
+                      </div>
+                      <a 
+                        href={`https://www.google.com/maps?q=${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mt-2"
+                      >
+                        <ExternalLink className="w-3 h-3" /> View on Google Maps
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-zinc-50 p-3 rounded-lg">
+                      <p className="text-2xl font-bold text-[#0A0F1C]">{trackingData.total_locations || 0}</p>
+                      <p className="text-xs text-zinc-500">Location Points</p>
+                    </div>
+                    <div className="bg-zinc-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-zinc-700">
+                        {trackingData.session.started_at?.slice(0, 10) || "—"}
+                      </p>
+                      <p className="text-xs text-zinc-500">Started</p>
+                    </div>
+                    <div className="bg-zinc-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-zinc-700">
+                        {trackingData.session.ended_at?.slice(0, 10) || "—"}
+                      </p>
+                      <p className="text-xs text-zinc-500">Ended</p>
+                    </div>
+                  </div>
+
+                  {/* Download Report */}
+                  {(trackingData.session.status === "completed" || trackingData.total_locations > 0) && (
+                    <Button onClick={downloadTrackingReport} className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A0F1C]">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Tracking Report (PDF)
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
           {/* NOTES TAB */}
           <TabsContent value="notes" className="mt-4">
             <div className="space-y-4">
