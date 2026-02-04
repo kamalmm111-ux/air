@@ -9,12 +9,44 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Car, Menu, X, User, LogOut, LayoutDashboard, Phone, Mail } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Layout = () => {
   const { user, logout, isAdmin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [siteSettings, setSiteSettings] = useState({});
+
+  // Fetch CMS settings for header/footer
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get(`${API}/website-settings`);
+        setSiteSettings(res.data || {});
+      } catch (error) {
+        console.log("Using default site settings");
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  // CMS values with fallbacks
+  const siteName = siteSettings.site_name || "AIRCABIO";
+  const contactPhone = siteSettings.contact_phone || "+44 20 1234 5678";
+  const contactEmail = siteSettings.contact_email || "info@aircabio.com";
+  const contactAddress = siteSettings.contact_address || "";
+  const tagline = siteSettings.tagline || "24/7 Airport Transfers Worldwide";
+  const logoUrl = siteSettings.logo_url || "";
+  const footerText = siteSettings.footer_text || "Premium airport transfer services worldwide. Travel in comfort and style.";
+  const facebookUrl = siteSettings.facebook_url || "";
+  const twitterUrl = siteSettings.twitter_url || "";
+  const instagramUrl = siteSettings.instagram_url || "";
+  const linkedinUrl = siteSettings.linkedin_url || "";
+  const youtubeUrl = siteSettings.youtube_url || "";
+  const whatsappNumber = siteSettings.whatsapp_number || "";
 
   const handleLogout = () => {
     logout();
