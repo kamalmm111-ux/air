@@ -273,6 +273,17 @@ Public:
   - [x] Footer now displays social media icons dynamically from CMS (Facebook, Twitter, Instagram, LinkedIn, YouTube)
   - [x] WhatsApp button automatically appears in footer when number is configured
   - [x] All CMS changes now immediately reflect on the website
+- [x] **OG Meta Tags & Driver Tracking (Feb 4, 2026)**:
+  - [x] Fixed OG meta tags in index.html for proper WhatsApp/social sharing (shows "Aircabio - Premium Airport Transfers")
+  - [x] Implemented complete Driver GPS Tracking System:
+    - [x] Admin can generate tracking links from booking view Tracking tab
+    - [x] Driver Tracking Page (/driver-tracking/{token}) with trip details and Start/Stop buttons
+    - [x] 10-second location updates with GPS accuracy, speed, heading
+    - [x] Admin can Copy Link, Email Driver, Open Tracking Page
+    - [x] Live tracking status display (Pending/Active/Completed)
+    - [x] Latest location display with Google Maps link
+    - [x] Download Tracking Report as HTML/PDF with distance, duration, route history
+    - [x] Email tracking link to driver via Resend
 - [x] **Booking Dashboard Accuracy & Feature Upgrade (Feb 2, 2026)**:
   - [x] B2B Customer Accounts system with full CRUD (Add, Edit, View, Delete)
   - [x] Customer Accounts tab in Admin Dashboard sidebar
