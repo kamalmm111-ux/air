@@ -59,6 +59,9 @@ function App() {
             {/* Fleet Login (public) */}
             <Route path="/fleet/login" element={<FleetLoginPage />} />
             
+            {/* Driver Tracking Page (public - accessed via token) */}
+            <Route path="/driver-tracking/:token" element={<DriverTrackingPage />} />
+            
             {/* Fleet Dashboard Routes */}
             <Route path="/fleet/dashboard" element={<FleetLayout />}>
               <Route index element={<FleetDashboard />} />
