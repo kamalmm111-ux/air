@@ -156,7 +156,7 @@ const HomePage = () => {
               Why Choose Us
             </p>
             <h2 className="text-4xl md:text-5xl font-bold text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
-              The Aircabio Difference
+              The {siteName} Difference
             </h2>
           </div>
 
