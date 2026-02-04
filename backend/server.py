@@ -3707,6 +3707,13 @@ class WebsiteSettings(BaseModel):
     favicon_url: str = ""
     tagline: str = "Travel in Style & Comfort"
     
+    # Hero Section
+    hero_title: str = "Travel in Style & Comfort"
+    hero_subtitle: str = "Book your airport transfer with Aircabio. Professional drivers, premium vehicles, and guaranteed on-time service worldwide."
+    hero_background_url: str = ""
+    hero_cta_text: str = "Book Now"
+    hero_cta_link: str = "#booking-section"
+    
     # Contact
     contact_email: str = ""
     contact_phone: str = ""
