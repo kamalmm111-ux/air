@@ -33,6 +33,10 @@ const HomePage = () => {
   const heroTitle = siteSettings.hero_title || pageContent?.sections?.find(s => s.type === "hero")?.title || "Travel in Style & Comfort";
   const heroSubtitle = siteSettings.hero_subtitle || pageContent?.sections?.find(s => s.type === "hero")?.subtitle || "Book your airport transfer with Aircabio. Professional drivers, premium vehicles, and guaranteed on-time service worldwide.";
   const heroImage = siteSettings.hero_background_url || pageContent?.sections?.find(s => s.type === "hero")?.image_url || "https://images.unsplash.com/photo-1641736950490-ebb6533422d9?crop=entropy&cs=srgb&fm=jpg&q=85";
+  const heroCtaText = siteSettings.hero_cta_text || "Book Now";
+  const tagline = siteSettings.tagline || "Premium Airport Transfers";
+  const siteName = siteSettings.site_name || "Aircabio";
+  const contactPhone = siteSettings.contact_phone || "+44 20 1234 5678";
 
   const features = [
     {
