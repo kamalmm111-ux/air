@@ -42,6 +42,8 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  const [trackingData, setTrackingData] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -49,6 +51,7 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
     if (open && booking) {
       fetchNotes();
       fetchHistory();
+      fetchTracking();
     }
   }, [open, booking]);
 
