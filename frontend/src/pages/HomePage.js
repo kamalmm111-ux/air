@@ -255,7 +255,7 @@ const HomePage = () => {
             Ready to Book Your Transfer?
           </h2>
           <p className="text-lg text-zinc-600 mb-8">
-            Experience premium airport transfers with Aircabio. Book online or call us 24/7.
+            Experience premium airport transfers with {siteName}. Book online or call us 24/7.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button
@@ -270,7 +270,7 @@ const HomePage = () => {
               size="lg"
               variant="outline"
               className="border-2 border-[#0A0F1C] text-[#0A0F1C] hover:bg-[#0A0F1C] hover:text-white font-bold h-14 px-8"
-              onClick={() => window.location.href = 'tel:+442012345678'}
+              onClick={() => window.location.href = `tel:${contactPhone.replace(/\s/g, '')}`}
               data-testid="call-us-btn"
             >
               <Phone className="w-5 h-5 mr-2" />
