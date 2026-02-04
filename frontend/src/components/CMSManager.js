@@ -342,6 +342,71 @@ const CMSManager = ({ token }) => {
             </CardContent>
           </Card>
 
+          {/* Hero Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Image className="w-5 h-5 text-[#D4AF37]" /> Hero Section (Homepage)
+              </CardTitle>
+              <p className="text-sm text-zinc-500">Customize the main banner on your homepage</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Hero Title</Label>
+                <Input 
+                  value={settings.hero_title || ""} 
+                  onChange={(e) => setSettings({...settings, hero_title: e.target.value})}
+                  placeholder="Travel in Style & Comfort"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Hero Subtitle</Label>
+                <Textarea 
+                  value={settings.hero_subtitle || ""} 
+                  onChange={(e) => setSettings({...settings, hero_subtitle: e.target.value})}
+                  placeholder="Book your airport transfer with Aircabio..."
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Hero Background Image URL</Label>
+                <Input 
+                  value={settings.hero_background_url || ""} 
+                  onChange={(e) => setSettings({...settings, hero_background_url: e.target.value})}
+                  placeholder="https://example.com/hero-image.jpg"
+                />
+                {settings.hero_background_url && (
+                  <div className="relative aspect-video rounded-lg overflow-hidden border">
+                    <img 
+                      src={settings.hero_background_url} 
+                      alt="Hero preview" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Hero Button Text</Label>
+                  <Input 
+                    value={settings.hero_cta_text || ""} 
+                    onChange={(e) => setSettings({...settings, hero_cta_text: e.target.value})}
+                    placeholder="Book Now"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Hero Button Link</Label>
+                  <Input 
+                    value={settings.hero_cta_link || ""} 
+                    onChange={(e) => setSettings({...settings, hero_cta_link: e.target.value})}
+                    placeholder="#booking-section"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* SEO */}
           <Card>
             <CardHeader>
