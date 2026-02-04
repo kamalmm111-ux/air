@@ -3745,6 +3745,504 @@ class WebsiteSettings(BaseModel):
     header_cta_text: str = "Book Now"
     header_cta_link: str = "/booking"
 
+# ==================== DRIVER TRACKING SYSTEM ====================
+
+class TrackingLocation(BaseModel):
+    latitude: float
+    longitude: float
+    accuracy: Optional[float] = None
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    speed: Optional[float] = None
+    heading: Optional[float] = None
+
+class TrackingSession(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    booking_id: str
+    driver_id: str
+    driver_name: str
+    token: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    status: str = "pending"  # pending, active, completed
+    locations: List[Dict[str, Any]] = []
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Generate tracking link for a booking/driver assignment
+@api_router.post("/tracking/generate/{booking_id}")
+async def generate_tracking_link(
+    booking_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate a tracking link for a driver assignment and optionally send via email"""
+    if current_user.get("role") not in ["super_admin", "fleet_admin"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get booking
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Check if driver is assigned
+    driver_id = booking.get("driver_id")
+    if not driver_id:
+        raise HTTPException(status_code=400, detail="No driver assigned to this booking")
+    
+    # Get driver details
+    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    # Check for existing tracking session
+    existing = await db.tracking_sessions.find_one({
+        "booking_id": booking_id,
+        "status": {"$in": ["pending", "active"]}
+    }, {"_id": 0})
+    
+    if existing:
+        return {
+            "tracking_id": existing["id"],
+            "token": existing["token"],
+            "tracking_url": f"/driver-tracking/{existing['token']}",
+            "status": existing["status"],
+            "message": "Tracking session already exists"
+        }
+    
+    # Create new tracking session
+    session = TrackingSession(
+        booking_id=booking_id,
+        driver_id=driver_id,
+        driver_name=driver.get("name", "Unknown Driver")
+    )
+    
+    await db.tracking_sessions.insert_one(session.model_dump())
+    
+    # Update booking with tracking info
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "tracking_id": session.id,
+            "tracking_token": session.token,
+            "tracking_status": "pending"
+        }}
+    )
+    
+    return {
+        "tracking_id": session.id,
+        "token": session.token,
+        "tracking_url": f"/driver-tracking/{session.token}",
+        "driver_email": driver.get("email", ""),
+        "driver_name": driver.get("name", ""),
+        "message": "Tracking link generated successfully"
+    }
+
+# Send tracking link via email
+@api_router.post("/tracking/send-email/{booking_id}")
+async def send_tracking_email(
+    booking_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Send tracking link to driver via email"""
+    if current_user.get("role") not in ["super_admin", "fleet_admin"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get booking and tracking session
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    tracking_token = booking.get("tracking_token")
+    if not tracking_token:
+        raise HTTPException(status_code=400, detail="No tracking session exists. Generate one first.")
+    
+    driver_id = booking.get("driver_id")
+    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+    if not driver or not driver.get("email"):
+        raise HTTPException(status_code=400, detail="Driver has no email address")
+    
+    # Get website settings for branding
+    settings = await db.website_settings.find_one({"_id": "main"})
+    site_name = settings.get("site_name", "Aircabio") if settings else "Aircabio"
+    
+    # Import and send email
+    from email_service import send_driver_tracking_link
+    
+    base_url = os.environ.get("FRONTEND_URL", "https://aircabio.com")
+    tracking_url = f"{base_url}/driver-tracking/{tracking_token}"
+    
+    background_tasks.add_task(
+        send_driver_tracking_link,
+        driver.get("email"),
+        driver.get("name"),
+        booking.get("booking_ref", booking_id[:8].upper()),
+        booking.get("pickup_location", ""),
+        booking.get("dropoff_location", ""),
+        booking.get("pickup_date", ""),
+        booking.get("pickup_time", ""),
+        tracking_url,
+        site_name
+    )
+    
+    return {"message": f"Tracking link sent to {driver.get('email')}"}
+
+# Public endpoint - Get tracking session by token (for driver)
+@api_router.get("/tracking/session/{token}")
+async def get_tracking_session(token: str):
+    """Get tracking session details by token - public endpoint for driver"""
+    session = await db.tracking_sessions.find_one({"token": token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="Tracking session not found")
+    
+    # Get booking details
+    booking = await db.bookings.find_one({"id": session["booking_id"]}, {"_id": 0})
+    
+    return {
+        "id": session["id"],
+        "status": session["status"],
+        "driver_name": session["driver_name"],
+        "booking": {
+            "ref": booking.get("booking_ref", "") if booking else "",
+            "pickup_location": booking.get("pickup_location", "") if booking else "",
+            "dropoff_location": booking.get("dropoff_location", "") if booking else "",
+            "pickup_date": booking.get("pickup_date", "") if booking else "",
+            "pickup_time": booking.get("pickup_time", "") if booking else "",
+            "customer_name": booking.get("customer_name", "") if booking else "",
+            "status": booking.get("status", "") if booking else ""
+        },
+        "started_at": session.get("started_at"),
+        "location_count": len(session.get("locations", []))
+    }
+
+# Public endpoint - Update driver location
+@api_router.post("/tracking/location/{token}")
+async def update_driver_location(token: str, location: TrackingLocation):
+    """Update driver location - public endpoint for driver tracking page"""
+    session = await db.tracking_sessions.find_one({"token": token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="Tracking session not found")
+    
+    if session["status"] == "completed":
+        raise HTTPException(status_code=400, detail="Tracking session has ended")
+    
+    # Update session status if first location
+    update_data = {
+        "$push": {"locations": location.model_dump()},
+        "$set": {"status": "active"}
+    }
+    
+    if session["status"] == "pending":
+        update_data["$set"]["started_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.tracking_sessions.update_one({"token": token}, update_data)
+    
+    # Update booking with latest location
+    await db.bookings.update_one(
+        {"id": session["booking_id"]},
+        {"$set": {
+            "tracking_status": "active",
+            "last_location": location.model_dump(),
+            "last_location_update": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Location updated", "status": "active"}
+
+# Public endpoint - Start/Stop tracking
+@api_router.post("/tracking/control/{token}")
+async def control_tracking(token: str, action: str = Query(..., regex="^(start|stop)$")):
+    """Start or stop tracking session"""
+    session = await db.tracking_sessions.find_one({"token": token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="Tracking session not found")
+    
+    if action == "start":
+        if session["status"] == "completed":
+            raise HTTPException(status_code=400, detail="Session already completed")
+        
+        await db.tracking_sessions.update_one(
+            {"token": token},
+            {"$set": {
+                "status": "active",
+                "started_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        await db.bookings.update_one(
+            {"id": session["booking_id"]},
+            {"$set": {"tracking_status": "active"}}
+        )
+        return {"message": "Tracking started", "status": "active"}
+    
+    elif action == "stop":
+        await db.tracking_sessions.update_one(
+            {"token": token},
+            {"$set": {
+                "status": "completed",
+                "ended_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        await db.bookings.update_one(
+            {"id": session["booking_id"]},
+            {"$set": {"tracking_status": "completed"}}
+        )
+        return {"message": "Tracking stopped", "status": "completed"}
+
+# Admin endpoint - Get live tracking data for a booking
+@api_router.get("/admin/tracking/{booking_id}")
+async def get_admin_tracking(booking_id: str, current_user: dict = Depends(get_current_user)):
+    """Get tracking data for admin view"""
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    session = await db.tracking_sessions.find_one({"booking_id": booking_id}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="No tracking session for this booking")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    
+    return {
+        "session": session,
+        "booking": booking,
+        "latest_location": session["locations"][-1] if session.get("locations") else None,
+        "total_locations": len(session.get("locations", []))
+    }
+
+# Admin endpoint - Get all active tracking sessions
+@api_router.get("/admin/tracking")
+async def get_all_active_tracking(current_user: dict = Depends(get_current_user)):
+    """Get all active tracking sessions for admin dashboard"""
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    sessions = await db.tracking_sessions.find(
+        {"status": "active"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Enrich with booking data
+    result = []
+    for session in sessions:
+        booking = await db.bookings.find_one({"id": session["booking_id"]}, {"_id": 0})
+        result.append({
+            "session": session,
+            "booking": booking,
+            "latest_location": session["locations"][-1] if session.get("locations") else None
+        })
+    
+    return result
+
+# Admin endpoint - Download tracking report as PDF
+@api_router.get("/admin/tracking/{booking_id}/report")
+async def download_tracking_report(booking_id: str, current_user: dict = Depends(get_current_user)):
+    """Generate and download PDF tracking report"""
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    session = await db.tracking_sessions.find_one({"booking_id": booking_id}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="No tracking session for this booking")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    
+    # Get website settings for branding
+    settings = await db.website_settings.find_one({"_id": "main"})
+    site_name = settings.get("site_name", "Aircabio") if settings else "Aircabio"
+    
+    # Generate HTML report
+    locations = session.get("locations", [])
+    
+    # Calculate stats
+    total_distance = 0
+    if len(locations) > 1:
+        for i in range(1, len(locations)):
+            lat1, lon1 = locations[i-1]["latitude"], locations[i-1]["longitude"]
+            lat2, lon2 = locations[i]["latitude"], locations[i]["longitude"]
+            # Haversine formula
+            R = 6371  # Earth's radius in km
+            dlat = math.radians(lat2 - lat1)
+            dlon = math.radians(lon2 - lon1)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            total_distance += R * c
+    
+    duration_str = "N/A"
+    if session.get("started_at") and session.get("ended_at"):
+        try:
+            start = datetime.fromisoformat(session["started_at"].replace("Z", "+00:00"))
+            end = datetime.fromisoformat(session["ended_at"].replace("Z", "+00:00"))
+            duration = end - start
+            hours, remainder = divmod(duration.total_seconds(), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            duration_str = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+        except:
+            pass
+    
+    avg_speed = 0
+    if locations:
+        speeds = [loc.get("speed", 0) or 0 for loc in locations]
+        avg_speed = sum(speeds) / len(speeds) if speeds else 0
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Driver Tracking Report</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 40px; max-width: 900px; margin: 0 auto; color: #333; }}
+            .header {{ display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px; border-bottom: 3px solid #0A0F1C; padding-bottom: 20px; }}
+            .logo {{ font-size: 28px; font-weight: bold; color: #0A0F1C; }}
+            .report-title {{ text-align: right; }}
+            .report-title h1 {{ margin: 0; color: #0A0F1C; font-size: 24px; }}
+            .report-title p {{ margin: 5px 0 0; color: #666; }}
+            .section {{ margin-bottom: 30px; }}
+            .section-title {{ font-size: 18px; font-weight: bold; color: #0A0F1C; border-bottom: 2px solid #D4AF37; padding-bottom: 8px; margin-bottom: 15px; }}
+            .info-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }}
+            .info-item {{ background: #f9f9f9; padding: 12px; border-radius: 4px; }}
+            .info-label {{ font-size: 12px; color: #666; margin-bottom: 4px; }}
+            .info-value {{ font-size: 16px; font-weight: 600; color: #0A0F1C; }}
+            .stats-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; text-align: center; }}
+            .stat-box {{ background: #0A0F1C; color: white; padding: 20px; border-radius: 8px; }}
+            .stat-value {{ font-size: 24px; font-weight: bold; color: #D4AF37; }}
+            .stat-label {{ font-size: 12px; margin-top: 5px; opacity: 0.8; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }}
+            th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #eee; }}
+            th {{ background: #f5f5f5; font-weight: 600; }}
+            .footer {{ margin-top: 40px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="logo">{site_name}</div>
+            <div class="report-title">
+                <h1>Driver Tracking Report</h1>
+                <p>Generated: {datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC")}</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Booking Information</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Booking Reference</div>
+                    <div class="info-value">{booking.get('booking_ref', booking_id[:8].upper()) if booking else 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Customer Name</div>
+                    <div class="info-value">{booking.get('customer_name', 'N/A') if booking else 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Pickup Location</div>
+                    <div class="info-value">{booking.get('pickup_location', 'N/A') if booking else 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Dropoff Location</div>
+                    <div class="info-value">{booking.get('dropoff_location', 'N/A') if booking else 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Pickup Date</div>
+                    <div class="info-value">{booking.get('pickup_date', 'N/A') if booking else 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Pickup Time</div>
+                    <div class="info-value">{booking.get('pickup_time', 'N/A') if booking else 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Driver Information</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Driver Name</div>
+                    <div class="info-value">{session.get('driver_name', 'N/A')}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Tracking Status</div>
+                    <div class="info-value">{session.get('status', 'N/A').upper()}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Tracking Started</div>
+                    <div class="info-value">{session.get('started_at', 'N/A')[:19].replace('T', ' ') if session.get('started_at') else 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Tracking Ended</div>
+                    <div class="info-value">{session.get('ended_at', 'N/A')[:19].replace('T', ' ') if session.get('ended_at') else 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Tracking Summary</div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value">{len(locations)}</div>
+                    <div class="stat-label">Total Points</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{total_distance:.2f} km</div>
+                    <div class="stat-label">Distance Traveled</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{duration_str}</div>
+                    <div class="stat-label">Duration</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{avg_speed:.1f} km/h</div>
+                    <div class="stat-label">Avg Speed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Location History (Last 50 Points)</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Timestamp</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Speed (km/h)</th>
+                        <th>Accuracy (m)</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+    
+    for i, loc in enumerate(locations[-50:], 1):
+        timestamp = loc.get("timestamp", "")[:19].replace("T", " ") if loc.get("timestamp") else ""
+        html_content += f"""
+                    <tr>
+                        <td>{i}</td>
+                        <td>{timestamp}</td>
+                        <td>{loc.get('latitude', 0):.6f}</td>
+                        <td>{loc.get('longitude', 0):.6f}</td>
+                        <td>{loc.get('speed', 0) or 0:.1f}</td>
+                        <td>{loc.get('accuracy', 0) or 0:.0f}</td>
+                    </tr>
+        """
+    
+    html_content += f"""
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>This report was automatically generated by {site_name} Driver Tracking System</p>
+            <p>© {datetime.now().year} {site_name}. All rights reserved.</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Return as HTML (can be printed/saved as PDF by browser)
+    return StreamingResponse(
+        io.BytesIO(html_content.encode()),
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=tracking_report_{booking_id[:8]}.html"}
+    )
+
 # ==================== MEDIA LIBRARY ENDPOINTS ====================
 
 @api_router.get("/admin/media")
