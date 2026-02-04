@@ -67,17 +67,17 @@ const Layout = () => {
       <div className="bg-[#0A0F1C] text-white py-2 px-4 text-sm">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
-            <a href="tel:+442012345678" className="flex items-center gap-2 hover:text-[#D4AF37] transition-colors">
+            <a href={`tel:${contactPhone.replace(/\s/g, '')}`} className="flex items-center gap-2 hover:text-[#D4AF37] transition-colors">
               <Phone className="w-4 h-4" />
-              <span className="hidden sm:inline">+44 20 1234 5678</span>
+              <span className="hidden sm:inline">{contactPhone}</span>
             </a>
-            <a href="mailto:info@aircabio.com" className="flex items-center gap-2 hover:text-[#D4AF37] transition-colors">
+            <a href={`mailto:${contactEmail}`} className="flex items-center gap-2 hover:text-[#D4AF37] transition-colors">
               <Mail className="w-4 h-4" />
-              <span className="hidden sm:inline">info@aircabio.com</span>
+              <span className="hidden sm:inline">{contactEmail}</span>
             </a>
           </div>
           <div className="text-zinc-400">
-            24/7 Airport Transfers Worldwide
+            {tagline}
           </div>
         </div>
       </div>
@@ -88,10 +88,16 @@ const Layout = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2" data-testid="logo-link">
-              <Car className="w-8 h-8 text-[#0A0F1C]" />
-              <span className="text-2xl font-black tracking-tight text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                AIRCABIO
-              </span>
+              {logoUrl ? (
+                <img src={logoUrl} alt={siteName} className="h-10 object-contain" />
+              ) : (
+                <>
+                  <Car className="w-8 h-8 text-[#0A0F1C]" />
+                  <span className="text-2xl font-black tracking-tight text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
+                    {siteName}
+                  </span>
+                </>
+              )}
             </Link>
 
             {/* Desktop Navigation */}
