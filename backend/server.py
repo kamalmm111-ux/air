@@ -3847,8 +3847,8 @@ async def generate_tracking_link(
         "tracking_id": session.id,
         "token": session.token,
         "tracking_url": f"/driver-tracking/{session.token}",
-        "driver_email": driver.get("email", ""),
-        "driver_name": driver.get("name", ""),
+        "driver_email": driver_email if driver else "",
+        "driver_name": driver_name,
         "message": "Tracking link generated successfully"
     }
 
