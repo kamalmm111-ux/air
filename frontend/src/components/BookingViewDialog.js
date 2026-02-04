@@ -75,6 +75,79 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
     }
   };
 
+  const fetchTracking = async () => {
+    if (!booking) return;
+    try {
+      const res = await axios.get(`${API}/admin/tracking/${booking.id}`, { headers });
+      setTrackingData(res.data);
+    } catch (e) {
+      // No tracking session yet - that's OK
+      setTrackingData(null);
+    }
+  };
+
+  const generateTrackingLink = async () => {
+    setTrackingLoading(true);
+    try {
+      const res = await axios.post(`${API}/tracking/generate/${booking.id}`, {}, { headers });
+      toast.success("Tracking link generated!");
+      setTrackingData({
+        session: {
+          token: res.data.token,
+          status: "pending",
+          driver_name: res.data.driver_name || booking.assigned_driver_name
+        }
+      });
+      // Refresh to get full tracking data
+      fetchTracking();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to generate tracking link");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const sendTrackingEmail = async () => {
+    setTrackingLoading(true);
+    try {
+      await axios.post(`${API}/tracking/send-email/${booking.id}`, {}, { headers });
+      toast.success("Tracking link sent to driver via email!");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to send email");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const downloadTrackingReport = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/tracking/${booking.id}/report`, {
+        headers,
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tracking_report_${booking.booking_ref}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Tracking report downloaded");
+    } catch (e) {
+      toast.error("Failed to download report");
+    }
+  };
+
+  const copyTrackingLink = () => {
+    if (trackingData?.session?.token) {
+      const url = `${window.location.origin}/driver-tracking/${trackingData.session.token}`;
+      navigator.clipboard.writeText(url);
+      toast.success("Tracking link copied to clipboard!");
+    }
+  };
+
   const addNote = async () => {
     if (!newNote.trim()) return;
     setLoading(true);
