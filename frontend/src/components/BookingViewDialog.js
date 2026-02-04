@@ -210,8 +210,11 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="tracking">
+              <Navigation className="w-3 h-3 mr-1" /> Tracking
+            </TabsTrigger>
             <TabsTrigger value="notes">
               Notes {notes.length > 0 && <Badge className="ml-1 bg-[#D4AF37] text-white text-xs">{notes.length}</Badge>}
             </TabsTrigger>
