@@ -300,6 +300,15 @@ Public:
   - [x] PDF Tracking Report - Added Route Map section with full route visualization
   - [x] PDF Tracking Report - Added Key Location Points section with individual map screenshots
   - [x] Map images use Google Static Maps API with Start/End markers
+- [x] **Real-Time Tracking & Alerts Improvements (Feb 5, 2026)**:
+  - [x] Fixed map preview - Now uses OpenStreetMap embeds (no API key required)
+  - [x] Live map displays correctly with driver location marker
+  - [x] Added "Live tracking • Auto-refreshing every 10s" indicator
+  - [x] Late arrival detection - Compares tracking start vs scheduled pickup time
+  - [x] Distance validation - Alerts if driver starts tracking far from pickup location
+  - [x] Alerts displayed in Admin Tracking Tab with red (late) and amber (distance) styling
+  - [x] PDF report includes "Alerts & Issues" section for late arrivals
+  - [x] All maps now use OpenStreetMap iframes (100% reliable display)
 - [x] **Booking Dashboard Accuracy & Feature Upgrade (Feb 2, 2026)**:
   - [x] B2B Customer Accounts system with full CRUD (Add, Edit, View, Delete)
   - [x] Customer Accounts tab in Admin Dashboard sidebar
