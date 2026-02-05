@@ -1216,8 +1216,17 @@ const JobDetailDialog = ({ open, onClose, job, headers, onStatusChange, onAssign
                         <MapPin className="w-4 h-4" /> Driver Location (Live)
                       </h4>
                       
-                      {/* Map Preview */}
-                      <div className="mb-3 rounded-lg overflow-hidden border border-green-300">
+                      {/* OpenStreetMap Embed */}
+                      <div className="mb-3 rounded-lg overflow-hidden border border-green-300 h-40">
+                        <iframe
+                          title="Driver Location"
+                          width="100%"
+                          height="100%"
+                          frameBorder="0"
+                          scrolling="no"
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${trackingData.latest_location.longitude - 0.01}%2C${trackingData.latest_location.latitude - 0.01}%2C${trackingData.latest_location.longitude + 0.01}%2C${trackingData.latest_location.latitude + 0.01}&layer=mapnik&marker=${trackingData.latest_location.latitude}%2C${trackingData.latest_location.longitude}`}
+                          style={{ border: 0 }}
+                        />
                         <img 
                           src={`https://maps.googleapis.com/maps/api/staticmap?center=${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&zoom=15&size=600x200&maptype=roadmap&markers=color:green%7Clabel:D%7C${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}`}
                           alt="Driver Location"
