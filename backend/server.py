@@ -3893,7 +3893,9 @@ async def send_tracking_email(
     # Import and send email
     from email_service import send_driver_tracking_link
     
-    base_url = os.environ.get("FRONTEND_URL", "https://aircabio.com")
+    base_url = os.environ.get("FRONTEND_URL")
+    if not base_url:
+        raise HTTPException(status_code=500, detail="FRONTEND_URL environment variable not configured")
     tracking_url = f"{base_url}/driver-tracking/{tracking_token}"
     
     background_tasks.add_task(
