@@ -372,6 +372,8 @@ const FleetDashboard = () => {
             onAssign={() => openAssignDialog(job)}
             onStatusChange={updateJobStatus}
             getStatusBadge={getStatusBadge}
+            token={token}
+            onRefresh={fetchData}
           />
         ))
       )}
