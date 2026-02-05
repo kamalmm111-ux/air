@@ -4003,6 +4003,50 @@ async def control_tracking(token: str, action: str = Query(..., regex="^(start|s
         )
         return {"message": "Tracking stopped", "status": "completed"}
 
+# Public endpoint - Update job status from driver tracking page
+class StatusUpdate(BaseModel):
+    status: str
+
+@api_router.post("/tracking/update-status/{token}")
+async def update_job_status_from_driver(token: str, status_update: StatusUpdate):
+    """Update job status from driver tracking page - allows driver to update status live"""
+    session = await db.tracking_sessions.find_one({"token": token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="Tracking session not found")
+    
+    valid_statuses = ["en_route", "arrived", "in_progress", "completed"]
+    if status_update.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    # Update booking status
+    await db.bookings.update_one(
+        {"id": session["booking_id"]},
+        {"$set": {
+            "status": status_update.status,
+            "status_updated_at": datetime.now(timezone.utc).isoformat(),
+            "status_updated_by": "driver"
+        }}
+    )
+    
+    # If completed, also update tracking session
+    if status_update.status == "completed":
+        await db.tracking_sessions.update_one(
+            {"token": token},
+            {"$set": {
+                "status": "completed",
+                "ended_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        await db.bookings.update_one(
+            {"id": session["booking_id"]},
+            {"$set": {
+                "tracking_status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    return {"message": f"Status updated to {status_update.status}", "status": status_update.status}
+
 # Admin endpoint - Get live tracking data for a booking
 @api_router.get("/admin/tracking/{booking_id}")
 async def get_admin_tracking(booking_id: str, current_user: dict = Depends(get_current_user)):
