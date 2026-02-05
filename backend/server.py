@@ -4056,6 +4056,28 @@ async def update_job_status_from_driver(token: str, status_update: StatusUpdate)
     
     return {"message": f"Status updated to {status_update.status}", "status": status_update.status}
 
+# Fleet endpoint - Get tracking data for a booking (fleet can see their jobs)
+@api_router.get("/fleet/tracking/{booking_id}")
+async def get_fleet_tracking(booking_id: str, current_user: dict = Depends(get_fleet_admin)):
+    """Get tracking data for fleet view - similar to admin but fleet restricted"""
+    fleet_id = current_user.get("fleet_id")
+    
+    # Verify booking belongs to this fleet
+    booking = await db.bookings.find_one({"id": booking_id, "assigned_fleet_id": fleet_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found or not assigned to your fleet")
+    
+    session = await db.tracking_sessions.find_one({"booking_id": booking_id}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="No tracking session for this booking")
+    
+    return {
+        "session": session,
+        "booking": booking,
+        "latest_location": session["locations"][-1] if session.get("locations") else None,
+        "total_locations": len(session.get("locations", []))
+    }
+
 # Admin endpoint - Get live tracking data for a booking
 @api_router.get("/admin/tracking/{booking_id}")
 async def get_admin_tracking(booking_id: str, current_user: dict = Depends(get_current_user)):
