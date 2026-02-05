@@ -4382,50 +4382,45 @@ async def download_tracking_report(booking_id: str, current_user: dict = Depends
         </div>
         """
     
-    # Add Route Map section with Google Static Maps
+    # Add Route Map section with OpenStreetMap (works without API key)
     if locations:
-        # Get Google Maps API key from environment
-        google_maps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-        
-        # Create path for the route (up to 100 points for map display)
+        # Create path for the route
         path_points = locations[-100:]  # Last 100 points
         
         # Build markers for start and end
         start_loc = locations[0] if locations else None
         end_loc = locations[-1] if locations else None
         
-        # Calculate center of all points
-        avg_lat = sum(loc["latitude"] for loc in path_points) / len(path_points)
-        avg_lng = sum(loc["longitude"] for loc in path_points) / len(path_points)
+        # Calculate bounds for the map
+        min_lat = min(loc["latitude"] for loc in path_points)
+        max_lat = max(loc["latitude"] for loc in path_points)
+        min_lng = min(loc["longitude"] for loc in path_points)
+        max_lng = max(loc["longitude"] for loc in path_points)
         
-        # Build path string for polyline
-        path_str = "|".join([f"{loc['latitude']},{loc['longitude']}" for loc in path_points[:50]])
+        # Center of all points
+        center_lat = (min_lat + max_lat) / 2
+        center_lng = (min_lng + max_lng) / 2
         
-        # Build markers string
-        markers_str = ""
-        if start_loc:
-            markers_str += f"&markers=color:green%7Clabel:S%7C{start_loc['latitude']},{start_loc['longitude']}"
-        if end_loc:
-            markers_str += f"&markers=color:red%7Clabel:E%7C{end_loc['latitude']},{end_loc['longitude']}"
-        
-        # Static map URL
-        map_url = f"https://maps.googleapis.com/maps/api/staticmap?size=800x400&maptype=roadmap&path=color:0x0000ff%7Cweight:3%7C{path_str}{markers_str}&key={google_maps_key}"
+        # OpenStreetMap embed URL for route overview
+        osm_embed = f"https://www.openstreetmap.org/export/embed.html?bbox={min_lng - 0.01}%2C{min_lat - 0.01}%2C{max_lng + 0.01}%2C{max_lat + 0.01}&layer=mapnik&marker={start_loc['latitude']}%2C{start_loc['longitude']}"
         
         html_content += f"""
         <div class="section">
-            <div class="section-title">Route Map</div>
+            <div class="section-title">Route Overview</div>
             <div style="text-align: center; margin: 20px 0;">
-                <img src="{map_url}" alt="Driver Route Map" style="max-width: 100%; border: 1px solid #ddd; border-radius: 8px;" />
+                <iframe width="100%" height="350" frameborder="0" scrolling="no" src="{osm_embed}" style="border: 1px solid #ddd; border-radius: 8px;"></iframe>
                 <p style="color: #666; font-size: 12px; margin-top: 10px;">
-                    <span style="color: green;">● Start</span> &nbsp;&nbsp;&nbsp; 
-                    <span style="color: blue;">― Route</span> &nbsp;&nbsp;&nbsp; 
-                    <span style="color: red;">● End</span>
+                    <span style="color: green;">● Start: {start_loc['latitude']:.4f}, {start_loc['longitude']:.4f}</span> &nbsp;&nbsp;&nbsp; 
+                    <span style="color: red;">● End: {end_loc['latitude']:.4f}, {end_loc['longitude']:.4f}</span>
+                </p>
+                <p style="color: #666; font-size: 11px;">
+                    <a href="https://www.google.com/maps/dir/{start_loc['latitude']},{start_loc['longitude']}/{end_loc['latitude']},{end_loc['longitude']}" target="_blank" style="color: #2563eb;">View full route on Google Maps →</a>
                 </p>
             </div>
         </div>
         """
         
-        # Add individual location maps (show every 5th point to avoid too many images)
+        # Add individual location points with OpenStreetMap
         if len(locations) > 1:
             html_content += """
         <div class="section">
@@ -4447,7 +4442,8 @@ async def download_tracking_report(booking_id: str, current_user: dict = Depends
             
             for idx in key_indices:
                 loc = locations[idx]
-                point_map_url = f"https://maps.googleapis.com/maps/api/staticmap?center={loc['latitude']},{loc['longitude']}&zoom=16&size=250x150&maptype=roadmap&markers=color:blue%7C{loc['latitude']},{loc['longitude']}&key={google_maps_key}"
+                # OpenStreetMap embed for individual point
+                point_osm = f"https://www.openstreetmap.org/export/embed.html?bbox={loc['longitude'] - 0.005}%2C{loc['latitude'] - 0.005}%2C{loc['longitude'] + 0.005}%2C{loc['latitude'] + 0.005}&layer=mapnik&marker={loc['latitude']}%2C{loc['longitude']}"
                 timestamp = loc.get("timestamp", "")[:19].replace("T", " ") if loc.get("timestamp") else ""
                 label = "Start" if idx == 0 else ("End" if idx == len(locations) - 1 else f"Point {idx + 1}")
                 
