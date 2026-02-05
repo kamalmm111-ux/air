@@ -450,6 +450,23 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
                       <h4 className="font-bold text-sm text-green-800 mb-2 flex items-center gap-2">
                         <MapPin className="w-4 h-4" /> Latest Location
                       </h4>
+                      
+                      {/* Live Map Preview */}
+                      <div className="mb-3 rounded-lg overflow-hidden border border-green-300">
+                        <img 
+                          src={`https://maps.googleapis.com/maps/api/staticmap?center=${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&zoom=15&size=600x200&maptype=roadmap&markers=color:green%7Clabel:D%7C${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}`}
+                          alt="Driver Location Map"
+                          className="w-full h-40 object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div className="w-full h-40 bg-zinc-100 items-center justify-center hidden">
+                          <span className="text-zinc-400 text-sm">Map preview unavailable</span>
+                        </div>
+                      </div>
+                      
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
                           <span className="text-zinc-500">Latitude:</span>{" "}
