@@ -284,6 +284,16 @@ Public:
     - [x] Latest location display with Google Maps link
     - [x] Download Tracking Report as HTML/PDF with distance, duration, route history
     - [x] Email tracking link to driver via Resend
+- [x] **Fleet Portal Enhancements (Feb 5, 2026)**:
+  - [x] Job cards show "Generate Tracking Link" button when driver is assigned
+  - [x] Tracking section shows Copy/Email/Open buttons after link is generated
+  - [x] Notifications button in sidebar now opens dialog with fleet notifications
+  - [x] Mark all as read functionality for notifications
+  - [x] Enhanced Driver Tracking Page:
+    - [x] Trip Route card with Pickup (green) and Dropoff (red) locations clearly displayed
+    - [x] Journey Status progress showing 4 steps (En Route → Arrived → Journey → Completed)
+    - [x] Status update buttons for driver to change status live
+    - [x] Navigate to Pickup/Dropoff Google Maps links
 - [x] **Booking Dashboard Accuracy & Feature Upgrade (Feb 2, 2026)**:
   - [x] B2B Customer Accounts system with full CRUD (Add, Edit, View, Delete)
   - [x] Customer Accounts tab in Admin Dashboard sidebar
