@@ -4339,6 +4339,49 @@ async def download_tracking_report(booking_id: str, current_user: dict = Depends
         </div>
     """
     
+    # Check for late arrival and add alerts section
+    alerts = []
+    pickup_time_str = f"{booking.get('pickup_date', '')} {booking.get('pickup_time', '')}" if booking else ""
+    try:
+        pickup_datetime = datetime.strptime(pickup_time_str.strip(), "%Y-%m-%d %H:%M")
+        started_at = session.get("started_at")
+        if started_at:
+            tracking_start = datetime.fromisoformat(started_at.replace("Z", "+00:00")).replace(tzinfo=None)
+            late_minutes = (tracking_start - pickup_datetime).total_seconds() / 60
+            if late_minutes > 0:
+                alerts.append({
+                    "type": "late",
+                    "message": f"Driver was {int(late_minutes)} minutes late",
+                    "details": f"Scheduled: {booking.get('pickup_time')} | Actual: {tracking_start.strftime('%H:%M')}"
+                })
+    except:
+        pass
+    
+    # Check distance from pickup on first location
+    if locations and booking:
+        first_loc = locations[0]
+        # Note: We don't have pickup lat/lng stored, so we'll skip this check for now
+        # This could be enhanced by geocoding the pickup address
+    
+    if alerts:
+        html_content += """
+        <div class="section">
+            <div class="section-title">⚠️ Alerts & Issues</div>
+            <div style="space-y-3;">
+        """
+        for alert in alerts:
+            color = "#ef4444" if alert["type"] == "late" else "#f59e0b"
+            html_content += f"""
+                <div style="background: {color}11; border: 1px solid {color}; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                    <p style="margin: 0; font-weight: bold; color: {color};">{alert["message"]}</p>
+                    <p style="margin: 5px 0 0; font-size: 12px; color: #666;">{alert["details"]}</p>
+                </div>
+            """
+        html_content += """
+            </div>
+        </div>
+        """
+    
     # Add Route Map section with Google Static Maps
     if locations:
         # Get Google Maps API key from environment
