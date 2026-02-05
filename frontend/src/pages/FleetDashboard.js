@@ -960,10 +960,13 @@ const JobDetailDialog = ({ open, onClose, job, headers, onStatusChange, onAssign
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
+  const [trackingData, setTrackingData] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
   
   useEffect(() => {
     if (open && job) {
       fetchComments();
+      fetchTracking();
     }
   }, [open, job]);
   
@@ -977,6 +980,51 @@ const JobDetailDialog = ({ open, onClose, job, headers, onStatusChange, onAssign
       console.error("Error fetching comments:", e);
     } finally {
       setLoadingComments(false);
+    }
+  };
+
+  const fetchTracking = async () => {
+    if (!job) return;
+    try {
+      // Try to get tracking data from a fleet-accessible endpoint
+      const res = await axios.get(`${API}/fleet/tracking/${job.id}`, { headers });
+      setTrackingData(res.data);
+    } catch (e) {
+      // No tracking yet - that's OK
+      setTrackingData(null);
+    }
+  };
+
+  const generateTrackingLink = async () => {
+    setTrackingLoading(true);
+    try {
+      const res = await axios.post(`${API}/tracking/generate/${job.id}`, {}, { headers });
+      toast.success("Tracking link generated!");
+      fetchTracking();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to generate tracking link");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const copyTrackingLink = () => {
+    if (trackingData?.session?.token) {
+      const url = `${window.location.origin}/driver-tracking/${trackingData.session.token}`;
+      navigator.clipboard.writeText(url);
+      toast.success("Tracking link copied!");
+    }
+  };
+
+  const sendTrackingEmail = async () => {
+    setTrackingLoading(true);
+    try {
+      await axios.post(`${API}/tracking/send-email/${job.id}`, {}, { headers });
+      toast.success("Tracking link sent to driver!");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to send email");
+    } finally {
+      setTrackingLoading(false);
     }
   };
   
@@ -995,6 +1043,7 @@ const JobDetailDialog = ({ open, onClose, job, headers, onStatusChange, onAssign
   if (!job) return null;
   
   const needsAssignment = !job.assigned_driver_id || !job.assigned_vehicle_id;
+  const hasDriver = job.assigned_driver_name || job.assigned_driver_id;
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -1008,8 +1057,11 @@ const JobDetailDialog = ({ open, onClose, job, headers, onStatusChange, onAssign
         </DialogHeader>
         
         <Tabs defaultValue="details" className="mt-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Job Details</TabsTrigger>
+            <TabsTrigger value="tracking">
+              <Navigation className="w-3 h-3 mr-1" /> Tracking
+            </TabsTrigger>
             <TabsTrigger value="comments">
               Comments {comments.length > 0 && <Badge className="ml-1 bg-[#D4AF37]">{comments.length}</Badge>}
             </TabsTrigger>
