@@ -172,7 +172,10 @@ const FleetLayout = () => {
 
         {/* Notifications */}
         <div className="px-3 pb-4">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 relative">
+          <button 
+            onClick={() => setShowNotifications(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 relative"
+          >
             <Bell className="w-5 h-5" />
             Notifications
             {unreadCount > 0 && (
