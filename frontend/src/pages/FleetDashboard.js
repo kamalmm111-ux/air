@@ -1196,6 +1196,14 @@ const JobDetailDialog = ({ open, onClose, job, headers, onStatusChange, onAssign
                     </Badge>
                   </div>
                   
+                  {/* Auto-refresh indicator */}
+                  {trackingData.session.status === "active" && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Live tracking • Auto-refresh enabled
+                    </div>
+                  )}
+                  
                   {/* Actions */}
                   <div className="grid grid-cols-3 gap-2">
                     <Button variant="outline" size="sm" onClick={copyTrackingLink}>
