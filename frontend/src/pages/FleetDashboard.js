@@ -762,8 +762,50 @@ const StatCard = ({ title, value, icon: Icon, color }) => (
   </Card>
 );
 
-const JobCard = ({ job, onView, onAccept, onAssign, onStatusChange, getStatusBadge }) => {
+const JobCard = ({ job, onView, onAccept, onAssign, onStatusChange, getStatusBadge, token, onRefresh }) => {
   const needsAssignment = !job.assigned_driver_id || !job.assigned_vehicle_id;
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingLink, setTrackingLink] = useState(job.tracking_token || null);
+  
+  const headers = { Authorization: `Bearer ${token}` };
+  
+  // Generate tracking link
+  const generateTrackingLink = async () => {
+    setTrackingLoading(true);
+    try {
+      const res = await axios.post(`${API}/tracking/generate/${job.id}`, {}, { headers });
+      setTrackingLink(res.data.token);
+      toast.success("Tracking link generated!");
+      if (onRefresh) onRefresh();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to generate tracking link");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+  
+  // Copy tracking link to clipboard
+  const copyTrackingLink = () => {
+    const url = `${window.location.origin}/driver-tracking/${trackingLink}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Tracking link copied!");
+  };
+  
+  // Send tracking link via email
+  const sendTrackingEmail = async () => {
+    setTrackingLoading(true);
+    try {
+      await axios.post(`${API}/tracking/send-email/${job.id}`, {}, { headers });
+      toast.success("Tracking link sent to driver!");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to send email");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+  
+  const hasDriver = job.assigned_driver_name || job.assigned_driver_id;
+  const showTrackingActions = hasDriver && ["assigned", "accepted", "en_route", "arrived", "in_progress"].includes(job.status);
   
   return (
     <Card className="hover:shadow-md transition-shadow border-l-4" style={{ borderLeftColor: job.status === "assigned" ? "#9333ea" : job.status === "completed" ? "#22c55e" : "#D4AF37" }}>
@@ -802,6 +844,58 @@ const JobCard = ({ job, onView, onAccept, onAssign, onStatusChange, getStatusBad
                 <UserCheck className="w-4 h-4" />
                 <span>{job.assigned_driver_name}</span>
                 {job.assigned_vehicle_plate && <span className="font-mono">({job.assigned_vehicle_plate})</span>}
+              </div>
+            )}
+            
+            {/* Tracking Link Section - Shows when driver is assigned */}
+            {showTrackingActions && (
+              <div className="flex items-center gap-2 mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                <Navigation className="w-4 h-4 text-blue-600" />
+                {trackingLink ? (
+                  <>
+                    <span className="text-xs text-blue-700 font-medium">Tracking Ready</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={copyTrackingLink}
+                      className="h-7 px-2 text-blue-700 hover:bg-blue-100"
+                    >
+                      <Copy className="w-3 h-3 mr-1" /> Copy
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={sendTrackingEmail}
+                      disabled={trackingLoading}
+                      className="h-7 px-2 text-blue-700 hover:bg-blue-100"
+                    >
+                      {trackingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                      Email
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => window.open(`/driver-tracking/${trackingLink}`, '_blank')}
+                      className="h-7 px-2 text-blue-700 hover:bg-blue-100"
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" /> Open
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs text-blue-700">Driver assigned - </span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={generateTrackingLink}
+                      disabled={trackingLoading}
+                      className="h-7 px-2 text-blue-700 hover:bg-blue-100"
+                    >
+                      {trackingLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Navigation className="w-3 h-3 mr-1" />}
+                      Generate Tracking Link
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
