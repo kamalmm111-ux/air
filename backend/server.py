@@ -4091,11 +4091,64 @@ async def get_admin_tracking(booking_id: str, current_user: dict = Depends(get_c
     
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     
+    # Calculate alerts
+    alerts = []
+    
+    if booking and session.get("locations"):
+        # Check for late arrival at pickup
+        pickup_time_str = f"{booking.get('pickup_date')} {booking.get('pickup_time')}"
+        try:
+            # Parse pickup time
+            pickup_datetime = datetime.strptime(pickup_time_str, "%Y-%m-%d %H:%M")
+            
+            # Find when driver marked "arrived" status or first location update
+            started_at = session.get("started_at")
+            if started_at:
+                try:
+                    tracking_start = datetime.fromisoformat(started_at.replace("Z", "+00:00")).replace(tzinfo=None)
+                    late_minutes = (tracking_start - pickup_datetime).total_seconds() / 60
+                    
+                    if late_minutes > 0:
+                        alerts.append({
+                            "type": "late",
+                            "message": f"Driver was {int(late_minutes)} minutes late",
+                            "details": f"Pickup scheduled: {booking.get('pickup_time')} | Driver started tracking: {tracking_start.strftime('%H:%M')}"
+                        })
+                except:
+                    pass
+        except:
+            pass
+        
+        # Check distance from pickup location on first location point
+        first_location = session["locations"][0] if session["locations"] else None
+        if first_location and booking.get("pickup_lat") and booking.get("pickup_lng"):
+            try:
+                # Haversine formula to calculate distance
+                lat1, lon1 = first_location["latitude"], first_location["longitude"]
+                lat2, lon2 = float(booking.get("pickup_lat")), float(booking.get("pickup_lng"))
+                
+                R = 6371  # Earth's radius in km
+                dlat = math.radians(lat2 - lat1)
+                dlon = math.radians(lon2 - lon1)
+                a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+                distance_km = R * c
+                
+                if distance_km > 1:  # More than 1km away
+                    alerts.append({
+                        "type": "distance",
+                        "message": f"Driver started tracking {distance_km:.1f}km away from pickup",
+                        "details": f"Expected location: {booking.get('pickup_location')[:50]}..."
+                    })
+            except:
+                pass
+    
     return {
         "session": session,
         "booking": booking,
         "latest_location": session["locations"][-1] if session.get("locations") else None,
-        "total_locations": len(session.get("locations", []))
+        "total_locations": len(session.get("locations", [])),
+        "alerts": alerts
     }
 
 # Admin endpoint - Get all active tracking sessions
