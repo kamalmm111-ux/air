@@ -55,6 +55,19 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
     }
   }, [open, booking]);
 
+  // Auto-refresh tracking data every 10 seconds when tracking is active
+  useEffect(() => {
+    let interval;
+    if (open && booking && trackingData?.session?.status === "active") {
+      interval = setInterval(() => {
+        fetchTracking();
+      }, 10000); // 10 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [open, booking, trackingData?.session?.status]);
+
   const fetchNotes = async () => {
     if (!booking) return;
     try {
