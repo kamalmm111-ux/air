@@ -229,6 +229,70 @@ const FleetLayout = () => {
       <main className={`flex-1 overflow-auto ${isImpersonating ? 'mt-12' : ''}`}>
         <Outlet context={{ activeTab, setActiveTab, notifications, isImpersonating, impersonationFleet }} />
       </main>
+      
+      {/* Notifications Dialog */}
+      <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-[#D4AF37]" />
+              Notifications
+              {unreadCount > 0 && (
+                <Badge className="bg-red-500 text-white">{unreadCount} new</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto space-y-2">
+            {notifications.length === 0 ? (
+              <div className="text-center py-8 text-zinc-400">
+                <Bell className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>No notifications yet</p>
+              </div>
+            ) : (
+              notifications.map((notif, idx) => (
+                <div 
+                  key={notif.id || idx} 
+                  className={`p-3 rounded-lg border ${notif.read ? 'bg-zinc-50' : 'bg-blue-50 border-blue-200'}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className={`text-sm ${notif.read ? 'text-zinc-600' : 'text-zinc-800 font-medium'}`}>
+                        {notif.message || notif.title}
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        {notif.created_at ? new Date(notif.created_at).toLocaleString() : 'Just now'}
+                      </p>
+                    </div>
+                    {!notif.read && (
+                      <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          {notifications.length > 0 && unreadCount > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full mt-2"
+              onClick={async () => {
+                try {
+                  await axios.post(`${API}/fleet/notifications/mark-read`, {}, {
+                    headers: { Authorization: `Bearer ${effectiveToken}` }
+                  });
+                  setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                  setUnreadCount(0);
+                } catch (e) {
+                  console.error("Failed to mark as read:", e);
+                }
+              }}
+            >
+              <Check className="w-4 h-4 mr-1" /> Mark all as read
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
