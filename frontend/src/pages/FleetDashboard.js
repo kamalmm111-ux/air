@@ -16,7 +16,8 @@ import {
   Calendar as CalendarIcon, DollarSign, Clock, CheckCircle, TrendingUp, MapPin, Users, 
   Briefcase, Play, Check, Eye, FileText, Download, LogOut, AlertTriangle,
   Plus, Edit, Trash2, Car, User, Phone, Mail, UserCheck, ChevronLeft, ChevronRight,
-  Filter, X, MessageSquare, Send, Plane, StickyNote, List, Grid3X3, CalendarDays
+  Filter, X, MessageSquare, Send, Plane, StickyNote, List, Grid3X3, CalendarDays,
+  Navigation, Copy, ExternalLink, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
