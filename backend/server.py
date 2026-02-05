@@ -4262,7 +4262,92 @@ async def download_tracking_report(booking_id: str, current_user: dict = Depends
                 </div>
             </div>
         </div>
-
+    """
+    
+    # Add Route Map section with Google Static Maps
+    if locations:
+        # Get Google Maps API key from environment
+        google_maps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+        
+        # Create path for the route (up to 100 points for map display)
+        path_points = locations[-100:]  # Last 100 points
+        
+        # Build markers for start and end
+        start_loc = locations[0] if locations else None
+        end_loc = locations[-1] if locations else None
+        
+        # Calculate center of all points
+        avg_lat = sum(loc["latitude"] for loc in path_points) / len(path_points)
+        avg_lng = sum(loc["longitude"] for loc in path_points) / len(path_points)
+        
+        # Build path string for polyline
+        path_str = "|".join([f"{loc['latitude']},{loc['longitude']}" for loc in path_points[:50]])
+        
+        # Build markers string
+        markers_str = ""
+        if start_loc:
+            markers_str += f"&markers=color:green%7Clabel:S%7C{start_loc['latitude']},{start_loc['longitude']}"
+        if end_loc:
+            markers_str += f"&markers=color:red%7Clabel:E%7C{end_loc['latitude']},{end_loc['longitude']}"
+        
+        # Static map URL
+        map_url = f"https://maps.googleapis.com/maps/api/staticmap?size=800x400&maptype=roadmap&path=color:0x0000ff%7Cweight:3%7C{path_str}{markers_str}&key={google_maps_key}"
+        
+        html_content += f"""
+        <div class="section">
+            <div class="section-title">Route Map</div>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="{map_url}" alt="Driver Route Map" style="max-width: 100%; border: 1px solid #ddd; border-radius: 8px;" />
+                <p style="color: #666; font-size: 12px; margin-top: 10px;">
+                    <span style="color: green;">● Start</span> &nbsp;&nbsp;&nbsp; 
+                    <span style="color: blue;">― Route</span> &nbsp;&nbsp;&nbsp; 
+                    <span style="color: red;">● End</span>
+                </p>
+            </div>
+        </div>
+        """
+        
+        # Add individual location maps (show every 5th point to avoid too many images)
+        if len(locations) > 1:
+            html_content += """
+        <div class="section">
+            <div class="section-title">Key Location Points</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            """
+            
+            # Show start, middle points, and end
+            key_indices = [0]  # Start
+            if len(locations) > 2:
+                # Add evenly spaced points
+                step = max(1, len(locations) // 4)
+                for i in range(step, len(locations) - 1, step):
+                    key_indices.append(i)
+            key_indices.append(len(locations) - 1)  # End
+            
+            # Remove duplicates and keep order
+            key_indices = list(dict.fromkeys(key_indices))[:6]  # Max 6 points
+            
+            for idx in key_indices:
+                loc = locations[idx]
+                point_map_url = f"https://maps.googleapis.com/maps/api/staticmap?center={loc['latitude']},{loc['longitude']}&zoom=16&size=250x150&maptype=roadmap&markers=color:blue%7C{loc['latitude']},{loc['longitude']}&key={google_maps_key}"
+                timestamp = loc.get("timestamp", "")[:19].replace("T", " ") if loc.get("timestamp") else ""
+                label = "Start" if idx == 0 else ("End" if idx == len(locations) - 1 else f"Point {idx + 1}")
+                
+                html_content += f"""
+                <div style="text-align: center; background: #f9f9f9; padding: 10px; border-radius: 8px;">
+                    <img src="{point_map_url}" alt="Location {idx + 1}" style="width: 100%; border-radius: 4px; border: 1px solid #ddd;" />
+                    <p style="margin: 8px 0 4px; font-weight: bold; font-size: 12px;">{label}</p>
+                    <p style="margin: 0; font-size: 10px; color: #666;">{timestamp}</p>
+                    <p style="margin: 4px 0 0; font-size: 10px; font-family: monospace;">{loc['latitude']:.6f}, {loc['longitude']:.6f}</p>
+                </div>
+                """
+            
+            html_content += """
+            </div>
+        </div>
+            """
+    
+    html_content += """
         <div class="section">
             <div class="section-title">Location History (Last 50 Points)</div>
             <table>
