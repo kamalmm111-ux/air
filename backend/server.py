@@ -4449,7 +4449,7 @@ async def download_tracking_report(booking_id: str, current_user: dict = Depends
                 
                 html_content += f"""
                 <div style="text-align: center; background: #f9f9f9; padding: 10px; border-radius: 8px;">
-                    <img src="{point_map_url}" alt="Location {idx + 1}" style="width: 100%; border-radius: 4px; border: 1px solid #ddd;" />
+                    <iframe width="100%" height="120" frameborder="0" scrolling="no" src="{point_osm}" style="border-radius: 4px; border: 1px solid #ddd;"></iframe>
                     <p style="margin: 8px 0 4px; font-weight: bold; font-size: 12px;">{label}</p>
                     <p style="margin: 0; font-size: 10px; color: #666;">{timestamp}</p>
                     <p style="margin: 4px 0 0; font-size: 10px; font-family: monospace;">{loc['latitude']:.6f}, {loc['longitude']:.6f}</p>
