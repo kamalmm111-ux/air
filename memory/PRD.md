@@ -350,11 +350,22 @@ Public:
   - [x] Send password via email to fleet
   - [x] **NOTE:** Email service requires valid Resend API key (starts with `re_`) - currently in LOG-ONLY mode
 
+- [x] **Frontend Code Refactoring - FleetDashboard.js (Feb 5, 2026)**:
+  - [x] Extracted `JobCard` component (230 lines) - displays job information with tracking
+  - [x] Extracted `JobDetailDialog` component (420 lines) - modal with Details/Tracking/Comments tabs
+  - [x] Extracted `FleetDialogs` component (198 lines) - DriverDialog, VehicleDialog, AssignDriverDialog
+  - [x] Extracted `StatCard` component (19 lines) - reusable stats display
+  - [x] Created barrel export file `index.js` for clean imports
+  - [x] Reduced FleetDashboard.js from 1540 lines to 662 lines (57% reduction)
+  - [x] All components have proper data-testid attributes for testing
+  - [x] 100% test coverage verified by testing agent
+
 ### P1 - High Priority
 - [ ] Get valid Resend API key to enable actual email sending
 - [ ] Real Google Places autocomplete integration for booking engine
 - [ ] Booking export to CSV
-- [ ] Refactor server.py (2500+ lines) into proper structure (models, routes, services)
+- [ ] Refactor server.py (4800+ lines) into proper structure (models, routes, services)
+- [ ] Refactor AdminDashboard.js (2000+ lines) into smaller components
 
 ### P2 - Medium Priority
 - [ ] SMS/WhatsApp notifications
@@ -362,12 +373,11 @@ Public:
 - [ ] Day/night pricing surcharges (fees are configured but not applied in quote)
 - [ ] Multi-currency support
 - [ ] Driver mobile app/portal
-- [ ] Refactor AdminDashboard.js (1800+ lines) into smaller components
+- [ ] Real-time WebSocket notifications for instant updates
 
 ### P3 - Nice to Have
 - [ ] Flight tracking integration
 - [ ] Multi-language support
 - [ ] Corporate account management
 - [ ] Analytics dashboard
-- [ ] Real-time WebSocket notifications
 - [ ] Bulk import/export for pricing rules and fixed routes
