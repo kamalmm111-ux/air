@@ -1,8 +1,10 @@
 import { Outlet, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Badge } from "./ui/badge";
 import {
-  Car, LayoutDashboard, CalendarDays, DollarSign, LogOut, ChevronLeft, Bell, Truck, FileText, AlertTriangle, Users
+  Car, LayoutDashboard, CalendarDays, DollarSign, LogOut, ChevronLeft, Bell, Truck, FileText, AlertTriangle, Users, X, Check
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -16,6 +18,7 @@ const FleetLayout = () => {
   const [activeTab, setActiveTab] = useState("jobs");
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
   
   // Check for impersonation mode
   const isImpersonating = searchParams.get("impersonate") === "true" || sessionStorage.getItem("impersonation_token");
