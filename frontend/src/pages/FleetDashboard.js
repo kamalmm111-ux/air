@@ -1154,6 +1154,118 @@ const JobDetailDialog = ({ open, onClose, job, headers, onStatusChange, onAssign
             </div>
           </TabsContent>
           
+          {/* Tracking Tab */}
+          <TabsContent value="tracking" className="mt-4">
+            <div className="space-y-4">
+              {!hasDriver ? (
+                <div className="text-center py-8 bg-amber-50 rounded-lg border border-amber-200">
+                  <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+                  <h3 className="font-bold text-amber-800 mb-1">No Driver Assigned</h3>
+                  <p className="text-sm text-amber-700">Assign a driver to enable tracking.</p>
+                </div>
+              ) : !trackingData?.session ? (
+                <div className="text-center py-8 bg-zinc-50 rounded-lg">
+                  <Navigation className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
+                  <h3 className="font-bold text-zinc-700 mb-2">Tracking Not Started</h3>
+                  <p className="text-sm text-zinc-500 mb-4">Generate a tracking link for driver <strong>{job.assigned_driver_name}</strong></p>
+                  <Button onClick={generateTrackingLink} disabled={trackingLoading} className="bg-[#0A0F1C]">
+                    {trackingLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Navigation className="w-4 h-4 mr-2" />}
+                    Generate Tracking Link
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Status */}
+                  <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        trackingData.session.status === "active" ? "bg-green-500 animate-pulse" :
+                        trackingData.session.status === "completed" ? "bg-blue-500" : "bg-amber-500"
+                      }`} />
+                      <div>
+                        <p className="font-medium">{trackingData.session.driver_name}</p>
+                        <p className="text-sm text-zinc-500">Status: <span className="font-medium capitalize">{trackingData.session.status}</span></p>
+                      </div>
+                    </div>
+                    <Badge className={
+                      trackingData.session.status === "active" ? "bg-green-100 text-green-800" :
+                      trackingData.session.status === "completed" ? "bg-blue-100 text-blue-800" :
+                      "bg-amber-100 text-amber-800"
+                    }>
+                      {trackingData.session.status === "active" ? "LIVE" : trackingData.session.status?.toUpperCase()}
+                    </Badge>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button variant="outline" size="sm" onClick={copyTrackingLink}>
+                      <Copy className="w-3 h-3 mr-1" /> Copy
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={sendTrackingEmail} disabled={trackingLoading}>
+                      {trackingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3 mr-1" />} Email
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => window.open(`/driver-tracking/${trackingData.session.token}`, '_blank')}>
+                      <ExternalLink className="w-3 h-3 mr-1" /> Open
+                    </Button>
+                  </div>
+                  
+                  {/* Live Map */}
+                  {trackingData.latest_location && (
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-bold text-sm text-green-800 mb-2 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" /> Driver Location (Live)
+                      </h4>
+                      
+                      {/* Map Preview */}
+                      <div className="mb-3 rounded-lg overflow-hidden border border-green-300">
+                        <img 
+                          src={`https://maps.googleapis.com/maps/api/staticmap?center=${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&zoom=15&size=600x200&maptype=roadmap&markers=color:green%7Clabel:D%7C${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}`}
+                          alt="Driver Location"
+                          className="w-full h-40 object-cover"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-zinc-500">Lat:</span> <span className="font-mono">{trackingData.latest_location.latitude?.toFixed(6)}</span></div>
+                        <div><span className="text-zinc-500">Lng:</span> <span className="font-mono">{trackingData.latest_location.longitude?.toFixed(6)}</span></div>
+                        {trackingData.latest_location.speed > 0 && (
+                          <div><span className="text-zinc-500">Speed:</span> {trackingData.latest_location.speed?.toFixed(1)} km/h</div>
+                        )}
+                        <div><span className="text-zinc-500">Updated:</span> {trackingData.latest_location.timestamp?.slice(11, 19)}</div>
+                      </div>
+                      
+                      <a 
+                        href={`https://www.google.com/maps?q=${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mt-2"
+                      >
+                        <ExternalLink className="w-3 h-3" /> View in Google Maps
+                      </a>
+                    </div>
+                  )}
+                  
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                    <div className="bg-zinc-50 p-2 rounded">
+                      <p className="text-lg font-bold">{trackingData.total_locations || 0}</p>
+                      <p className="text-xs text-zinc-500">Points</p>
+                    </div>
+                    <div className="bg-zinc-50 p-2 rounded">
+                      <p className="text-xs font-medium">{trackingData.session.started_at?.slice(11, 16) || "—"}</p>
+                      <p className="text-xs text-zinc-500">Started</p>
+                    </div>
+                    <div className="bg-zinc-50 p-2 rounded">
+                      <p className="text-xs font-medium">{trackingData.session.ended_at?.slice(11, 16) || "—"}</p>
+                      <p className="text-xs text-zinc-500">Ended</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
           <TabsContent value="comments" className="mt-4">
             <div className="space-y-4">
               {/* Comments List */}
