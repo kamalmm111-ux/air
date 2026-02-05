@@ -444,27 +444,32 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
                     Open Tracking Page
                   </Button>
 
-                  {/* Latest Location */}
+                  {/* Auto-refresh indicator */}
+                  {trackingData.session.status === "active" && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Live tracking • Auto-refreshing every 10s
+                    </div>
+                  )}
+
+                  {/* Latest Location with Embedded Map */}
                   {trackingData.latest_location && (
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                       <h4 className="font-bold text-sm text-green-800 mb-2 flex items-center gap-2">
-                        <MapPin className="w-4 h-4" /> Latest Location
+                        <MapPin className="w-4 h-4" /> Driver Location (Live)
                       </h4>
                       
-                      {/* Live Map Preview */}
-                      <div className="mb-3 rounded-lg overflow-hidden border border-green-300">
-                        <img 
-                          src={`https://maps.googleapis.com/maps/api/staticmap?center=${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&zoom=15&size=600x200&maptype=roadmap&markers=color:green%7Clabel:D%7C${trackingData.latest_location.latitude},${trackingData.latest_location.longitude}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}`}
-                          alt="Driver Location Map"
-                          className="w-full h-40 object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
+                      {/* OpenStreetMap Embed - Works without API key */}
+                      <div className="mb-3 rounded-lg overflow-hidden border border-green-300 h-48">
+                        <iframe
+                          title="Driver Location Map"
+                          width="100%"
+                          height="100%"
+                          frameBorder="0"
+                          scrolling="no"
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${trackingData.latest_location.longitude - 0.01}%2C${trackingData.latest_location.latitude - 0.01}%2C${trackingData.latest_location.longitude + 0.01}%2C${trackingData.latest_location.latitude + 0.01}&layer=mapnik&marker=${trackingData.latest_location.latitude}%2C${trackingData.latest_location.longitude}`}
+                          style={{ border: 0 }}
                         />
-                        <div className="w-full h-40 bg-zinc-100 items-center justify-center hidden">
-                          <span className="text-zinc-400 text-sm">Map preview unavailable</span>
-                        </div>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -476,7 +481,7 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
                           <span className="text-zinc-500">Longitude:</span>{" "}
                           <span className="font-mono">{trackingData.latest_location.longitude?.toFixed(6)}</span>
                         </div>
-                        {trackingData.latest_location.speed && (
+                        {trackingData.latest_location.speed > 0 && (
                           <div>
                             <span className="text-zinc-500">Speed:</span>{" "}
                             <span>{trackingData.latest_location.speed?.toFixed(1)} km/h</span>
@@ -495,6 +500,29 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
                       >
                         <ExternalLink className="w-3 h-3" /> View on Google Maps
                       </a>
+                    </div>
+                  )}
+
+                  {/* Late/Distance Alerts */}
+                  {trackingData.alerts && trackingData.alerts.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-sm text-amber-800 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" /> Alerts
+                      </h4>
+                      {trackingData.alerts.map((alert, idx) => (
+                        <div key={idx} className={`p-3 rounded-lg text-sm ${
+                          alert.type === 'late' ? 'bg-red-50 border border-red-200 text-red-700' :
+                          alert.type === 'distance' ? 'bg-amber-50 border border-amber-200 text-amber-700' :
+                          'bg-blue-50 border border-blue-200 text-blue-700'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            {alert.type === 'late' && <Clock className="w-4 h-4" />}
+                            {alert.type === 'distance' && <MapPin className="w-4 h-4" />}
+                            <span className="font-medium">{alert.message}</span>
+                          </div>
+                          {alert.details && <p className="text-xs mt-1 opacity-75">{alert.details}</p>}
+                        </div>
+                      ))}
                     </div>
                   )}
 
