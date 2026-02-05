@@ -1768,6 +1768,15 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
     )
     return {"message": "Notification marked as read"}
 
+@api_router.post("/fleet/notifications/mark-read")
+async def mark_all_notifications_read(user: dict = Depends(get_fleet_admin)):
+    """Mark all notifications as read for the fleet"""
+    await db.notifications.update_many(
+        {"fleet_id": user.get("fleet_id"), "read": False},
+        {"$set": {"read": True}}
+    )
+    return {"message": "All notifications marked as read"}
+
 # ==================== FLEET RESOURCE MANAGEMENT ROUTES ====================
 
 # Fleet Drivers Management
