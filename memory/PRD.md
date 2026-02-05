@@ -294,6 +294,12 @@ Public:
     - [x] Journey Status progress showing 4 steps (En Route → Arrived → Journey → Completed)
     - [x] Status update buttons for driver to change status live
     - [x] Navigate to Pickup/Dropoff Google Maps links
+- [x] **Tracking Visualization Enhancements (Feb 5, 2026)**:
+  - [x] Fleet Portal Job Detail Dialog - Added Tracking tab with live map view
+  - [x] Admin Booking View Dialog - Tracking tab shows map preview of driver location
+  - [x] PDF Tracking Report - Added Route Map section with full route visualization
+  - [x] PDF Tracking Report - Added Key Location Points section with individual map screenshots
+  - [x] Map images use Google Static Maps API with Start/End markers
 - [x] **Booking Dashboard Accuracy & Feature Upgrade (Feb 2, 2026)**:
   - [x] B2B Customer Accounts system with full CRUD (Add, Edit, View, Delete)
   - [x] Customer Accounts tab in Admin Dashboard sidebar
