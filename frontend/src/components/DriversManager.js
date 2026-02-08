@@ -335,8 +335,8 @@ const DriversManager = ({ token, fleets = [], vehicles = [] }) => {
               <div className="space-y-2">
                 <Label>Assigned Fleet</Label>
                 <Select
-                  value={editingDriver?.fleet_id || ""}
-                  onValueChange={(value) => setEditingDriver({ ...editingDriver, fleet_id: value || null })}
+                  value={editingDriver?.fleet_id || "none"}
+                  onValueChange={(value) => setEditingDriver({ ...editingDriver, fleet_id: value === "none" ? null : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select fleet" />
@@ -352,8 +352,8 @@ const DriversManager = ({ token, fleets = [], vehicles = [] }) => {
               <div className="space-y-2">
                 <Label>Assigned Vehicle</Label>
                 <Select
-                  value={editingDriver?.vehicle_id || ""}
-                  onValueChange={(value) => setEditingDriver({ ...editingDriver, vehicle_id: value || null })}
+                  value={editingDriver?.vehicle_id || "none"}
+                  onValueChange={(value) => setEditingDriver({ ...editingDriver, vehicle_id: value === "none" ? null : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select vehicle" />
