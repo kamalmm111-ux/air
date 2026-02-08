@@ -313,7 +313,10 @@ async def send_driver_assigned_to_customer(booking: Dict, driver: Dict, vehicle:
     """Send driver assignment notification to customer"""
     customer_email = booking.get("customer_email")
     if not customer_email:
+        logger.warning(f"send_driver_assigned_to_customer: No customer email for booking {booking.get('booking_ref')}")
         return
+    
+    logger.info(f"send_driver_assigned_to_customer: Preparing email to {customer_email} for booking {booking.get('booking_ref')}")
     
     vehicle_info = ""
     if vehicle:
