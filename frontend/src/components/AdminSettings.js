@@ -318,11 +318,30 @@ const AdminSettings = ({ token }) => {
         <TabsContent value="currencies" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-[#D4AF37]" />
-                Currency Exchange Rates
-              </CardTitle>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-[#D4AF37]" />
+                  Currency Exchange Rates
+                </CardTitle>
+                {lastSynced && (
+                  <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                    <Globe className="w-3 h-3" />
+                    Source: {ratesSource} • Last synced: {new Date(lastSynced).toLocaleString()}
+                  </p>
+                )}
+              </div>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={syncLiveRates}
+                  disabled={syncing}
+                  className="border-green-500 text-green-600 hover:bg-green-50"
+                  data-testid="sync-live-rates-btn"
+                >
+                  <Zap className={`w-4 h-4 mr-1 ${syncing ? "animate-pulse" : ""}`} />
+                  {syncing ? "Syncing..." : "Sync Live Rates"}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -347,7 +366,7 @@ const AdminSettings = ({ token }) => {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-zinc-500 mb-4">
-                Configure exchange rates relative to GBP (base currency). Customers can select their preferred currency during booking.
+                Configure exchange rates relative to GBP (base currency). Use "Sync Live Rates" to fetch real-time rates from exchangerate-api.com.
               </p>
               <Table>
                 <TableHeader>
