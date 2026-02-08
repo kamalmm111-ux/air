@@ -11,6 +11,12 @@ import io
 import base64
 from typing import Optional, List, Dict
 from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
 
 # PDF generation
 from reportlab.lib import colors
@@ -37,9 +43,9 @@ try:
     if RESEND_API_KEY and RESEND_API_KEY.startswith("re_"):
         resend.api_key = RESEND_API_KEY
         EMAIL_AVAILABLE = True
-        logger.info("Resend email service initialized")
+        logger.info("Resend email service initialized successfully")
     else:
-        logger.warning("Valid Resend API key not configured (key should start with 're_')")
+        logger.warning(f"Valid Resend API key not configured (key should start with 're_'), got: {RESEND_API_KEY[:10] if RESEND_API_KEY else 'None'}...")
 except ImportError:
     logger.warning("Resend library not installed")
 
