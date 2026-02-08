@@ -504,7 +504,7 @@ const CheckoutPage = () => {
                   </div>
                   
                   {childSeats.map((seat) => {
-                    const seatType = CHILD_SEAT_TYPES.find(t => t.id === seat.type);
+                    const seatType = childSeatTypes.find(t => t.id === seat.type);
                     if (!seatType) return null;
                     return (
                       <div key={seat.type} className="flex justify-between text-sm">
