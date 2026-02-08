@@ -5513,7 +5513,7 @@ async def get_ratings_summary(current_user: dict = Depends(get_super_admin)):
         "total_ratings": total_ratings,
         "average_rating": avg_rating,
         "rating_distribution": distribution,
-        "ratings_with_comments": len([s for s in sessions if s["rating"].get("comment")])
+        "ratings_with_comments": len([r for r in all_ratings if r.get("comment")])
     }
 
 # Public endpoints
