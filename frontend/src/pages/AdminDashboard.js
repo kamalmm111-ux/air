@@ -904,7 +904,7 @@ const AdminDashboard = () => {
     customers: <CustomerAccounts token={token} />,
     fleets: <FleetsManager token={token} onViewFleet={(fleet) => { setSelectedFleet(fleet); setFleetViewDialogOpen(true); }} />,
     drivers: <DriversManager token={token} fleets={fleets} vehicles={allVehicles} />,
-    vehicles: <VehiclesManager token={token} fleets={fleets} drivers={drivers} categories={vehicleCategories} />,
+    vehicles: <VehiclesManager token={token} fleets={fleets} drivers={drivers} categories={vehicles} />,
     pricing: renderPricing(),
     invoices: <InvoiceManager token={token} />,
     "system-settings": <AdminSettings token={token} />,
