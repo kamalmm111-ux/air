@@ -170,7 +170,7 @@ const PlacesAutocomplete = ({
     
     if (place && place.geometry) {
       const placeName = place.name || "";
-      const fullAddress = place.formatted_address || placeName;
+      const fullAddress = place.formatted_address || "";
       const placeTypes = place.types || [];
       
       // Check if this is an airport
@@ -186,8 +186,10 @@ const PlacesAutocomplete = ({
         // For airports, use the place name and format it
         displayName = formatAirportDisplayName(placeName, placeTypes);
       } else {
-        // For regular addresses, use the FULL address so customer sees complete location
-        displayName = fullAddress;
+        // For regular addresses, ALWAYS use the full formatted_address from Google
+        // This ensures customer sees complete address like "29 London Square, WC1N 3BG, UK"
+        // If formatted_address is not available, fall back to name, then to what user typed
+        displayName = fullAddress || placeName || "";
       }
       
       // Determine if it's a specific terminal
