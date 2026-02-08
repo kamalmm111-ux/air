@@ -1,13 +1,24 @@
 """
 Email Service Module for Aircabio
 Handles all transactional email notifications using Resend
+Includes PDF invoice generation using ReportLab
 """
 
 import os
 import asyncio
 import logging
+import io
+import base64
 from typing import Optional, List, Dict
 from datetime import datetime
+
+# PDF generation
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, mm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
 logger = logging.getLogger(__name__)
 
