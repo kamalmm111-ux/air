@@ -904,6 +904,7 @@ const AdminDashboard = () => {
     vehicles: renderVehicles(),
     pricing: renderPricing(),
     invoices: <InvoiceManager token={token} />,
+    "system-settings": <AdminSettings token={token} />,
     settings: <CMSManager token={token} />
   };
 
