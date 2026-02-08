@@ -28,7 +28,7 @@ Build a complete airport transfer booking website for Aircabio with:
   - Public API `/api/settings/child-seats` for frontend to fetch prices
 - **Currency Exchange Rate Management**
   - Admin can configure GBP, EUR, USD, CAD rates
-  - **NEW: Automatic Live Rate Fetching** from exchangerate-api.com
+  - **Automatic Live Rate Fetching** from exchangerate-api.com
   - "Sync Live Rates" button fetches and saves real-time rates
   - Rates stored in database with active/inactive status
   - Public API `/api/settings/currencies` for frontend to fetch rates
@@ -37,6 +37,20 @@ Build a complete airport transfer booking website for Aircabio with:
   - Shows total ratings, average rating, ratings with comments
   - Distribution chart (1-5 stars breakdown)
   - List of all ratings with driver, customer, comment details
+
+### Fleet Dashboard Impersonation (FIXED - Feb 8, 2026)
+- **Super Admin can access any Fleet Dashboard**
+  - From Admin Panel → Fleets → Click "Login As" button
+  - Uses same-window navigation with sessionStorage
+  - Shows yellow impersonation banner at top
+  - Full access to fleet's Jobs, Drivers, Vehicles, Earnings
+  - "Exit to Admin Panel" button returns to admin
+- **How it works:**
+  1. Admin clicks "Login As" on any fleet
+  2. API call to `/admin/fleets/{id}/impersonate`
+  3. Store token in sessionStorage
+  4. Navigate to `/fleet/dashboard?impersonate=true`
+  5. FleetLayout detects impersonation and shows fleet data
 
 ### P1 - Code Refactoring (COMPLETED)
 - **Frontend Component Extraction**
