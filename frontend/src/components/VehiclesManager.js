@@ -363,14 +363,14 @@ const VehiclesManager = ({ token, fleets = [], drivers = [], categories = [] }) 
               <div className="space-y-2">
                 <Label>Assigned Fleet</Label>
                 <Select
-                  value={editingVehicle?.fleet_id || ""}
-                  onValueChange={(value) => setEditingVehicle({ ...editingVehicle, fleet_id: value || null })}
+                  value={editingVehicle?.fleet_id || "none"}
+                  onValueChange={(value) => setEditingVehicle({ ...editingVehicle, fleet_id: value === "none" ? null : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select fleet" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (Internal)</SelectItem>
+                    <SelectItem value="none">None (Internal)</SelectItem>
                     {fleets.map(fleet => (
                       <SelectItem key={fleet.id} value={fleet.id}>{fleet.name}</SelectItem>
                     ))}
@@ -380,14 +380,14 @@ const VehiclesManager = ({ token, fleets = [], drivers = [], categories = [] }) 
               <div className="space-y-2">
                 <Label>Assigned Driver</Label>
                 <Select
-                  value={editingVehicle?.driver_id || ""}
-                  onValueChange={(value) => setEditingVehicle({ ...editingVehicle, driver_id: value || null })}
+                  value={editingVehicle?.driver_id || "none"}
+                  onValueChange={(value) => setEditingVehicle({ ...editingVehicle, driver_id: value === "none" ? null : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select driver" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {drivers.filter(d => d.status === "active").map(driver => (
                       <SelectItem key={driver.id} value={driver.id}>{driver.name}</SelectItem>
                     ))}
