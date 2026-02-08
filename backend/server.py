@@ -1581,9 +1581,11 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, background_
     
     # Send driver assignment notification to customer
     if driver and updated_booking.get("customer_email"):
+        print(f"[EMAIL DEBUG] Sending driver assignment email to {updated_booking.get('customer_email')} for booking {booking_id}", flush=True)
         logger.info(f"Sending driver assignment email to {updated_booking.get('customer_email')} for booking {booking_id}")
         background_tasks.add_task(send_driver_assigned_to_customer, updated_booking, driver, vehicle)
     else:
+        print(f"[EMAIL DEBUG] Skipping driver assignment email - driver: {bool(driver)}, customer_email: {updated_booking.get('customer_email')}", flush=True)
         logger.warning(f"Skipping driver assignment email - driver: {bool(driver)}, customer_email: {updated_booking.get('customer_email')}")
     
     # Create notification for fleet
