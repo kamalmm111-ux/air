@@ -69,6 +69,9 @@ function App() {
               {/* Customer Tracking Page (public - accessed via booking reference) */}
               <Route path="/track/:bookingRef" element={<CustomerTrackingPage />} />
               
+              {/* Customer Review Page (public - accessed via booking reference from email) */}
+              <Route path="/review/:bookingRef" element={<CustomerReviewPage />} />
+              
               {/* Fleet Dashboard Routes */}
               <Route path="/fleet/dashboard" element={<FleetLayout />}>
                 <Route index element={<FleetDashboard />} />
