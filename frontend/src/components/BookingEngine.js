@@ -64,18 +64,28 @@ const BookingEngine = () => {
 
   const handlePickupSelect = (location) => {
     updateBookingData({ 
-      pickup_location: location.address,
+      pickup_location: location.displayName || location.address,
       pickup_lat: location.lat,
-      pickup_lng: location.lng
+      pickup_lng: location.lng,
+      pickup_place_id: location.placeId,
+      pickup_type: location.type,
+      pickup_iata: location.iata_code,
+      pickup_airport_name: location.airport_name,
+      pickup_terminal: location.terminal
     });
     setPickupCoords({ lat: location.lat, lng: location.lng });
   };
 
   const handleDropoffSelect = (location) => {
     updateBookingData({ 
-      dropoff_location: location.address,
+      dropoff_location: location.displayName || location.address,
       dropoff_lat: location.lat,
-      dropoff_lng: location.lng
+      dropoff_lng: location.lng,
+      dropoff_place_id: location.placeId,
+      dropoff_type: location.type,
+      dropoff_iata: location.iata_code,
+      dropoff_airport_name: location.airport_name,
+      dropoff_terminal: location.terminal
     });
     setDropoffCoords({ lat: location.lat, lng: location.lng });
   };
