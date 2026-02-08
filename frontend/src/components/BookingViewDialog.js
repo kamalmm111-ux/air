@@ -155,7 +155,9 @@ export const BookingViewDialog = ({ open, onClose, booking, token, onRefresh }) 
 
   const copyTrackingLink = () => {
     if (trackingData?.session?.token) {
-      const url = `${window.location.origin}/driver-tracking/${trackingData.session.token}`;
+      // Use production domain for tracking links
+      const productionDomain = 'https://aircabio.com';
+      const url = `${productionDomain}/driver-tracking/${trackingData.session.token}`;
       navigator.clipboard.writeText(url);
       toast.success("Tracking link copied to clipboard!");
     }
