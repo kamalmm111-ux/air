@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useBooking } from "../context/BookingContext";
+import { useCurrency } from "../context/CurrencyContext";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
@@ -8,6 +9,7 @@ import { Users, Briefcase, Check, MapPin, Clock, ArrowRight, ArrowLeft, RotateCc
 const SearchResultsPage = () => {
   const navigate = useNavigate();
   const { bookingData, quotes, selectedVehicle, setSelectedVehicle } = useBooking();
+  const { formatPrice } = useCurrency();
 
   if (!quotes || quotes.length === 0) {
     navigate("/");
