@@ -126,6 +126,21 @@ const AdminSettings = ({ token }) => {
   };
 
   // Currency handlers
+  const syncLiveRates = async () => {
+    setSyncing(true);
+    try {
+      const response = await axios.post(`${API}/admin/settings/currencies/sync-live`, {}, { headers });
+      setCurrencies(response.data.currencies || []);
+      setLastSynced(response.data.synced_at);
+      setRatesSource("exchangerate-api.com");
+      toast.success("Live currency rates synced successfully!");
+    } catch (error) {
+      toast.error("Failed to sync live rates. Using stored rates.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const saveCurrencies = async () => {
     setSaving(true);
     try {
