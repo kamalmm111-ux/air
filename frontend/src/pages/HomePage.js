@@ -32,7 +32,7 @@ const HomePage = () => {
   // Get content from CMS or use defaults
   const heroTitle = siteSettings.hero_title || pageContent?.sections?.find(s => s.type === "hero")?.title || "Travel in Style & Comfort";
   const heroSubtitle = siteSettings.hero_subtitle || pageContent?.sections?.find(s => s.type === "hero")?.subtitle || "Book your airport transfer with Aircabio. Professional drivers, premium vehicles, and guaranteed on-time service worldwide.";
-  const heroImage = siteSettings.hero_background_url || pageContent?.sections?.find(s => s.type === "hero")?.image_url || "https://images.unsplash.com/photo-1641736950490-ebb6533422d9?crop=entropy&cs=srgb&fm=jpg&q=85";
+  const heroImage = siteSettings.hero_background_url || pageContent?.sections?.find(s => s.type === "hero")?.image_url || "https://static.prod-images.emergentagent.com/jobs/68887b85-c3d3-4afe-979a-9b9ddd545cf8/images/facff77b3c11c784727a5d26fb4131bda3e849eca07f283bc05065b7e833a42e.png";
   const heroCtaText = siteSettings.hero_cta_text || "Book Now";
   const tagline = siteSettings.tagline || "Premium Airport Transfers";
   const siteName = siteSettings.site_name || "Aircabio";
