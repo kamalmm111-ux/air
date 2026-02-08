@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
 import { BookingProvider } from "./context/BookingContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -34,47 +35,49 @@ import FleetLayout from "./components/FleetLayout";
 function App() {
   return (
     <AuthProvider>
-      <BookingProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route element={<Layout />}>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/search" element={<SearchResultsPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/booking/success" element={<BookingSuccessPage />} />
-              <Route path="/booking/cancel" element={<BookingCancelPage />} />
-              <Route path="/fleet" element={<FleetPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/faq" element={<FAQPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/cancellation" element={<CancellationPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/dashboard" element={<CustomerDashboard />} />
-            </Route>
-            
-            {/* Fleet Login (public) */}
-            <Route path="/fleet/login" element={<FleetLoginPage />} />
-            
-            {/* Driver Tracking Page (public - accessed via token) */}
-            <Route path="/driver-tracking/:token" element={<DriverTrackingPage />} />
-            
-            {/* Fleet Dashboard Routes */}
-            <Route path="/fleet/dashboard" element={<FleetLayout />}>
-              <Route index element={<FleetDashboard />} />
-            </Route>
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-            </Route>
-          </Routes>
-          <Toaster position="top-right" richColors />
-        </BrowserRouter>
-      </BookingProvider>
+      <CurrencyProvider>
+        <BookingProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public Routes */}
+              <Route element={<Layout />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/search" element={<SearchResultsPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/booking/success" element={<BookingSuccessPage />} />
+                <Route path="/booking/cancel" element={<BookingCancelPage />} />
+                <Route path="/fleet" element={<FleetPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/faq" element={<FAQPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/cancellation" element={<CancellationPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/dashboard" element={<CustomerDashboard />} />
+              </Route>
+              
+              {/* Fleet Login (public) */}
+              <Route path="/fleet/login" element={<FleetLoginPage />} />
+              
+              {/* Driver Tracking Page (public - accessed via token) */}
+              <Route path="/driver-tracking/:token" element={<DriverTrackingPage />} />
+              
+              {/* Fleet Dashboard Routes */}
+              <Route path="/fleet/dashboard" element={<FleetLayout />}>
+                <Route index element={<FleetDashboard />} />
+              </Route>
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+              </Route>
+            </Routes>
+            <Toaster position="top-right" richColors />
+          </BrowserRouter>
+        </BookingProvider>
+      </CurrencyProvider>
     </AuthProvider>
   );
 }
