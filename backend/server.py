@@ -2013,7 +2013,7 @@ class FleetDriverAssignment(BaseModel):
     vehicle_id: Optional[str] = None
 
 @api_router.put("/fleet/jobs/{booking_id}/assign-driver")
-async def fleet_assign_driver_to_job(booking_id: str, assignment: FleetDriverAssignment, user: dict = Depends(get_fleet_admin)):
+async def fleet_assign_driver_to_job(booking_id: str, assignment: FleetDriverAssignment, background_tasks: BackgroundTasks, user: dict = Depends(get_fleet_admin)):
     """Fleet assigns their own driver and vehicle to a job"""
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
@@ -2034,6 +2034,7 @@ async def fleet_assign_driver_to_job(booking_id: str, assignment: FleetDriverAss
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
+    vehicle = None
     if assignment.vehicle_id:
         vehicle = await db.fleet_vehicles.find_one({"id": assignment.vehicle_id, "fleet_id": fleet_id}, {"_id": 0})
         if vehicle:
@@ -2041,6 +2042,14 @@ async def fleet_assign_driver_to_job(booking_id: str, assignment: FleetDriverAss
             update_data["assigned_vehicle_plate"] = vehicle["plate_number"]
     
     await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    
+    # Get updated booking for email
+    updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    
+    # Send driver assignment notification to customer
+    if updated_booking.get("customer_email"):
+        background_tasks.add_task(send_driver_assigned_to_customer, updated_booking, driver, vehicle)
+    
     return {"message": "Driver assigned to job successfully"}
 
 # ==================== JOB COMMENTS ROUTES ====================
