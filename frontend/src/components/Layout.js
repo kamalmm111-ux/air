@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useCurrency, SUPPORTED_CURRENCIES } from "../context/CurrencyContext";
+import { useCurrency } from "../context/CurrencyContext";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Layout = () => {
   const { user, logout, isAdmin, isAuthenticated } = useAuth();
-  const { currency, changeCurrency, getCurrentCurrency } = useCurrency();
+  const { currency, changeCurrency, getCurrentCurrency, SUPPORTED_CURRENCIES } = useCurrency();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState({});
