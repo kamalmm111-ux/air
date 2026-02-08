@@ -3,16 +3,15 @@ import axios from "axios";
 
 const CurrencyContext = createContext(null);
 
-// Supported currencies
-export const SUPPORTED_CURRENCIES = [
-  { code: "GBP", symbol: "£", name: "British Pound" },
-  { code: "EUR", symbol: "€", name: "Euro" },
-  { code: "USD", symbol: "$", name: "US Dollar" },
-  { code: "CAD", symbol: "C$", name: "Canadian Dollar" }
-];
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Free FX API endpoint
-const FX_API_URL = "https://api.exchangerate-api.com/v4/latest/GBP";
+// Default supported currencies (fallback)
+const DEFAULT_CURRENCIES = [
+  { code: "GBP", symbol: "£", name: "British Pound", rate: 1 },
+  { code: "EUR", symbol: "€", name: "Euro", rate: 1.17 },
+  { code: "USD", symbol: "$", name: "US Dollar", rate: 1.27 },
+  { code: "CAD", symbol: "C$", name: "Canadian Dollar", rate: 1.71 }
+];
 
 export const useCurrency = () => {
   const context = useContext(CurrencyContext);
@@ -24,10 +23,11 @@ export const useCurrency = () => {
 
 export const CurrencyProvider = ({ children }) => {
   const [currency, setCurrency] = useState(() => {
-    // Try to get saved currency from localStorage
     const saved = localStorage.getItem("aircabio_currency");
     return saved || "GBP";
   });
+  
+  const [supportedCurrencies, setSupportedCurrencies] = useState(DEFAULT_CURRENCIES);
   
   const [rates, setRates] = useState({
     GBP: 1,
@@ -39,11 +39,36 @@ export const CurrencyProvider = ({ children }) => {
   const [ratesLoaded, setRatesLoaded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Fetch exchange rates on mount
+  // Fetch currency settings from admin API on mount
   useEffect(() => {
-    const fetchRates = async () => {
+    const fetchCurrencySettings = async () => {
       try {
-        // Check if we have cached rates less than 1 hour old
+        // First try to get admin-configured rates
+        const response = await axios.get(`${API}/settings/currencies`);
+        if (response.data.currencies && response.data.currencies.length > 0) {
+          const currencies = response.data.currencies;
+          setSupportedCurrencies(currencies);
+          
+          // Build rates object from admin settings
+          const adminRates = {};
+          currencies.forEach(c => {
+            adminRates[c.code] = c.rate;
+          });
+          setRates(adminRates);
+          setLastUpdated(new Date());
+          setRatesLoaded(true);
+          
+          // Cache rates
+          localStorage.setItem("aircabio_fx_rates", JSON.stringify(adminRates));
+          localStorage.setItem("aircabio_fx_time", Date.now().toString());
+          return;
+        }
+      } catch (error) {
+        console.log("Using fallback currency rates");
+      }
+      
+      // Fallback: Check cached rates or use defaults
+      try {
         const cachedRates = localStorage.getItem("aircabio_fx_rates");
         const cachedTime = localStorage.getItem("aircabio_fx_time");
         
@@ -56,30 +81,14 @@ export const CurrencyProvider = ({ children }) => {
             return;
           }
         }
-        
-        const response = await axios.get(FX_API_URL);
-        const newRates = {
-          GBP: 1,
-          EUR: response.data.rates.EUR || 1.17,
-          USD: response.data.rates.USD || 1.27,
-          CAD: response.data.rates.CAD || 1.71
-        };
-        
-        setRates(newRates);
-        setLastUpdated(new Date());
-        setRatesLoaded(true);
-        
-        // Cache rates
-        localStorage.setItem("aircabio_fx_rates", JSON.stringify(newRates));
-        localStorage.setItem("aircabio_fx_time", Date.now().toString());
-      } catch (error) {
-        console.error("Failed to fetch exchange rates:", error);
-        // Use fallback rates
-        setRatesLoaded(true);
+      } catch (e) {
+        // Use defaults
       }
+      
+      setRatesLoaded(true);
     };
     
-    fetchRates();
+    fetchCurrencySettings();
   }, []);
 
   // Auto-detect currency based on locale
@@ -94,7 +103,6 @@ export const CurrencyProvider = ({ children }) => {
         } else if (locale.includes("de") || locale.includes("fr") || locale.includes("es") || locale.includes("it") || locale.includes("nl") || locale.includes("pt")) {
           setCurrency("EUR");
         }
-        // Default to GBP for UK and others
       } catch (e) {
         // Keep default
       }
@@ -125,9 +133,9 @@ export const CurrencyProvider = ({ children }) => {
   const formatPrice = (amountGBP, options = {}) => {
     const { showCode = true, showOriginal = false } = options;
     const converted = convertFromGBP(amountGBP);
-    const currencyInfo = SUPPORTED_CURRENCIES.find(c => c.code === currency) || SUPPORTED_CURRENCIES[0];
+    const currencyInfo = supportedCurrencies.find(c => c.code === currency) || supportedCurrencies[0];
     
-    let formatted = `${currencyInfo.symbol}${converted.toFixed(2)}`;
+    let formatted = `${currencyInfo?.symbol || "£"}${converted.toFixed(2)}`;
     if (showCode) {
       formatted += ` ${currency}`;
     }
@@ -141,7 +149,7 @@ export const CurrencyProvider = ({ children }) => {
 
   // Get current currency info
   const getCurrentCurrency = () => {
-    return SUPPORTED_CURRENCIES.find(c => c.code === currency) || SUPPORTED_CURRENCIES[0];
+    return supportedCurrencies.find(c => c.code === currency) || supportedCurrencies[0];
   };
 
   // Get rate for current currency
@@ -159,7 +167,7 @@ export const CurrencyProvider = ({ children }) => {
       formatPrice,
       getCurrentCurrency,
       getCurrentRate,
-      SUPPORTED_CURRENCIES
+      SUPPORTED_CURRENCIES: supportedCurrencies
     }}>
       {children}
     </CurrencyContext.Provider>
