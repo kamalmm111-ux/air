@@ -103,7 +103,7 @@ const CheckoutPage = () => {
   // Calculate child seats total
   const getChildSeatsTotal = () => {
     return childSeats.reduce((total, seat) => {
-      const seatType = CHILD_SEAT_TYPES.find(t => t.id === seat.type);
+      const seatType = childSeatTypes.find(t => t.id === seat.type);
       return total + (seatType?.price || 0) * seat.qty;
     }, 0);
   };
@@ -126,7 +126,7 @@ const CheckoutPage = () => {
     try {
       // Prepare child seats data
       const childSeatsData = childSeats.map(seat => {
-        const seatType = CHILD_SEAT_TYPES.find(t => t.id === seat.type);
+        const seatType = childSeatTypes.find(t => t.id === seat.type);
         return {
           type: seat.type,
           name: seatType?.name,
