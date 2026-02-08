@@ -8,7 +8,7 @@ import { Switch } from "./ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { Baby, DollarSign, Edit, Plus, Save, Trash2, RefreshCw, Star, MessageSquare, TrendingUp, Settings } from "lucide-react";
+import { Baby, DollarSign, Edit, Plus, Save, Trash2, RefreshCw, Star, MessageSquare, TrendingUp, Settings, Zap, Globe } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 
@@ -17,7 +17,9 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const AdminSettings = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState("child-seats");
+  const [lastSynced, setLastSynced] = useState(null);
   
   // Child seat pricing state
   const [childSeats, setChildSeats] = useState([]);
@@ -28,6 +30,7 @@ const AdminSettings = ({ token }) => {
   const [currencies, setCurrencies] = useState([]);
   const [editingCurrency, setEditingCurrency] = useState(null);
   const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+  const [ratesSource, setRatesSource] = useState("admin");
   
   // Ratings state
   const [ratings, setRatings] = useState([]);
@@ -44,6 +47,8 @@ const AdminSettings = ({ token }) => {
       ]);
       setChildSeats(childSeatsRes.data.child_seats || []);
       setCurrencies(currenciesRes.data.currencies || []);
+      setRatesSource(currenciesRes.data.source || "admin");
+      setLastSynced(currenciesRes.data.synced_at);
     } catch (error) {
       console.error("Error fetching settings:", error);
       toast.error("Failed to load settings");
