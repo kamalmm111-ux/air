@@ -126,7 +126,8 @@ const FleetLayout = () => {
     }
   };
 
-  if (loading && !isImpersonating) {
+  // Show loading if either auth is loading OR impersonation is being processed
+  if ((loading && !isImpersonating) || !impersonationProcessed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF37]"></div>
