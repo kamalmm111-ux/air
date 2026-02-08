@@ -360,20 +360,37 @@ Public:
   - [x] All components have proper data-testid attributes for testing
   - [x] 100% test coverage verified by testing agent
 
+- [x] **Website Booking Flow Enhancements (Feb 8, 2026)**:
+  - [x] **Remove Meet & Greet** - Completely removed from booking engine, checkout, and all UI
+  - [x] **Airport Search Priority** - Created airports database (~150 major international airports) with IATA codes
+  - [x] **Airport Display Format** - Shows "London Heathrow Airport (LHR)" with terminal selection
+  - [x] **Structured Location Data** - Stores place_id, type, iata_code, airport_name, terminal
+  - [x] **Multi-Currency Selection** - Currency selector in header (GBP, EUR, USD, CAD)
+  - [x] **FX Conversion** - Real-time rates from exchangerate-api.com with 1-hour cache
+  - [x] **Prices in Selected Currency** - All prices convert throughout booking flow
+  - [x] **Enhanced Child Seats** - Three types with paid add-on pricing:
+    - Infant Seat (0-12 months) - £10
+    - Toddler Seat (1-4 years) - £10
+    - Booster Seat (4-8 years) - £8
+  - [x] **Flight Details on Checkout** - Flight Number and Flight Arriving From fields
+  - [x] **Special Instructions** - Notes/instructions textarea for customer requirements
+  - [x] 100% test coverage verified by testing agent (26/26 tests passed)
+
 ### P1 - High Priority
 - [ ] Get valid Resend API key to enable actual email sending
-- [ ] Real Google Places autocomplete integration for booking engine
 - [ ] Booking export to CSV
 - [ ] Refactor server.py (4800+ lines) into proper structure (models, routes, services)
 - [ ] Refactor AdminDashboard.js (2000+ lines) into smaller components
+- [ ] Update Admin Dashboard to handle new child seat data structure
+- [ ] Update Admin Dashboard to show currency information in booking details
 
 ### P2 - Medium Priority
 - [ ] SMS/WhatsApp notifications
 - [ ] Round-trip discount configuration (currently hardcoded 10%)
 - [ ] Day/night pricing surcharges (fees are configured but not applied in quote)
-- [ ] Multi-currency support
 - [ ] Driver mobile app/portal
 - [ ] Real-time WebSocket notifications for instant updates
+- [ ] Child seat pricing configuration in Admin dashboard
 
 ### P3 - Nice to Have
 - [ ] Flight tracking integration
