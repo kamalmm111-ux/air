@@ -5165,15 +5165,99 @@ async def get_public_child_seat_pricing():
         return {"child_seats": active_seats}
     return {"child_seats": DEFAULT_CHILD_SEAT_PRICING}
 
+# Live currency rate fetching
+import aiohttp
+
+EXCHANGE_RATE_API_URL = "https://api.exchangerate-api.com/v4/latest/GBP"
+
+@api_router.get("/settings/currencies/live")
+async def fetch_live_currency_rates():
+    """Fetch live currency rates from external API"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(EXCHANGE_RATE_API_URL, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    rates = data.get("rates", {})
+                    
+                    # Build currency list with live rates
+                    live_currencies = [
+                        {"code": "GBP", "symbol": "£", "name": "British Pound", "rate": 1.0, "is_active": True},
+                        {"code": "EUR", "symbol": "€", "name": "Euro", "rate": round(rates.get("EUR", 1.17), 4), "is_active": True},
+                        {"code": "USD", "symbol": "$", "name": "US Dollar", "rate": round(rates.get("USD", 1.27), 4), "is_active": True},
+                        {"code": "CAD", "symbol": "C$", "name": "Canadian Dollar", "rate": round(rates.get("CAD", 1.71), 4), "is_active": True}
+                    ]
+                    
+                    return {
+                        "currencies": live_currencies,
+                        "base_currency": "GBP",
+                        "source": "exchangerate-api.com",
+                        "fetched_at": datetime.now(timezone.utc).isoformat(),
+                        "rates_date": data.get("date")
+                    }
+    except Exception as e:
+        logger.error(f"Failed to fetch live rates: {e}")
+    
+    # Fallback to stored rates
+    return {"currencies": DEFAULT_CURRENCY_RATES, "base_currency": "GBP", "source": "fallback"}
+
+@api_router.post("/admin/settings/currencies/sync-live")
+async def sync_live_currency_rates(current_user: dict = Depends(get_super_admin)):
+    """Fetch live rates and save to database"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(EXCHANGE_RATE_API_URL, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    rates = data.get("rates", {})
+                    
+                    # Build currency list with live rates
+                    live_currencies = [
+                        {"code": "GBP", "symbol": "£", "name": "British Pound", "rate": 1.0, "is_active": True},
+                        {"code": "EUR", "symbol": "€", "name": "Euro", "rate": round(rates.get("EUR", 1.17), 4), "is_active": True},
+                        {"code": "USD", "symbol": "$", "name": "US Dollar", "rate": round(rates.get("USD", 1.27), 4), "is_active": True},
+                        {"code": "CAD", "symbol": "C$", "name": "Canadian Dollar", "rate": round(rates.get("CAD", 1.71), 4), "is_active": True}
+                    ]
+                    
+                    # Save to database
+                    await db.admin_settings.update_one(
+                        {"_id": "main"},
+                        {
+                            "$set": {
+                                "currency_rates": live_currencies,
+                                "currency_rates_source": "exchangerate-api.com",
+                                "currency_rates_synced_at": datetime.now(timezone.utc).isoformat(),
+                                "updated_at": datetime.now(timezone.utc).isoformat(),
+                                "updated_by": current_user.get("id")
+                            }
+                        },
+                        upsert=True
+                    )
+                    
+                    return {
+                        "message": "Currency rates synced successfully",
+                        "currencies": live_currencies,
+                        "synced_at": datetime.now(timezone.utc).isoformat()
+                    }
+    except Exception as e:
+        logger.error(f"Failed to sync live rates: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch live rates: {str(e)}")
+
 @api_router.get("/settings/currencies")
 async def get_public_currency_rates():
-    """Public endpoint for currency rates"""
+    """Public endpoint for currency rates - tries live first, then stored, then defaults"""
+    # First check if we have recent stored rates
     settings = await db.admin_settings.find_one({"_id": "main"})
     if settings and "currency_rates" in settings:
         # Only return active currencies
         active_currencies = [c for c in settings["currency_rates"] if c.get("is_active", True)]
-        return {"currencies": active_currencies, "base_currency": settings.get("base_currency", "GBP")}
-    return {"currencies": DEFAULT_CURRENCY_RATES, "base_currency": "GBP"}
+        return {
+            "currencies": active_currencies, 
+            "base_currency": settings.get("base_currency", "GBP"),
+            "source": settings.get("currency_rates_source", "admin"),
+            "synced_at": settings.get("currency_rates_synced_at")
+        }
+    return {"currencies": DEFAULT_CURRENCY_RATES, "base_currency": "GBP", "source": "default"}
 
 # ==================== RATINGS MANAGEMENT ====================
 
