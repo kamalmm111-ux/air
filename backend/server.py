@@ -4513,6 +4513,203 @@ async def download_tracking_report(booking_id: str, current_user: dict = Depends
         headers={"Content-Disposition": f"attachment; filename=tracking_report_{booking_id[:8]}.html"}
     )
 
+# ==================== CUSTOMER TRACKING SYSTEM ====================
+
+class CustomerRating(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    feedback: Optional[str] = None
+
+# Public endpoint - Customer tracking by booking reference
+@api_router.get("/customer/tracking/{booking_ref}")
+async def get_customer_tracking(booking_ref: str):
+    """Get tracking data for customer view - public endpoint using booking reference"""
+    # Find booking by booking_ref
+    booking = await db.bookings.find_one(
+        {"booking_ref": booking_ref.upper()}, 
+        {"_id": 0}
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Get tracking session if exists
+    session = await db.tracking_sessions.find_one(
+        {"booking_id": booking["id"]}, 
+        {"_id": 0}
+    )
+    
+    # Get driver details
+    driver_data = {}
+    driver_id = booking.get("assigned_driver_id") or booking.get("driver_id")
+    if driver_id:
+        driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+        if driver:
+            # Calculate average rating
+            ratings = await db.driver_ratings.find({"driver_id": driver_id}).to_list(1000)
+            avg_rating = sum(r.get("rating", 0) for r in ratings) / len(ratings) if ratings else None
+            
+            driver_data = {
+                "name": driver.get("name"),
+                "phone": driver.get("phone"),
+                "photo_url": driver.get("photo_url"),
+                "vehicle_make": driver.get("vehicle_make"),
+                "vehicle_model": driver.get("vehicle_model"),
+                "vehicle_color": driver.get("vehicle_color"),
+                "rating": avg_rating,
+                "total_trips": len(ratings)
+            }
+    
+    # Calculate ETA if driver is en route
+    eta = None
+    if session and session.get("status") == "active" and booking.get("status") == "en_route":
+        locations = session.get("locations", [])
+        if locations and booking.get("pickup_lat") and booking.get("pickup_lng"):
+            last_loc = locations[-1]
+            # Simple distance-based ETA calculation
+            R = 6371  # Earth radius in km
+            lat1, lon1 = math.radians(last_loc["latitude"]), math.radians(last_loc["longitude"])
+            lat2, lon2 = math.radians(booking["pickup_lat"]), math.radians(booking["pickup_lng"])
+            dlat, dlon = lat2 - lat1, lon2 - lon1
+            a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+            distance_km = 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            # Assume average speed of 30 km/h in urban areas
+            eta = max(1, int(distance_km / 0.5))  # minutes
+    
+    return {
+        "booking": {
+            "id": booking["id"],
+            "booking_ref": booking.get("booking_ref"),
+            "status": booking.get("status"),
+            "pickup_location": booking.get("pickup_location"),
+            "dropoff_location": booking.get("dropoff_location"),
+            "pickup_date": booking.get("pickup_date"),
+            "pickup_time": booking.get("pickup_time"),
+            "passengers": booking.get("passengers"),
+            "vehicle_name": booking.get("vehicle_name"),
+            "vehicle_category_id": booking.get("vehicle_category_id"),
+            "assigned_driver_name": booking.get("assigned_driver_name"),
+            "assigned_vehicle_plate": booking.get("assigned_vehicle_plate"),
+            "customer_rating": booking.get("customer_rating")
+        },
+        "tracking": {
+            "session": session,
+            "driver": driver_data,
+            "latest_location": session["locations"][-1] if session and session.get("locations") else None
+        } if session else None,
+        "eta": eta
+    }
+
+# Public endpoint - Submit customer rating
+@api_router.post("/customer/rating/{booking_ref}")
+async def submit_customer_rating(booking_ref: str, rating_data: CustomerRating):
+    """Submit customer rating for a completed trip"""
+    booking = await db.bookings.find_one({"booking_ref": booking_ref.upper()}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Can only rate completed trips")
+    
+    if booking.get("customer_rating"):
+        raise HTTPException(status_code=400, detail="Trip already rated")
+    
+    # Update booking with rating
+    await db.bookings.update_one(
+        {"booking_ref": booking_ref.upper()},
+        {"$set": {
+            "customer_rating": rating_data.rating,
+            "customer_feedback": rating_data.feedback,
+            "rated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Also store in driver_ratings collection for aggregation
+    driver_id = booking.get("assigned_driver_id") or booking.get("driver_id")
+    if driver_id:
+        await db.driver_ratings.insert_one({
+            "id": str(uuid.uuid4()),
+            "driver_id": driver_id,
+            "booking_id": booking["id"],
+            "rating": rating_data.rating,
+            "feedback": rating_data.feedback,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Update driver's average rating
+        ratings = await db.driver_ratings.find({"driver_id": driver_id}).to_list(1000)
+        avg_rating = sum(r.get("rating", 0) for r in ratings) / len(ratings) if ratings else None
+        if avg_rating:
+            await db.drivers.update_one(
+                {"id": driver_id},
+                {"$set": {"average_rating": round(avg_rating, 2), "total_ratings": len(ratings)}}
+            )
+    
+    return {"message": "Thank you for your feedback!", "rating": rating_data.rating}
+
+# Fleet endpoint - Upload driver photo
+@api_router.post("/fleet/drivers/{driver_id}/photo")
+async def upload_driver_photo(
+    driver_id: str,
+    photo_url: str = Query(..., description="URL of the uploaded photo"),
+    current_user: dict = Depends(get_fleet_admin)
+):
+    """Update driver photo URL"""
+    fleet_id = current_user.get("fleet_id")
+    
+    # Verify driver belongs to this fleet
+    driver = await db.drivers.find_one({"id": driver_id, "fleet_id": fleet_id}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    await db.drivers.update_one(
+        {"id": driver_id},
+        {"$set": {"photo_url": photo_url, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Driver photo updated", "photo_url": photo_url}
+
+# Send tracking link to customer
+@api_router.post("/tracking/send-customer-link/{booking_id}")
+async def send_customer_tracking_link(
+    booking_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Send tracking link to customer via email"""
+    if current_user.get("role") not in ["super_admin", "fleet_admin"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    booking_ref = booking.get("booking_ref")
+    customer_email = booking.get("passenger_email") or booking.get("customer_email")
+    
+    if not customer_email:
+        raise HTTPException(status_code=400, detail="No customer email found")
+    
+    base_url = os.environ.get("FRONTEND_URL")
+    if not base_url:
+        raise HTTPException(status_code=500, detail="FRONTEND_URL not configured")
+    
+    tracking_url = f"{base_url}/track/{booking_ref}"
+    
+    # Send email (using existing email service pattern)
+    try:
+        from email_service import send_status_update
+        background_tasks.add_task(
+            send_status_update,
+            customer_email,
+            booking.get("passenger_name", "Customer"),
+            booking_ref,
+            "driver_assigned",
+            f"Your driver is on the way! Track your driver in real-time: {tracking_url}"
+        )
+        return {"message": "Tracking link sent to customer", "tracking_url": tracking_url}
+    except Exception as e:
+        logger.error(f"Failed to send customer tracking email: {e}")
+        return {"message": "Failed to send email", "tracking_url": tracking_url}
+
 # ==================== MEDIA LIBRARY ENDPOINTS ====================
 
 @api_router.get("/admin/media")
