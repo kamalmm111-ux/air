@@ -6,7 +6,7 @@ import { Badge } from "./ui/badge";
 import {
   Car, LayoutDashboard, CalendarDays, DollarSign, LogOut, ChevronLeft, Bell, Truck, FileText, AlertTriangle, Users, X, Check
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -19,61 +19,58 @@ const FleetLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [impersonationProcessed, setImpersonationProcessed] = useState(false);
+  const [, forceUpdate] = useState(0);
   
-  // Handle impersonation initialization from localStorage
-  useEffect(() => {
+  // Use ref to track impersonation immediately
+  const impersonationCheckedRef = useRef(false);
+  
+  // Synchronously check and setup impersonation on first render
+  if (!impersonationCheckedRef.current) {
+    impersonationCheckedRef.current = true;
     const impersonateParam = searchParams.get("impersonate");
     
-    // Check for pending impersonation in localStorage (set by admin panel)
     if (impersonateParam === "init") {
       const pendingData = localStorage.getItem("pending_impersonation");
       if (pendingData) {
         try {
           const impersonationData = JSON.parse(pendingData);
-          
-          // Validate it's recent (within 30 seconds)
           if (Date.now() - impersonationData.created_at < 30000) {
-            // Move to sessionStorage for this window
             sessionStorage.setItem("impersonation_token", impersonationData.token);
             sessionStorage.setItem("impersonation_fleet", JSON.stringify(impersonationData.fleet || {}));
             sessionStorage.setItem("impersonation_id", impersonationData.impersonation_id || "");
             sessionStorage.setItem("admin_token", impersonationData.admin_token || "");
           }
-          
-          // Clear from localStorage
           localStorage.removeItem("pending_impersonation");
         } catch (e) {
           console.error("Failed to parse pending impersonation:", e);
         }
       }
-      
-      // Clean URL
-      window.history.replaceState({}, document.title, "/fleet/dashboard?impersonate=true");
+      // Clean URL after mount
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, "/fleet/dashboard?impersonate=true");
+        forceUpdate(n => n + 1);
+      }, 0);
     }
-    
-    setImpersonationProcessed(true);
-  }, [searchParams]);
+  }
   
   // Check for impersonation mode from sessionStorage
   const impersonationToken = sessionStorage.getItem("impersonation_token");
   const impersonationFleet = JSON.parse(sessionStorage.getItem("impersonation_fleet") || "{}");
   const impersonationId = sessionStorage.getItem("impersonation_id");
-  const isImpersonating = impersonationProcessed && (
-    searchParams.get("impersonate") === "true" || 
-    !!impersonationToken
-  );
+  const isImpersonating = searchParams.get("impersonate")?.includes("true") || 
+                          searchParams.get("impersonate") === "init" ||
+                          !!impersonationToken;
   
   // Use impersonation token if available
   const effectiveToken = isImpersonating ? impersonationToken : token;
   const isAuthenticated = isImpersonating ? !!impersonationToken : isFleetAdmin;
 
   useEffect(() => {
-    // Only redirect if processing is complete and not authenticated
-    if (impersonationProcessed && !loading && !isFleetAdmin && !isImpersonating) {
+    // Only redirect if not in impersonation mode and not authenticated
+    if (!loading && !isFleetAdmin && !isImpersonating) {
       navigate("/fleet/login");
     }
-  }, [user, isFleetAdmin, loading, navigate, isImpersonating, impersonationProcessed]);
+  }, [user, isFleetAdmin, loading, navigate, isImpersonating]);
 
   useEffect(() => {
     const fetchNotifications = async () => {
