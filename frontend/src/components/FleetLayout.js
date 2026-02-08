@@ -19,6 +19,33 @@ const FleetLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [impersonationReady, setImpersonationReady] = useState(false);
+  
+  // Handle impersonation data from URL on mount
+  useEffect(() => {
+    const impersonateParam = searchParams.get("impersonate");
+    const dataParam = searchParams.get("data");
+    
+    if (impersonateParam === "true" && dataParam) {
+      try {
+        const impersonationData = JSON.parse(decodeURIComponent(dataParam));
+        
+        // Store in sessionStorage
+        sessionStorage.setItem("impersonation_token", impersonationData.token);
+        sessionStorage.setItem("impersonation_fleet", JSON.stringify(impersonationData.fleet || {}));
+        sessionStorage.setItem("impersonation_id", impersonationData.impersonation_id || "");
+        sessionStorage.setItem("admin_token", impersonationData.admin_token || "");
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, "/fleet/dashboard?impersonate=true");
+        setImpersonationReady(true);
+      } catch (e) {
+        console.error("Failed to parse impersonation data:", e);
+      }
+    } else if (sessionStorage.getItem("impersonation_token")) {
+      setImpersonationReady(true);
+    }
+  }, [searchParams]);
   
   // Check for impersonation mode
   const isImpersonating = searchParams.get("impersonate") === "true" || sessionStorage.getItem("impersonation_token");
