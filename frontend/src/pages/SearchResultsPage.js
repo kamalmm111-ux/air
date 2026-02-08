@@ -145,11 +145,6 @@ const SearchResultsPage = () => {
                 <span className="text-xs text-zinc-500 uppercase tracking-wider">Est. Duration</span>
                 <p className="font-bold text-[#0A0F1C]">{bookingData.duration_minutes} mins {bookingData.is_return && "(each way)"}</p>
               </div>
-              {bookingData.meet_greet && (
-                <div className="flex items-center">
-                  <Badge className="bg-[#D4AF37] text-[#0A0F1C]">Meet & Greet Included</Badge>
-                </div>
-              )}
             </div>
           </div>
         </div>
