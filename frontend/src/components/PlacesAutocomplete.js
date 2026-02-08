@@ -252,7 +252,7 @@ const PlacesAutocomplete = ({
       try {
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ["establishment", "geocode"],
-          fields: ["formatted_address", "geometry", "name", "place_id", "types"]
+          fields: ["formatted_address", "geometry", "name", "place_id", "types", "address_components"]
         });
 
         autocomplete.addListener("place_changed", handlePlaceSelect);
