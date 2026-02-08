@@ -91,10 +91,22 @@ const PlacesAutocomplete = ({
     if (value && value.length >= 2) {
       const airports = searchAirports(value);
       setAirportResults(airports);
-      setShowDropdown(airports.length > 0);
+      const hasAirportResults = airports.length > 0;
+      setShowDropdown(hasAirportResults);
+      
+      // Hide Google Places dropdown when showing airport results
+      const pacContainers = document.querySelectorAll('.pac-container');
+      pacContainers.forEach(container => {
+        container.style.display = hasAirportResults ? 'none' : '';
+      });
     } else {
       setAirportResults([]);
       setShowDropdown(false);
+      // Show Google Places dropdown again
+      const pacContainers = document.querySelectorAll('.pac-container');
+      pacContainers.forEach(container => {
+        container.style.display = '';
+      });
     }
   }, [value]);
 
