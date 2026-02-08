@@ -147,7 +147,7 @@ const DriversManager = ({ token, fleets = [], vehicles = [] }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Fleets</SelectItem>
-                  <SelectItem value="">Internal</SelectItem>
+                  <SelectItem value="internal">Internal</SelectItem>
                   {fleets.map(fleet => (
                     <SelectItem key={fleet.id} value={fleet.id}>{fleet.name}</SelectItem>
                   ))}
@@ -342,7 +342,7 @@ const DriversManager = ({ token, fleets = [], vehicles = [] }) => {
                     <SelectValue placeholder="Select fleet" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (Internal)</SelectItem>
+                    <SelectItem value="none">None (Internal)</SelectItem>
                     {fleets.map(fleet => (
                       <SelectItem key={fleet.id} value={fleet.id}>{fleet.name}</SelectItem>
                     ))}
@@ -359,7 +359,7 @@ const DriversManager = ({ token, fleets = [], vehicles = [] }) => {
                     <SelectValue placeholder="Select vehicle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {vehicles.filter(v => v.status === "active").map(vehicle => (
                       <SelectItem key={vehicle.id} value={vehicle.id}>
                         {vehicle.make} {vehicle.model} ({vehicle.plate_number})
