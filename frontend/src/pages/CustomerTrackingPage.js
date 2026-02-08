@@ -155,12 +155,37 @@ const CustomerTrackingPage = () => {
             
             {/* ETA Display */}
             {eta && status === "en_route" && (
-              <div className="mt-4 bg-white/20 rounded-lg p-4 flex items-center gap-4">
-                <Clock className="w-8 h-8" />
-                <div>
-                  <p className="text-sm text-white/80">Estimated Arrival</p>
-                  <p className="text-3xl font-black">{eta} mins</p>
+              <div className="mt-4 bg-white/20 rounded-lg p-4">
+                <div className="flex items-center gap-4">
+                  <Clock className="w-8 h-8" />
+                  <div>
+                    <p className="text-sm text-white/80">Estimated Arrival</p>
+                    <p className="text-3xl font-black">{eta} mins</p>
+                  </div>
                 </div>
+                {etaDetails && (
+                  <div className="mt-3 pt-3 border-t border-white/20 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Distance</span>
+                      <span className="font-medium">{etaDetails.distance_km} km</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-white/70">Traffic</span>
+                      <span className={`font-medium capitalize px-2 py-0.5 rounded text-xs ${
+                        etaDetails.traffic_status === 'heavy' ? 'bg-red-500/30 text-red-100' :
+                        etaDetails.traffic_status === 'moderate' ? 'bg-yellow-500/30 text-yellow-100' :
+                        etaDetails.traffic_status === 'light' ? 'bg-green-500/30 text-green-100' :
+                        'bg-white/20'
+                      }`}>
+                        {etaDetails.traffic_status}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-white/70">Avg Speed</span>
+                      <span className="font-medium">{etaDetails.effective_speed_kmh} km/h</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
