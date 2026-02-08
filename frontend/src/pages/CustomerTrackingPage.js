@@ -30,6 +30,7 @@ const CustomerTrackingPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [eta, setEta] = useState(null);
+  const [etaDetails, setEtaDetails] = useState(null);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -43,6 +44,7 @@ const CustomerTrackingPage = () => {
       setBooking(res.data.booking);
       setTrackingData(res.data.tracking);
       setEta(res.data.eta);
+      setEtaDetails(res.data.eta_details);
       setHasRated(res.data.booking?.customer_rating !== undefined);
       
       // Show rating prompt if journey is completed
