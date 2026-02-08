@@ -4563,21 +4563,55 @@ async def get_customer_tracking(booking_ref: str):
                 "total_trips": len(ratings)
             }
     
-    # Calculate ETA if driver is en route
+    # Calculate ETA with traffic consideration
     eta = None
+    eta_details = None
     if session and session.get("status") == "active" and booking.get("status") == "en_route":
         locations = session.get("locations", [])
         if locations and booking.get("pickup_lat") and booking.get("pickup_lng"):
             last_loc = locations[-1]
-            # Simple distance-based ETA calculation
+            # Calculate distance using Haversine formula
             R = 6371  # Earth radius in km
             lat1, lon1 = math.radians(last_loc["latitude"]), math.radians(last_loc["longitude"])
             lat2, lon2 = math.radians(booking["pickup_lat"]), math.radians(booking["pickup_lng"])
             dlat, dlon = lat2 - lat1, lon2 - lon1
             a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
             distance_km = 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
-            # Assume average speed of 30 km/h in urban areas
-            eta = max(1, int(distance_km / 0.5))  # minutes
+            
+            # Traffic factor based on time of day
+            current_hour = datetime.now().hour
+            
+            # Traffic multipliers
+            if 7 <= current_hour <= 9:  # Morning rush
+                traffic_multiplier = 1.5
+                traffic_status = "heavy"
+            elif 16 <= current_hour <= 19:  # Evening rush
+                traffic_multiplier = 1.6
+                traffic_status = "heavy"
+            elif 12 <= current_hour <= 14:  # Lunch time
+                traffic_multiplier = 1.2
+                traffic_status = "moderate"
+            elif 22 <= current_hour or current_hour <= 5:  # Night time
+                traffic_multiplier = 0.8
+                traffic_status = "light"
+            else:
+                traffic_multiplier = 1.0
+                traffic_status = "normal"
+            
+            # Base speed: 30 km/h in urban areas, adjusted for traffic
+            base_speed = 30
+            effective_speed = base_speed / traffic_multiplier
+            
+            # Calculate ETA in minutes
+            eta = max(1, int((distance_km / effective_speed) * 60))
+            
+            eta_details = {
+                "minutes": eta,
+                "distance_km": round(distance_km, 2),
+                "traffic_status": traffic_status,
+                "effective_speed_kmh": round(effective_speed, 1),
+                "calculated_at": datetime.now(timezone.utc).isoformat()
+            }
     
     return {
         "booking": {
@@ -4600,8 +4634,10 @@ async def get_customer_tracking(booking_ref: str):
             "driver": driver_data,
             "latest_location": session["locations"][-1] if session and session.get("locations") else None
         } if session else None,
-        "eta": eta
+        "eta": eta,
+        "eta_details": eta_details
     }
+
 
 # Public endpoint - Submit customer rating
 @api_router.post("/customer/rating/{booking_ref}")
