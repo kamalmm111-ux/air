@@ -291,7 +291,7 @@ const CheckoutPage = () => {
                     <p className="text-sm text-zinc-500">Select the type and number of child seats required</p>
                     
                     <div className="space-y-3">
-                      {CHILD_SEAT_TYPES.map((seatType) => {
+                      {childSeatTypes.map((seatType) => {
                         const selected = childSeats.find(s => s.type === seatType.id);
                         return (
                           <div 
@@ -302,7 +302,7 @@ const CheckoutPage = () => {
                           >
                             <div className="flex-1">
                               <div className="font-medium text-[#0A0F1C]">{seatType.name}</div>
-                              <div className="text-sm text-zinc-500">{seatType.ageRange}</div>
+                              <div className="text-sm text-zinc-500">{seatType.age_range}</div>
                               <div className="text-sm font-medium text-[#D4AF37]">
                                 {formatPrice(seatType.price)} per seat
                               </div>
