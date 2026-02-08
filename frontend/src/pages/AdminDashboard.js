@@ -25,6 +25,9 @@ import CustomerAccounts from "../components/CustomerAccounts";
 import FleetViewDialog from "../components/FleetViewDialog";
 import InvoiceManager from "../components/InvoiceManager";
 import AdminSettings from "../components/AdminSettings";
+import DriversManager from "../components/DriversManager";
+import VehiclesManager from "../components/VehiclesManager";
+import FleetsManager from "../components/FleetsManager";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
