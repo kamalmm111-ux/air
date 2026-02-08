@@ -1680,7 +1680,14 @@ async def update_booking_status(booking_id: str, status: str, background_tasks: 
         if status in ["en_route", "arrived", "in_progress"]:
             background_tasks.add_task(send_status_update, updated_booking, status)
         elif status == "completed":
-            background_tasks.add_task(send_booking_completed, updated_booking)
+            # Send completion email with PDF invoice
+            background_tasks.add_task(send_completion_with_invoice, updated_booking)
+            # Send review invitation after a short delay (handled in background)
+            # Get driver details for review email
+            driver = None
+            if updated_booking.get("assigned_driver_id"):
+                driver = await db.drivers.find_one({"id": updated_booking["assigned_driver_id"]}, {"_id": 0})
+            background_tasks.add_task(send_review_invitation, updated_booking, driver)
         elif status == "cancelled":
             background_tasks.add_task(send_booking_cancelled, updated_booking)
     
