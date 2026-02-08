@@ -5027,6 +5027,201 @@ async def save_website_settings(
     
     return {"message": "Settings saved successfully"}
 
+# ==================== ADMIN SETTINGS (CHILD SEATS & CURRENCIES) ====================
+
+# Default child seat pricing
+DEFAULT_CHILD_SEAT_PRICING = [
+    {"id": "infant", "name": "Infant Seat", "age_range": "0-12 months", "price": 10.0, "is_active": True},
+    {"id": "toddler", "name": "Toddler Seat", "age_range": "1-4 years", "price": 10.0, "is_active": True},
+    {"id": "booster", "name": "Booster Seat", "age_range": "4-8 years", "price": 8.0, "is_active": True}
+]
+
+# Default currency rates (relative to GBP)
+DEFAULT_CURRENCY_RATES = [
+    {"code": "GBP", "symbol": "£", "name": "British Pound", "rate": 1.0, "is_active": True},
+    {"code": "EUR", "symbol": "€", "name": "Euro", "rate": 1.17, "is_active": True},
+    {"code": "USD", "symbol": "$", "name": "US Dollar", "rate": 1.27, "is_active": True},
+    {"code": "CAD", "symbol": "C$", "name": "Canadian Dollar", "rate": 1.71, "is_active": True}
+]
+
+@api_router.get("/admin/settings")
+async def get_admin_settings(current_user: dict = Depends(get_super_admin)):
+    """Get all admin settings including child seat pricing and currency rates"""
+    settings = await db.admin_settings.find_one({"_id": "main"})
+    if settings:
+        del settings["_id"]
+        return settings
+    # Return defaults if no settings exist
+    return {
+        "child_seat_pricing": DEFAULT_CHILD_SEAT_PRICING,
+        "currency_rates": DEFAULT_CURRENCY_RATES,
+        "base_currency": "GBP"
+    }
+
+@api_router.get("/admin/settings/child-seats")
+async def get_child_seat_pricing(current_user: dict = Depends(get_super_admin)):
+    """Get child seat pricing configuration"""
+    settings = await db.admin_settings.find_one({"_id": "main"})
+    if settings and "child_seat_pricing" in settings:
+        return {"child_seats": settings["child_seat_pricing"]}
+    return {"child_seats": DEFAULT_CHILD_SEAT_PRICING}
+
+@api_router.put("/admin/settings/child-seats")
+async def update_child_seat_pricing(
+    data: Dict[str, Any],
+    current_user: dict = Depends(get_super_admin)
+):
+    """Update child seat pricing configuration"""
+    child_seats = data.get("child_seats", [])
+    
+    await db.admin_settings.update_one(
+        {"_id": "main"},
+        {
+            "$set": {
+                "child_seat_pricing": child_seats,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_user.get("id")
+            }
+        },
+        upsert=True
+    )
+    
+    return {"message": "Child seat pricing updated successfully", "child_seats": child_seats}
+
+@api_router.get("/admin/settings/currencies")
+async def get_currency_rates(current_user: dict = Depends(get_super_admin)):
+    """Get currency rates configuration"""
+    settings = await db.admin_settings.find_one({"_id": "main"})
+    if settings and "currency_rates" in settings:
+        return {"currencies": settings["currency_rates"], "base_currency": settings.get("base_currency", "GBP")}
+    return {"currencies": DEFAULT_CURRENCY_RATES, "base_currency": "GBP"}
+
+@api_router.put("/admin/settings/currencies")
+async def update_currency_rates(
+    data: Dict[str, Any],
+    current_user: dict = Depends(get_super_admin)
+):
+    """Update currency rates configuration"""
+    currencies = data.get("currencies", [])
+    
+    await db.admin_settings.update_one(
+        {"_id": "main"},
+        {
+            "$set": {
+                "currency_rates": currencies,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_user.get("id")
+            }
+        },
+        upsert=True
+    )
+    
+    return {"message": "Currency rates updated successfully", "currencies": currencies}
+
+# Public endpoint for settings (used by frontend)
+@api_router.get("/settings/child-seats")
+async def get_public_child_seat_pricing():
+    """Public endpoint for child seat pricing"""
+    settings = await db.admin_settings.find_one({"_id": "main"})
+    if settings and "child_seat_pricing" in settings:
+        # Only return active child seats
+        active_seats = [s for s in settings["child_seat_pricing"] if s.get("is_active", True)]
+        return {"child_seats": active_seats}
+    return {"child_seats": DEFAULT_CHILD_SEAT_PRICING}
+
+@api_router.get("/settings/currencies")
+async def get_public_currency_rates():
+    """Public endpoint for currency rates"""
+    settings = await db.admin_settings.find_one({"_id": "main"})
+    if settings and "currency_rates" in settings:
+        # Only return active currencies
+        active_currencies = [c for c in settings["currency_rates"] if c.get("is_active", True)]
+        return {"currencies": active_currencies, "base_currency": settings.get("base_currency", "GBP")}
+    return {"currencies": DEFAULT_CURRENCY_RATES, "base_currency": "GBP"}
+
+# ==================== RATINGS MANAGEMENT ====================
+
+@api_router.get("/admin/ratings")
+async def get_all_ratings(
+    driver_id: Optional[str] = None,
+    min_stars: Optional[int] = None,
+    limit: int = 100,
+    current_user: dict = Depends(get_super_admin)
+):
+    """Get all trip ratings for admin dashboard"""
+    query = {"rating": {"$exists": True}}
+    
+    if driver_id:
+        query["driver_id"] = driver_id
+    
+    if min_stars:
+        query["rating.stars"] = {"$gte": min_stars}
+    
+    sessions = await db.tracking_sessions.find(query, {"_id": 0}).sort("completed_at", -1).to_list(limit)
+    
+    # Enrich with booking and driver info
+    enriched_ratings = []
+    for session in sessions:
+        if session.get("rating"):
+            # Get booking info
+            booking = await db.bookings.find_one({"id": session.get("booking_id")}, {"_id": 0})
+            # Get driver info
+            driver = await db.drivers.find_one({"id": session.get("driver_id")}, {"_id": 0})
+            
+            enriched_ratings.append({
+                "id": session.get("id"),
+                "booking_id": session.get("booking_id"),
+                "booking_ref": booking.get("booking_ref") if booking else None,
+                "driver_id": session.get("driver_id"),
+                "driver_name": driver.get("name") if driver else "Unknown",
+                "driver_photo": driver.get("photo_url") if driver else None,
+                "customer_name": booking.get("customer_name") if booking else None,
+                "stars": session["rating"].get("stars"),
+                "comment": session["rating"].get("comment"),
+                "rated_at": session["rating"].get("rated_at"),
+                "pickup_location": booking.get("pickup_location") if booking else None,
+                "dropoff_location": booking.get("dropoff_location") if booking else None,
+                "pickup_date": booking.get("pickup_date") if booking else None
+            })
+    
+    return enriched_ratings
+
+@api_router.get("/admin/ratings/summary")
+async def get_ratings_summary(current_user: dict = Depends(get_super_admin)):
+    """Get ratings summary statistics"""
+    # Get all ratings
+    sessions = await db.tracking_sessions.find(
+        {"rating": {"$exists": True}}, 
+        {"_id": 0}
+    ).to_list(1000)
+    
+    if not sessions:
+        return {
+            "total_ratings": 0,
+            "average_rating": 0,
+            "rating_distribution": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
+            "recent_ratings": []
+        }
+    
+    # Calculate stats
+    total_ratings = len(sessions)
+    total_stars = sum(s["rating"].get("stars", 0) for s in sessions)
+    avg_rating = round(total_stars / total_ratings, 2) if total_ratings > 0 else 0
+    
+    # Distribution
+    distribution = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+    for session in sessions:
+        stars = str(session["rating"].get("stars", 0))
+        if stars in distribution:
+            distribution[stars] += 1
+    
+    return {
+        "total_ratings": total_ratings,
+        "average_rating": avg_rating,
+        "rating_distribution": distribution,
+        "ratings_with_comments": len([s for s in sessions if s["rating"].get("comment")])
+    }
+
 # Public endpoints
 @api_router.get("/website-settings")
 async def get_public_website_settings():
