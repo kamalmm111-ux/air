@@ -8,7 +8,9 @@ import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
-import { MapPin, Clock, Users, Briefcase, Car, ArrowLeft, CreditCard, Shield, Check } from "lucide-react";
+import { Checkbox } from "../components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { MapPin, Clock, Users, Briefcase, Car, ArrowLeft, CreditCard, Shield, Check, Plane, Baby, Globe } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 
@@ -16,13 +18,17 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { bookingData, selectedVehicle, resetBooking } = useBooking();
+  const { bookingData, selectedVehicle, resetBooking, updateBookingData } = useBooking();
   const { user, token } = useAuth();
 
   const [formData, setFormData] = useState({
     passenger_name: user?.name || "",
     passenger_email: user?.email || "",
     passenger_phone: user?.phone || "",
+    flight_number: bookingData.flight_number || "",
+    flight_origin: bookingData.flight_origin || "",
+    child_seats: bookingData.child_seats || 0,
+    meet_greet: bookingData.meet_greet || false,
     pickup_notes: "",
     dropoff_notes: ""
   });
@@ -37,6 +43,10 @@ const CheckoutPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleCheckboxChange = (field, checked) => {
+    setFormData({ ...formData, [field]: checked });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -49,7 +59,7 @@ const CheckoutPage = () => {
     setLoading(true);
 
     try {
-      // Create booking
+      // Create booking with flight and child seat data
       const bookingPayload = {
         ...bookingData,
         ...formData,
