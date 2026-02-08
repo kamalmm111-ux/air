@@ -353,7 +353,9 @@ async def send_driver_assigned_to_customer(booking: Dict, driver: Dict, vehicle:
     </table>
     """
     html = get_base_template(content, "Driver Assigned")
-    await send_email(customer_email, f"Driver Assigned - {booking.get('booking_ref')}", html)
+    result = await send_email(customer_email, f"Driver Assigned - {booking.get('booking_ref')}", html)
+    logger.info(f"send_driver_assigned_to_customer: Email sent to {customer_email}, result: {result}")
+    return result
 
 
 async def send_status_update(booking: Dict, status: str, message: str = ""):
