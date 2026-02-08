@@ -95,8 +95,14 @@ GET /api/admin/settings/child-seats - Get child seat config
 PUT /api/admin/settings/child-seats - Update child seat pricing
 GET /api/admin/settings/currencies - Get currency config
 PUT /api/admin/settings/currencies - Update currency rates
+POST /api/admin/settings/currencies/sync-live - Fetch and save live rates
 GET /api/admin/ratings - Get all trip ratings
 GET /api/admin/ratings/summary - Get ratings statistics
+```
+
+### Live Currency APIs (NEW)
+```
+GET /api/settings/currencies/live - Fetch live rates (no auth required)
 ```
 
 ### Customer Tracking (Enhanced)
