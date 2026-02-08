@@ -4134,7 +4134,7 @@ class StatusUpdate(BaseModel):
     status: str
 
 @api_router.post("/tracking/update-status/{token}")
-async def update_job_status_from_driver(token: str, status_update: StatusUpdate):
+async def update_job_status_from_driver(token: str, status_update: StatusUpdate, background_tasks: BackgroundTasks):
     """Update job status from driver tracking page - allows driver to update status live"""
     session = await db.tracking_sessions.find_one({"token": token}, {"_id": 0})
     if not session:
@@ -4170,6 +4170,21 @@ async def update_job_status_from_driver(token: str, status_update: StatusUpdate)
                 "completed_at": datetime.now(timezone.utc).isoformat()
             }}
         )
+    
+    # Send email notifications for status changes
+    updated_booking = await db.bookings.find_one({"id": session["booking_id"]}, {"_id": 0})
+    if updated_booking and updated_booking.get("customer_email"):
+        if status_update.status in ["en_route", "arrived", "in_progress"]:
+            # Send status update email with tracking link
+            background_tasks.add_task(send_status_update, updated_booking, status_update.status)
+        elif status_update.status == "completed":
+            # Send completion email with PDF invoice
+            background_tasks.add_task(send_completion_with_invoice, updated_booking)
+            # Send review invitation email
+            driver = None
+            if updated_booking.get("assigned_driver_id"):
+                driver = await db.drivers.find_one({"id": updated_booking["assigned_driver_id"]}, {"_id": 0})
+            background_tasks.add_task(send_review_invitation, updated_booking, driver)
     
     return {"message": f"Status updated to {status_update.status}", "status": status_update.status}
 
