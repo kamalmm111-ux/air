@@ -169,7 +169,8 @@ const PlacesAutocomplete = ({
     const place = autocompleteRef.current.getPlace();
     
     if (place && place.geometry) {
-      const placeName = place.name || place.formatted_address;
+      const placeName = place.name || "";
+      const fullAddress = place.formatted_address || placeName;
       const placeTypes = place.types || [];
       
       // Check if this is an airport
@@ -177,8 +178,17 @@ const PlacesAutocomplete = ({
                        placeName?.toLowerCase().includes("airport") ||
                        placeName?.toLowerCase().includes("terminal");
       
-      // Format the display name - add "(All Terminals)" for main airports
-      const displayName = formatAirportDisplayName(placeName, placeTypes);
+      // For airports: use the formatted airport name with "(All Terminals)"
+      // For regular addresses: use the FULL formatted address from Google
+      let displayName;
+      
+      if (isAirport) {
+        // For airports, use the place name and format it
+        displayName = formatAirportDisplayName(placeName, placeTypes);
+      } else {
+        // For regular addresses, use the FULL address so customer sees complete location
+        displayName = fullAddress;
+      }
       
       // Determine if it's a specific terminal
       const isSpecificTerminal = placeName?.toLowerCase().includes("terminal ") ||
@@ -194,10 +204,10 @@ const PlacesAutocomplete = ({
         placeId: place.place_id,
         type: isAirport ? "airport" : "address",
         isAllTerminals: isAirport && !isSpecificTerminal && isMainAirport(placeName),
-        full_address: place.formatted_address
+        full_address: fullAddress
       };
       
-      // Update the input with the formatted display name
+      // Update the input with the display name (full address for non-airports)
       if (onChangeRef.current) {
         onChangeRef.current(displayName);
       }
