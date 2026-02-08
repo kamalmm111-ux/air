@@ -222,11 +222,11 @@ const SearchResultsPage = () => {
                           {vehicle.is_return ? "Return Total" : "Total Price"}
                         </p>
                         <p className="text-3xl font-black text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                          {vehicle.currency === "GBP" ? "£" : vehicle.currency}{vehicle.price.toFixed(2)}
+                          {formatPrice(vehicle.price)}
                         </p>
                         {vehicle.is_return && (
                           <p className="text-xs text-zinc-500 mt-1">
-                            (£{vehicle.one_way_price.toFixed(2)} each way)
+                            ({formatPrice(vehicle.one_way_price)} each way)
                           </p>
                         )}
                         <Button
