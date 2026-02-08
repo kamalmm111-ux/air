@@ -105,25 +105,28 @@ const FleetsManager = ({ token, onViewFleet }) => {
 
   const handleLoginAsFleet = async (fleetId) => {
     try {
+      // Get fleet data from our local state
+      const fleet = fleets.find(f => f.id === fleetId);
+      if (!fleet) {
+        toast.error("Fleet not found");
+        return;
+      }
+      
       const response = await axios.post(`${API}/admin/fleets/${fleetId}/impersonate`, {}, { headers });
-      const fleetToken = response.data.access_token;
-      const fleetData = response.data.fleet;
-      const impersonationId = response.data.impersonation_id;
       
-      // Use localStorage (shared across windows) instead of passing in URL
-      localStorage.setItem("pending_impersonation", JSON.stringify({
-        token: fleetToken,
-        fleet: fleetData,
-        impersonation_id: impersonationId,
-        admin_token: token,
-        created_at: Date.now()
-      }));
+      // Store impersonation data in sessionStorage (SAME as original working code)
+      sessionStorage.setItem("impersonation_token", response.data.access_token);
+      sessionStorage.setItem("impersonation_fleet", JSON.stringify(response.data.fleet));
+      sessionStorage.setItem("impersonation_id", response.data.impersonation_id);
+      sessionStorage.setItem("admin_token", token); // Store original admin token for returning
       
-      // Open fleet dashboard - it will check localStorage for pending impersonation
-      window.open(`/fleet/dashboard?impersonate=init`, "_blank");
+      toast.success(`Accessing ${fleet.name} dashboard...`);
+      
+      // Use window.location.href (SAME WINDOW navigation - this is the key!)
+      window.location.href = `/fleet/dashboard?impersonate=true`;
     } catch (error) {
       console.error("Impersonation error:", error);
-      toast.error(error.response?.data?.detail || "Failed to login as fleet");
+      toast.error(error.response?.data?.detail || "Failed to access fleet dashboard");
     }
   };
 
