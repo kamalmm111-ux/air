@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
-  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin, Briefcase, Key
+  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin, Briefcase, Key, Cog
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -80,6 +80,7 @@ const AdminLayout = () => {
     { id: "vehicles", name: "Vehicles", icon: Truck },
     { id: "pricing", name: "Pricing", icon: DollarSign },
     { id: "invoices", name: "Invoices", icon: FileText },
+    { id: "system-settings", name: "System Settings", icon: Cog },
     { id: "settings", name: "Website CMS", icon: Settings },
   ];
 
