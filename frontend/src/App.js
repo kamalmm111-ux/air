@@ -27,6 +27,7 @@ import FleetLoginPage from "./pages/FleetLoginPage";
 import FleetDashboard from "./pages/FleetDashboard";
 import DriverTrackingPage from "./pages/DriverTrackingPage";
 import CustomerTrackingPage from "./pages/CustomerTrackingPage";
+import CustomerReviewPage from "./pages/CustomerReviewPage";
 
 // Layout
 import Layout from "./components/Layout";
