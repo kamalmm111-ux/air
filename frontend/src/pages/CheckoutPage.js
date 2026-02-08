@@ -130,7 +130,7 @@ const CheckoutPage = () => {
         return {
           type: seat.type,
           name: seatType?.name,
-          age_range: seatType?.ageRange,
+          age_range: seatType?.age_range,
           qty: seat.qty,
           price_per_seat: seatType?.price
         };
