@@ -191,6 +191,96 @@ const CheckoutPage = () => {
                       />
                     </div>
                   </div>
+                  
+                  <Separator />
+
+                  {/* Flight Details Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-[#0A0F1C] flex items-center gap-2">
+                      <Plane className="w-4 h-4 text-[#D4AF37]" />
+                      Flight Details (Optional)
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="flight_number">Flight Number</Label>
+                        <Input
+                          id="flight_number"
+                          name="flight_number"
+                          value={formData.flight_number}
+                          onChange={handleChange}
+                          placeholder="e.g., BA1234"
+                          className="h-12"
+                          data-testid="flight-number-input"
+                        />
+                        <p className="text-xs text-zinc-500">We'll track your flight for delays</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="flight_origin" className="flex items-center gap-1">
+                          <Globe className="w-3 h-3" />
+                          Flight Arriving From
+                        </Label>
+                        <Input
+                          id="flight_origin"
+                          name="flight_origin"
+                          value={formData.flight_origin}
+                          onChange={handleChange}
+                          placeholder="e.g., New York, Dubai, Paris"
+                          className="h-12"
+                          data-testid="flight-origin-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Child Seat & Meet & Greet Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-[#0A0F1C] flex items-center gap-2">
+                      <Baby className="w-4 h-4 text-[#D4AF37]" />
+                      Additional Services
+                    </h3>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {/* Child Seat */}
+                      <div className="space-y-2">
+                        <Label htmlFor="child_seats">Child Seats Required</Label>
+                        <Select
+                          value={formData.child_seats.toString()}
+                          onValueChange={(value) => setFormData({ ...formData, child_seats: parseInt(value) })}
+                        >
+                          <SelectTrigger className="h-12" data-testid="child-seats-select">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">No child seat needed</SelectItem>
+                            <SelectItem value="1">1 Child Seat</SelectItem>
+                            <SelectItem value="2">2 Child Seats</SelectItem>
+                            <SelectItem value="3">3 Child Seats</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-zinc-500">For children under 12 years old</p>
+                      </div>
+                      
+                      {/* Meet & Greet */}
+                      <div className="flex flex-col justify-center space-y-2">
+                        <div className="flex items-center space-x-3 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
+                          <Checkbox
+                            id="meet_greet"
+                            checked={formData.meet_greet}
+                            onCheckedChange={(checked) => handleCheckboxChange('meet_greet', checked)}
+                            data-testid="meet-greet-checkbox"
+                          />
+                          <div>
+                            <Label htmlFor="meet_greet" className="text-sm font-medium cursor-pointer">
+                              Meet & Greet Service
+                            </Label>
+                            <p className="text-xs text-zinc-500">Driver meets you in arrivals with a name board (+£15)</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <Separator />
 
