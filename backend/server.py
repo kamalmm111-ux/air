@@ -1846,6 +1846,109 @@ async def delete_fleet_driver(driver_id: str, user: dict = Depends(get_fleet_adm
         raise HTTPException(status_code=404, detail="Driver not found or not in your fleet")
     return {"message": "Driver deleted"}
 
+# Fleet Driver Ratings
+@api_router.get("/fleet/drivers/{driver_id}/ratings")
+async def get_fleet_driver_ratings(
+    driver_id: str,
+    limit: int = 50,
+    user: dict = Depends(get_fleet_admin)
+):
+    """Get ratings for a specific driver in the fleet"""
+    fleet_id = user.get("fleet_id")
+    
+    # Verify driver belongs to fleet
+    driver = await db.drivers.find_one({"id": driver_id, "fleet_id": fleet_id}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found or not in your fleet")
+    
+    # Get ratings from driver_ratings collection
+    ratings = await db.driver_ratings.find(
+        {"driver_id": driver_id}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    
+    # Enrich with booking info
+    enriched_ratings = []
+    for rating in ratings:
+        booking = await db.bookings.find_one({"id": rating.get("booking_id")}, {"_id": 0})
+        enriched_ratings.append({
+            "id": rating.get("id"),
+            "rating": rating.get("rating"),
+            "feedback": rating.get("feedback"),
+            "created_at": rating.get("created_at"),
+            "booking_ref": booking.get("booking_ref") if booking else None,
+            "customer_name": booking.get("customer_name") if booking else None,
+            "pickup_date": booking.get("pickup_date") if booking else None,
+            "route": f"{booking.get('pickup_location', '')} → {booking.get('dropoff_location', '')}" if booking else None
+        })
+    
+    return {
+        "driver": {
+            "id": driver.get("id"),
+            "name": driver.get("name"),
+            "average_rating": driver.get("average_rating"),
+            "total_ratings": driver.get("total_ratings", len(ratings))
+        },
+        "ratings": enriched_ratings
+    }
+
+@api_router.get("/fleet/ratings/summary")
+async def get_fleet_ratings_summary(user: dict = Depends(get_fleet_admin)):
+    """Get overall ratings summary for the fleet"""
+    fleet_id = user.get("fleet_id")
+    
+    # Get all drivers in fleet
+    drivers = await db.drivers.find({"fleet_id": fleet_id}, {"_id": 0}).to_list(100)
+    driver_ids = [d.get("id") for d in drivers]
+    
+    if not driver_ids:
+        return {
+            "total_ratings": 0,
+            "average_rating": 0,
+            "rating_distribution": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
+            "top_drivers": []
+        }
+    
+    # Get all ratings for fleet drivers
+    ratings = await db.driver_ratings.find(
+        {"driver_id": {"$in": driver_ids}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    total_ratings = len(ratings)
+    total_stars = sum(r.get("rating", 0) for r in ratings)
+    avg_rating = round(total_stars / total_ratings, 2) if total_ratings > 0 else 0
+    
+    # Distribution
+    distribution = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+    for rating in ratings:
+        stars = str(rating.get("rating", 0))
+        if stars in distribution:
+            distribution[stars] += 1
+    
+    # Top rated drivers
+    top_drivers = sorted(
+        [d for d in drivers if d.get("average_rating")],
+        key=lambda x: x.get("average_rating", 0),
+        reverse=True
+    )[:5]
+    
+    return {
+        "total_ratings": total_ratings,
+        "average_rating": avg_rating,
+        "rating_distribution": distribution,
+        "ratings_with_feedback": len([r for r in ratings if r.get("feedback")]),
+        "top_drivers": [
+            {
+                "id": d.get("id"),
+                "name": d.get("name"),
+                "average_rating": d.get("average_rating"),
+                "total_ratings": d.get("total_ratings", 0)
+            }
+            for d in top_drivers
+        ]
+    }
+
 # Fleet Vehicles Management
 @api_router.get("/fleet/vehicles")
 async def get_fleet_vehicles(user: dict = Depends(get_fleet_admin)):
