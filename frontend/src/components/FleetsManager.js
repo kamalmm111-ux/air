@@ -107,10 +107,23 @@ const FleetsManager = ({ token, onViewFleet }) => {
     try {
       const response = await axios.post(`${API}/admin/fleets/${fleetId}/impersonate`, {}, { headers });
       const fleetToken = response.data.access_token;
-      // Open in new window with the fleet token
-      window.open(`/fleet?token=${fleetToken}`, "_blank");
+      const fleetData = response.data.fleet;
+      const impersonationId = response.data.impersonation_id;
+      
+      // Store impersonation data in sessionStorage for the new window
+      // We need to encode this in the URL since sessionStorage doesn't work across windows
+      const impersonationData = encodeURIComponent(JSON.stringify({
+        token: fleetToken,
+        fleet: fleetData,
+        impersonation_id: impersonationId,
+        admin_token: token
+      }));
+      
+      // Open fleet dashboard with impersonation data
+      window.open(`/fleet/dashboard?impersonate=true&data=${impersonationData}`, "_blank");
     } catch (error) {
-      toast.error("Failed to login as fleet");
+      console.error("Impersonation error:", error);
+      toast.error(error.response?.data?.detail || "Failed to login as fleet");
     }
   };
 
