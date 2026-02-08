@@ -110,17 +110,17 @@ const FleetsManager = ({ token, onViewFleet }) => {
       const fleetData = response.data.fleet;
       const impersonationId = response.data.impersonation_id;
       
-      // Store impersonation data in sessionStorage for the new window
-      // We need to encode this in the URL since sessionStorage doesn't work across windows
-      const impersonationData = encodeURIComponent(JSON.stringify({
+      // Use localStorage (shared across windows) instead of passing in URL
+      localStorage.setItem("pending_impersonation", JSON.stringify({
         token: fleetToken,
         fleet: fleetData,
         impersonation_id: impersonationId,
-        admin_token: token
+        admin_token: token,
+        created_at: Date.now()
       }));
       
-      // Open fleet dashboard with impersonation data
-      window.open(`/fleet/dashboard?impersonate=true&data=${impersonationData}`, "_blank");
+      // Open fleet dashboard - it will check localStorage for pending impersonation
+      window.open(`/fleet/dashboard?impersonate=init`, "_blank");
     } catch (error) {
       console.error("Impersonation error:", error);
       toast.error(error.response?.data?.detail || "Failed to login as fleet");
