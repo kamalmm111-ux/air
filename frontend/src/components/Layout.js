@@ -78,8 +78,33 @@ const Layout = () => {
               <span className="hidden sm:inline">{contactEmail}</span>
             </a>
           </div>
-          <div className="text-zinc-400">
-            {tagline}
+          <div className="flex items-center gap-4">
+            {/* Currency Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors" data-testid="currency-selector">
+                  <Globe className="w-4 h-4" />
+                  <span className="font-medium">{getCurrentCurrency().symbol} {currency}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {SUPPORTED_CURRENCIES.map((curr) => (
+                  <DropdownMenuItem
+                    key={curr.code}
+                    onClick={() => changeCurrency(curr.code)}
+                    className={currency === curr.code ? "bg-zinc-100" : ""}
+                    data-testid={`currency-${curr.code}`}
+                  >
+                    <span className="w-6 font-bold">{curr.symbol}</span>
+                    <span>{curr.code}</span>
+                    <span className="text-zinc-400 text-xs ml-auto">{curr.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <span className="text-zinc-400 hidden md:inline">
+              {tagline}
+            </span>
           </div>
         </div>
       </div>
