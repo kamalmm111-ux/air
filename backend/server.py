@@ -172,6 +172,7 @@ class DriverCreate(BaseModel):
     driver_type: str = "internal"  # internal or fleet
     fleet_id: Optional[str] = None
     vehicle_id: Optional[str] = None
+    photo_url: Optional[str] = None
     notes: Optional[str] = None
 
 class Driver(BaseModel):
@@ -185,8 +186,11 @@ class Driver(BaseModel):
     driver_type: str = "internal"
     fleet_id: Optional[str] = None
     vehicle_id: Optional[str] = None
+    photo_url: Optional[str] = None
     notes: Optional[str] = None
     status: str = "active"
+    average_rating: Optional[float] = None
+    total_ratings: Optional[int] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class DriverUpdate(BaseModel):
@@ -198,6 +202,7 @@ class DriverUpdate(BaseModel):
     driver_type: Optional[str] = None
     fleet_id: Optional[str] = None
     vehicle_id: Optional[str] = None
+    photo_url: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
