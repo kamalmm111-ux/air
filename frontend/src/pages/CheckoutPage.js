@@ -1,25 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBooking } from "../context/BookingContext";
 import { useAuth } from "../context/AuthContext";
+import { useCurrency } from "../context/CurrencyContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
-import { Checkbox } from "../components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { MapPin, Clock, Users, Briefcase, Car, ArrowLeft, CreditCard, Shield, Check, Plane, Baby, Globe } from "lucide-react";
+import { MapPin, Clock, Users, Briefcase, ArrowLeft, CreditCard, Shield, Check, Plane, Baby, Globe, Plus, Minus, X } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Child seat types with age ranges and pricing
+const CHILD_SEAT_TYPES = [
+  { id: "infant", name: "Infant Seat", ageRange: "0-12 months", price: 10 },
+  { id: "toddler", name: "Toddler Seat", ageRange: "1-4 years", price: 10 },
+  { id: "booster", name: "Booster Seat", ageRange: "4-8 years", price: 8 }
+];
+
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { bookingData, selectedVehicle, resetBooking, updateBookingData } = useBooking();
+  const { bookingData, selectedVehicle, updateBookingData } = useBooking();
   const { user, token } = useAuth();
+  const { formatPrice, currency, getCurrentRate } = useCurrency();
 
   const [formData, setFormData] = useState({
     passenger_name: user?.name || "",
@@ -27,15 +35,22 @@ const CheckoutPage = () => {
     passenger_phone: user?.phone || "",
     flight_number: bookingData.flight_number || "",
     flight_origin: bookingData.flight_origin || "",
-    child_seats: bookingData.child_seats || 0,
-    meet_greet: bookingData.meet_greet || false,
+    special_instructions: bookingData.special_instructions || "",
     pickup_notes: "",
     dropoff_notes: ""
   });
+  
+  // Child seats state - array of {type, qty}
+  const [childSeats, setChildSeats] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!selectedVehicle) {
+      navigate("/");
+    }
+  }, [selectedVehicle, navigate]);
+
   if (!selectedVehicle) {
-    navigate("/");
     return null;
   }
 
@@ -43,14 +58,46 @@ const CheckoutPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleCheckboxChange = (field, checked) => {
-    setFormData({ ...formData, [field]: checked });
+  // Add child seat
+  const addChildSeat = (type) => {
+    const existing = childSeats.find(s => s.type === type);
+    if (existing) {
+      setChildSeats(childSeats.map(s => 
+        s.type === type ? { ...s, qty: Math.min(s.qty + 1, 3) } : s
+      ));
+    } else {
+      setChildSeats([...childSeats, { type, qty: 1 }]);
+    }
+  };
+
+  // Remove child seat
+  const removeChildSeat = (type) => {
+    const existing = childSeats.find(s => s.type === type);
+    if (existing && existing.qty > 1) {
+      setChildSeats(childSeats.map(s => 
+        s.type === type ? { ...s, qty: s.qty - 1 } : s
+      ));
+    } else {
+      setChildSeats(childSeats.filter(s => s.type !== type));
+    }
+  };
+
+  // Calculate child seats total
+  const getChildSeatsTotal = () => {
+    return childSeats.reduce((total, seat) => {
+      const seatType = CHILD_SEAT_TYPES.find(t => t.id === seat.type);
+      return total + (seatType?.price || 0) * seat.qty;
+    }, 0);
+  };
+
+  // Calculate total price
+  const getTotalPrice = () => {
+    return selectedVehicle.price + getChildSeatsTotal();
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate form
     if (!formData.passenger_name || !formData.passenger_email || !formData.passenger_phone) {
       toast.error("Please fill in all required fields");
       return;
@@ -59,13 +106,29 @@ const CheckoutPage = () => {
     setLoading(true);
 
     try {
-      // Create booking with flight and child seat data
+      // Prepare child seats data
+      const childSeatsData = childSeats.map(seat => {
+        const seatType = CHILD_SEAT_TYPES.find(t => t.id === seat.type);
+        return {
+          type: seat.type,
+          name: seatType?.name,
+          age_range: seatType?.ageRange,
+          qty: seat.qty,
+          price_per_seat: seatType?.price
+        };
+      });
+
       const bookingPayload = {
         ...bookingData,
         ...formData,
+        child_seats: childSeatsData,
         vehicle_category_id: selectedVehicle.vehicle_category_id,
-        price: selectedVehicle.price,
-        currency: selectedVehicle.currency,
+        price: getTotalPrice(),
+        base_price: selectedVehicle.price,
+        child_seats_total: getChildSeatsTotal(),
+        currency: "GBP",
+        selected_currency: currency,
+        fx_rate: getCurrentRate(),
         payment_method: "stripe"
       };
 
@@ -73,14 +136,12 @@ const CheckoutPage = () => {
       const bookingResponse = await axios.post(`${API}/bookings`, bookingPayload, { headers });
       const booking = bookingResponse.data;
 
-      // Create payment session
       const paymentResponse = await axios.post(
         `${API}/payments/create-session?booking_id=${booking.id}`,
         {},
         { headers: { ...headers, origin: window.location.origin } }
       );
 
-      // Redirect to Stripe
       if (paymentResponse.data.url) {
         window.location.href = paymentResponse.data.url;
       } else {
@@ -97,7 +158,6 @@ const CheckoutPage = () => {
   return (
     <div className="min-h-screen bg-zinc-50 py-8" data-testid="checkout-page">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back Button */}
         <Button
           variant="ghost"
           onClick={() => navigate("/search")}
@@ -164,36 +224,6 @@ const CheckoutPage = () => {
 
                   <Separator />
 
-                  <div className="space-y-4">
-                    <h3 className="font-bold text-[#0A0F1C]">Additional Information</h3>
-                    <div className="space-y-2">
-                      <Label htmlFor="pickup_notes">Pickup Notes (Optional)</Label>
-                      <Textarea
-                        id="pickup_notes"
-                        name="pickup_notes"
-                        value={formData.pickup_notes}
-                        onChange={handleChange}
-                        placeholder="e.g., Terminal 5, outside Arrivals, hotel lobby name..."
-                        rows={3}
-                        data-testid="pickup-notes-input"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dropoff_notes">Drop-off Notes (Optional)</Label>
-                      <Textarea
-                        id="dropoff_notes"
-                        name="dropoff_notes"
-                        value={formData.dropoff_notes}
-                        onChange={handleChange}
-                        placeholder="e.g., Specific entrance, building name..."
-                        rows={3}
-                        data-testid="dropoff-notes-input"
-                      />
-                    </div>
-                  </div>
-                  
-                  <Separator />
-
                   {/* Flight Details Section */}
                   <div className="space-y-4">
                     <h3 className="font-bold text-[#0A0F1C] flex items-center gap-2">
@@ -234,50 +264,126 @@ const CheckoutPage = () => {
 
                   <Separator />
 
-                  {/* Child Seat & Meet & Greet Section */}
+                  {/* Child Seats Section - Enhanced */}
                   <div className="space-y-4">
                     <h3 className="font-bold text-[#0A0F1C] flex items-center gap-2">
                       <Baby className="w-4 h-4 text-[#D4AF37]" />
-                      Additional Services
+                      Child Seats
                     </h3>
+                    <p className="text-sm text-zinc-500">Select the type and number of child seats required</p>
                     
-                    <div className="grid md:grid-cols-2 gap-6">
-                      {/* Child Seat */}
-                      <div className="space-y-2">
-                        <Label htmlFor="child_seats">Child Seats Required</Label>
-                        <Select
-                          value={formData.child_seats.toString()}
-                          onValueChange={(value) => setFormData({ ...formData, child_seats: parseInt(value) })}
-                        >
-                          <SelectTrigger className="h-12" data-testid="child-seats-select">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">No child seat needed</SelectItem>
-                            <SelectItem value="1">1 Child Seat</SelectItem>
-                            <SelectItem value="2">2 Child Seats</SelectItem>
-                            <SelectItem value="3">3 Child Seats</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-zinc-500">For children under 12 years old</p>
-                      </div>
-                      
-                      {/* Meet & Greet */}
-                      <div className="flex flex-col justify-center space-y-2">
-                        <div className="flex items-center space-x-3 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
-                          <Checkbox
-                            id="meet_greet"
-                            checked={formData.meet_greet}
-                            onCheckedChange={(checked) => handleCheckboxChange('meet_greet', checked)}
-                            data-testid="meet-greet-checkbox"
-                          />
-                          <div>
-                            <Label htmlFor="meet_greet" className="text-sm font-medium cursor-pointer">
-                              Meet & Greet Service
-                            </Label>
-                            <p className="text-xs text-zinc-500">Driver meets you in arrivals with a name board (+£15)</p>
+                    <div className="space-y-3">
+                      {CHILD_SEAT_TYPES.map((seatType) => {
+                        const selected = childSeats.find(s => s.type === seatType.id);
+                        return (
+                          <div 
+                            key={seatType.id} 
+                            className={`flex items-center justify-between p-4 rounded-lg border ${
+                              selected ? 'border-[#D4AF37] bg-[#D4AF37]/5' : 'border-zinc-200 bg-zinc-50'
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-[#0A0F1C]">{seatType.name}</div>
+                              <div className="text-sm text-zinc-500">{seatType.ageRange}</div>
+                              <div className="text-sm font-medium text-[#D4AF37]">
+                                {formatPrice(seatType.price)} per seat
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {selected ? (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => removeChildSeat(seatType.id)}
+                                    data-testid={`remove-${seatType.id}-btn`}
+                                  >
+                                    <Minus className="w-4 h-4" />
+                                  </Button>
+                                  <span className="w-8 text-center font-bold">{selected.qty}</span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => addChildSeat(seatType.id)}
+                                    disabled={selected.qty >= 3}
+                                    data-testid={`add-${seatType.id}-btn`}
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addChildSeat(seatType.id)}
+                                  className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                                  data-testid={`select-${seatType.id}-btn`}
+                                >
+                                  <Plus className="w-4 h-4 mr-1" /> Add
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {childSeats.length > 0 && (
+                      <div className="flex items-center justify-between p-3 bg-[#D4AF37]/10 rounded-lg">
+                        <span className="text-sm font-medium">Child Seats Total:</span>
+                        <span className="font-bold text-[#D4AF37]">{formatPrice(getChildSeatsTotal())}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Additional Information */}
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-[#0A0F1C]">Additional Information</h3>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="special_instructions">Special Instructions / Notes</Label>
+                      <Textarea
+                        id="special_instructions"
+                        name="special_instructions"
+                        value={formData.special_instructions}
+                        onChange={handleChange}
+                        placeholder="Any special requirements, wheelchair assistance, multiple stops, etc."
+                        rows={3}
+                        data-testid="special-instructions-input"
+                      />
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pickup_notes">Pickup Notes (Optional)</Label>
+                        <Textarea
+                          id="pickup_notes"
+                          name="pickup_notes"
+                          value={formData.pickup_notes}
+                          onChange={handleChange}
+                          placeholder="e.g., Terminal 5, outside Arrivals..."
+                          rows={2}
+                          data-testid="pickup-notes-input"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="dropoff_notes">Drop-off Notes (Optional)</Label>
+                        <Textarea
+                          id="dropoff_notes"
+                          name="dropoff_notes"
+                          value={formData.dropoff_notes}
+                          onChange={handleChange}
+                          placeholder="e.g., Specific entrance, building name..."
+                          rows={2}
+                          data-testid="dropoff-notes-input"
+                        />
                       </div>
                     </div>
                   </div>
@@ -307,7 +413,7 @@ const CheckoutPage = () => {
                     ) : (
                       <span className="flex items-center gap-2">
                         <CreditCard className="w-5 h-5" />
-                        Pay £{selectedVehicle.price.toFixed(2)} - Proceed to Payment
+                        Pay {formatPrice(getTotalPrice())} - Proceed to Payment
                       </span>
                     )}
                   </Button>
@@ -376,22 +482,20 @@ const CheckoutPage = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-600">Vehicle ({selectedVehicle.vehicle_name})</span>
-                    <span>£{selectedVehicle.price.toFixed(2)}</span>
+                    <span>{formatPrice(selectedVehicle.price)}</span>
                   </div>
-                  {formData.meet_greet && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-zinc-600">Meet & Greet</span>
-                      <span>+£15.00</span>
-                    </div>
-                  )}
-                  {formData.child_seats > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-zinc-600">Child Seat(s) × {formData.child_seats}</span>
-                      <span className="flex items-center gap-1 text-green-600">
-                        <Check className="w-4 h-4" /> Free
-                      </span>
-                    </div>
-                  )}
+                  
+                  {childSeats.map((seat) => {
+                    const seatType = CHILD_SEAT_TYPES.find(t => t.id === seat.type);
+                    if (!seatType) return null;
+                    return (
+                      <div key={seat.type} className="flex justify-between text-sm">
+                        <span className="text-zinc-600">{seatType.name} × {seat.qty}</span>
+                        <span>{formatPrice(seatType.price * seat.qty)}</span>
+                      </div>
+                    );
+                  })}
+                  
                   {formData.flight_number && (
                     <div className="flex justify-between text-sm">
                       <span className="text-zinc-600">Flight Tracking ({formData.flight_number})</span>
@@ -407,7 +511,7 @@ const CheckoutPage = () => {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-lg">Total</span>
                   <span className="text-2xl font-black text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                    £{(selectedVehicle.price + (formData.meet_greet ? 15 : 0)).toFixed(2)}
+                    {formatPrice(getTotalPrice())}
                   </span>
                 </div>
 
