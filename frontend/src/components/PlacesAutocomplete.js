@@ -3,23 +3,87 @@ import { Input } from "./ui/input";
 
 const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
 
+// Major airports with multiple terminals - append "(All Terminals)" when selected
+const MULTI_TERMINAL_AIRPORTS = [
+  // UK
+  "heathrow", "gatwick", "manchester", "stansted", "luton",
+  // Europe
+  "charles de gaulle", "cdg", "orly", "schiphol", "frankfurt", "munich", "madrid", "barcelona", "rome fiumicino", "malpensa",
+  // Middle East
+  "dubai", "abu dhabi", "doha", "hamad",
+  // Asia
+  "changi", "hong kong", "narita", "haneda", "incheon", "beijing", "shanghai", "bangkok", "kuala lumpur",
+  // Americas
+  "jfk", "john f kennedy", "lax", "los angeles", "o'hare", "ohare", "miami", "atlanta", "san francisco", "toronto pearson", "vancouver"
+];
+
+// Check if the place is a main airport (not a specific terminal)
+const isMainAirport = (placeName) => {
+  if (!placeName) return false;
+  const lowerName = placeName.toLowerCase();
+  
+  // Check if it's an airport
+  const isAirport = lowerName.includes("airport") || 
+                   lowerName.includes("(lhr)") || 
+                   lowerName.includes("(lgw)") ||
+                   lowerName.includes("(ltn)") ||
+                   lowerName.includes("(stn)") ||
+                   lowerName.includes("(man)");
+  
+  // Check if it's NOT a specific terminal
+  const isSpecificTerminal = lowerName.includes("terminal ") || 
+                             lowerName.includes("terminal-") ||
+                             lowerName.includes("t1") ||
+                             lowerName.includes("t2") ||
+                             lowerName.includes("t3") ||
+                             lowerName.includes("t4") ||
+                             lowerName.includes("t5") ||
+                             lowerName.includes("north terminal") ||
+                             lowerName.includes("south terminal");
+  
+  // Check if it's a multi-terminal airport
+  const isMultiTerminal = MULTI_TERMINAL_AIRPORTS.some(airport => lowerName.includes(airport));
+  
+  return isAirport && isMultiTerminal && !isSpecificTerminal;
+};
+
+// Format the display name for airports
+const formatAirportDisplayName = (placeName, placeTypes) => {
+  if (!placeName) return placeName;
+  
+  // If it's a main airport with multiple terminals, append "(All Terminals)"
+  if (isMainAirport(placeName)) {
+    // Clean up the name first - remove redundant parts
+    let cleanName = placeName;
+    
+    // Remove "London" prefix if followed by airport name for UK airports
+    cleanName = cleanName.replace(/^London\s+/i, "");
+    
+    // Add "(All Terminals)" if not already present
+    if (!cleanName.toLowerCase().includes("all terminals")) {
+      cleanName = `${cleanName} (All Terminals)`;
+    }
+    
+    return cleanName;
+  }
+  
+  return placeName;
+};
+
 // Global flag to track if script is loading
 let isScriptLoading = false;
 let scriptLoadPromise = null;
 
 // Load Google Maps script with all required libraries
 const loadGoogleMapsScript = () => {
-  // Return existing promise if already loading
   if (scriptLoadPromise) {
     return scriptLoadPromise;
   }
 
-  // If already loaded, resolve immediately
   if (window.google && window.google.maps && window.google.maps.places) {
     return Promise.resolve(window.google);
   }
 
-  // Check for existing script
   const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
   if (existingScript && !isScriptLoading) {
     scriptLoadPromise = new Promise((resolve) => {
@@ -40,7 +104,6 @@ const loadGoogleMapsScript = () => {
     return scriptLoadPromise;
   }
 
-  // Create new script
   isScriptLoading = true;
   scriptLoadPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script");
@@ -92,7 +155,6 @@ const PlacesAutocomplete = ({
   const [loadError, setLoadError] = useState(false);
   const instanceId = useRef(`places-${id || Math.random().toString(36).substr(2, 9)}`);
 
-  // Store callback in ref to avoid stale closures
   const onPlaceSelectRef = useRef(onPlaceSelect);
   const onChangeRef = useRef(onChange);
   
@@ -107,27 +169,35 @@ const PlacesAutocomplete = ({
     const place = autocompleteRef.current.getPlace();
     
     if (place && place.geometry) {
-      // Check if this is an airport
-      const isAirport = place.types && (
-        place.types.includes("airport") || 
-        place.name?.toLowerCase().includes("airport") ||
-        place.name?.toLowerCase().includes("terminal")
-      );
+      const placeName = place.name || place.formatted_address;
+      const placeTypes = place.types || [];
       
-      // Use the place name for display (cleaner than formatted_address)
-      const displayName = place.name || place.formatted_address;
+      // Check if this is an airport
+      const isAirport = placeTypes.includes("airport") || 
+                       placeName?.toLowerCase().includes("airport") ||
+                       placeName?.toLowerCase().includes("terminal");
+      
+      // Format the display name - add "(All Terminals)" for main airports
+      const displayName = formatAirportDisplayName(placeName, placeTypes);
+      
+      // Determine if it's a specific terminal
+      const isSpecificTerminal = placeName?.toLowerCase().includes("terminal ") ||
+                                 placeName?.toLowerCase().includes("north terminal") ||
+                                 placeName?.toLowerCase().includes("south terminal");
       
       const location = {
         address: displayName,
         displayName: displayName,
+        originalName: placeName,
         lat: place.geometry.location.lat(),
         lng: place.geometry.location.lng(),
         placeId: place.place_id,
         type: isAirport ? "airport" : "address",
+        isAllTerminals: isAirport && !isSpecificTerminal && isMainAirport(placeName),
         full_address: place.formatted_address
       };
       
-      // Update the input with the place name
+      // Update the input with the formatted display name
       if (onChangeRef.current) {
         onChangeRef.current(displayName);
       }
@@ -138,7 +208,6 @@ const PlacesAutocomplete = ({
     }
   }, []);
 
-  // Load Google Maps script
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) {
       console.warn("Google Maps API key not configured");
@@ -157,33 +226,24 @@ const PlacesAutocomplete = ({
       });
   }, []);
 
-  // Initialize autocomplete when script is loaded
   useEffect(() => {
     if (!isLoaded || !inputRef.current || loadError) return;
     
-    // Clean up previous autocomplete instance
     if (autocompleteRef.current) {
       try {
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
-      } catch (e) {
-        // Ignore cleanup errors
-      }
+      } catch (e) {}
       autocompleteRef.current = null;
     }
 
-    // Small delay to ensure DOM is ready
     const initTimer = setTimeout(() => {
       try {
-        // Create a fresh autocomplete instance for this input
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ["establishment", "geocode"],
           fields: ["formatted_address", "geometry", "name", "place_id", "types"]
         });
 
-        // Add place_changed listener
         autocomplete.addListener("place_changed", handlePlaceSelect);
-        
-        // Store reference
         autocompleteRef.current = autocomplete;
       } catch (error) {
         console.error(`Failed to initialize autocomplete for ${instanceId.current}:`, error);
@@ -191,15 +251,12 @@ const PlacesAutocomplete = ({
       }
     }, 100);
 
-    // Cleanup on unmount
     return () => {
       clearTimeout(initTimer);
       if (autocompleteRef.current && window.google && window.google.maps) {
         try {
           window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
-        } catch (e) {
-          // Ignore cleanup errors
-        }
+        } catch (e) {}
         autocompleteRef.current = null;
       }
     };
@@ -231,7 +288,6 @@ const PlacesAutocomplete = ({
 export const calculateDistance = async (origin, destination) => {
   return new Promise((resolve) => {
     if (!window.google || !window.google.maps) {
-      // Fallback to Haversine formula for estimation
       const R = 6371;
       const dLat = (destination.lat - origin.lat) * Math.PI / 180;
       const dLon = (destination.lng - origin.lng) * Math.PI / 180;
@@ -265,7 +321,6 @@ export const calculateDistance = async (origin, destination) => {
             duration_minutes: Math.ceil(element.duration.value / 60)
           });
         } else {
-          // Fallback
           const R = 6371;
           const dLat = (destination.lat - origin.lat) * Math.PI / 180;
           const dLon = (destination.lng - origin.lng) * Math.PI / 180;
