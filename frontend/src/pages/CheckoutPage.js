@@ -531,10 +531,23 @@ const CheckoutPage = () => {
 
                 {/* Price Breakdown */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-600">Vehicle ({selectedVehicle.vehicle_name})</span>
-                    <span>{formatPrice(selectedVehicle.price)}</span>
-                  </div>
+                  {bookingData.is_return ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-zinc-600">Outbound - {selectedVehicle.vehicle_name}</span>
+                        <span>{formatPrice(selectedVehicle.price / 2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-zinc-600">Return - {selectedVehicle.vehicle_name}</span>
+                        <span>{formatPrice(selectedVehicle.price / 2)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-zinc-600">Vehicle ({selectedVehicle.vehicle_name})</span>
+                      <span>{formatPrice(selectedVehicle.price)}</span>
+                    </div>
+                  )}
                   
                   {childSeats.map((seat) => {
                     const seatType = childSeatTypes.find(t => t.id === seat.type);
