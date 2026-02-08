@@ -1414,7 +1414,21 @@ const EditJobDialog = ({ open, onClose, booking, vehicles, fleets, drivers, head
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent dialog from closing when clicking on Google Places autocomplete dropdown
+          if (e.target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          // Also prevent on interact outside for good measure
+          if (e.target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Edit Job - {booking.booking_ref}</DialogTitle>
         </DialogHeader>
