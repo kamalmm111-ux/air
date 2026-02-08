@@ -49,7 +49,9 @@ const JobCard = ({ job, onView, onAccept, onAssign, onStatusChange, getStatusBad
   
   // Copy tracking link to clipboard
   const copyTrackingLink = () => {
-    const url = `${window.location.origin}/driver-tracking/${trackingLink}`;
+    // Use production domain for tracking links
+    const productionDomain = 'https://aircabio.com';
+    const url = `${productionDomain}/driver-tracking/${trackingLink}`;
     navigator.clipboard.writeText(url);
     toast.success("Tracking link copied!");
   };
