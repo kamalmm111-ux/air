@@ -337,10 +337,15 @@ async def send_driver_assigned_to_customer(booking: Dict, driver: Dict, vehicle:
 
 
 async def send_status_update(booking: Dict, status: str, message: str = ""):
-    """Send job status update to customer"""
+    """Send job status update to customer with tracking link when en route"""
     customer_email = booking.get("customer_email")
     if not customer_email:
         return
+    
+    # Get frontend URL for tracking link
+    frontend_url = os.environ.get("FRONTEND_URL", "https://aircabio.com")
+    booking_ref = booking.get("booking_ref", "")
+    tracking_url = f"{frontend_url}/track/{booking_ref}"
     
     status_messages = {
         "en_route": ("Driver En Route", "Your driver is on the way to pick you up.", "#3b82f6"),
@@ -351,19 +356,44 @@ async def send_status_update(booking: Dict, status: str, message: str = ""):
     
     title, default_msg, color = status_messages.get(status, ("Status Update", "Your booking status has been updated.", "#0A0F1C"))
     
+    # Build tracking button HTML (only show for en_route, arrived, in_progress)
+    tracking_button = ""
+    if status in ["en_route", "arrived", "in_progress"]:
+        tracking_button = f"""
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+            <tr>
+                <td align="center">
+                    <a href="{tracking_url}" 
+                       style="display: inline-block; background-color: #0A0F1C; color: #D4AF37; 
+                              padding: 16px 32px; text-decoration: none; border-radius: 8px; 
+                              font-weight: bold; font-size: 16px;">
+                        Track Your Driver Live
+                    </a>
+                </td>
+            </tr>
+        </table>
+        <p style="color: #666; text-align: center; font-size: 14px;">
+            Or copy this link: <a href="{tracking_url}" style="color: #3b82f6;">{tracking_url}</a>
+        </p>
+        """
+    
     content = f"""
     <h2 style="color: {color}; margin: 0 0 24px 0;">{title}</h2>
     <p style="color: #333;">Dear {booking.get('customer_name', 'Customer')},</p>
     <p style="color: #333; font-size: 18px;">{message or default_msg}</p>
     <table width="100%" cellpadding="12" cellspacing="0" style="background-color: #f8f8f8; border-radius: 8px; margin: 24px 0;">
         <tr><td>
-            <strong>Booking:</strong> {booking.get('booking_ref')}<br>
+            <strong>Booking Reference:</strong> {booking_ref}<br>
+            <strong>Pickup:</strong> {booking.get('pickup_location', 'N/A')}<br>
+            <strong>Drop-off:</strong> {booking.get('dropoff_location', 'N/A')}<br>
             {f"<strong>Driver:</strong> {booking.get('assigned_driver_name')}" if booking.get('assigned_driver_name') else ""}
+            {f"<br><strong>Vehicle:</strong> {booking.get('assigned_vehicle_plate')}" if booking.get('assigned_vehicle_plate') else ""}
         </td></tr>
     </table>
+    {tracking_button}
     """
     html = get_base_template(content, title)
-    await send_email(customer_email, f"{title} - {booking.get('booking_ref')}", html)
+    await send_email(customer_email, f"{title} - {booking_ref}", html)
 
 
 # ==================== FLEET MANAGEMENT NOTIFICATIONS ====================
