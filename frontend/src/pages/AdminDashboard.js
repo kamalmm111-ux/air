@@ -912,7 +912,12 @@ const AdminDashboard = () => {
     <div className="p-8" data-testid="admin-dashboard">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#0A0F1C] capitalize" style={{ fontFamily: 'Chivo, sans-serif' }}>
-          {activeTab === "dashboard" ? "Dashboard Overview" : activeTab === "vehicle-categories" ? "Vehicle Categories" : activeTab === "customers" ? "Customer Accounts (B2B)" : activeTab === "invoices" ? "Invoice Management" : activeTab.replace("-", " ")}
+          {activeTab === "dashboard" ? "Dashboard Overview" : 
+           activeTab === "vehicle-categories" ? "Vehicle Categories" : 
+           activeTab === "customers" ? "Customer Accounts (B2B)" : 
+           activeTab === "invoices" ? "Invoice Management" : 
+           activeTab === "system-settings" ? "System Settings" :
+           activeTab.replace("-", " ")}
         </h1>
       </div>
       {content[activeTab] || content.dashboard}
