@@ -61,15 +61,6 @@ const FleetLayout = () => {
                           searchParams.get("impersonate") === "init" ||
                           !!impersonationToken;
   
-  // Debug logging
-  console.log("FleetLayout Debug:", {
-    impersonateParam: searchParams.get("impersonate"),
-    hasImpersonationToken: !!impersonationToken,
-    isImpersonating,
-    isFleetAdmin,
-    loading
-  });
-  
   // Use impersonation token if available
   const effectiveToken = isImpersonating ? impersonationToken : token;
   const isAuthenticated = isImpersonating ? !!impersonationToken : isFleetAdmin;
