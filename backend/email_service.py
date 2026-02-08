@@ -362,7 +362,10 @@ async def send_status_update(booking: Dict, status: str, message: str = ""):
     """Send job status update to customer with tracking link when en route"""
     customer_email = booking.get("customer_email")
     if not customer_email:
+        logger.warning(f"send_status_update: No customer email for booking {booking.get('booking_ref')}")
         return
+    
+    logger.info(f"send_status_update: Preparing {status} email to {customer_email} for booking {booking.get('booking_ref')}")
     
     # Get frontend URL for tracking link
     frontend_url = os.environ.get("FRONTEND_URL", "https://aircabio.com")
