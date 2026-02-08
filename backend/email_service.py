@@ -703,3 +703,374 @@ async def send_driver_tracking_link(
     """
     html = get_base_template(content, "Start Tracking")
     await send_email(driver_email, f"🚗 Start Tracking - Job {booking_ref}", html)
+
+
+# ==================== PDF INVOICE GENERATION ====================
+
+def generate_invoice_pdf(booking: Dict) -> bytes:
+    """Generate a branded PDF invoice for a booking"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                           rightMargin=30, leftMargin=30,
+                           topMargin=30, bottomMargin=30)
+    
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=28,
+        textColor=colors.HexColor('#D4AF37'),
+        alignment=TA_CENTER,
+        spaceAfter=6
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=colors.HexColor('#666666'),
+        alignment=TA_CENTER,
+        spaceAfter=20
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#0A0F1C'),
+        spaceBefore=15,
+        spaceAfter=10
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#333333'),
+        spaceAfter=6
+    )
+    
+    # Header
+    elements.append(Paragraph("AIRCABIO", title_style))
+    elements.append(Paragraph("Premium Airport Transfers", subtitle_style))
+    elements.append(Spacer(1, 10))
+    
+    # Invoice header info
+    invoice_date = datetime.now().strftime("%d %B %Y")
+    booking_ref = booking.get('booking_ref', 'N/A')
+    
+    header_data = [
+        ['INVOICE', f'Date: {invoice_date}'],
+        [f'Reference: {booking_ref}', '']
+    ]
+    
+    header_table = Table(header_data, colWidths=[280, 220])
+    header_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (0, 0), 18),
+        ('TEXTCOLOR', (0, 0), (0, 0), colors.HexColor('#0A0F1C')),
+        ('FONTSIZE', (1, 0), (1, 1), 10),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#666666')),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(header_table)
+    elements.append(Spacer(1, 20))
+    
+    # Customer details
+    elements.append(Paragraph("Bill To:", heading_style))
+    customer_name = booking.get('customer_name', 'Customer')
+    customer_email = booking.get('customer_email', '')
+    customer_phone = booking.get('customer_phone', '')
+    
+    elements.append(Paragraph(f"<b>{customer_name}</b>", normal_style))
+    if customer_email:
+        elements.append(Paragraph(customer_email, normal_style))
+    if customer_phone:
+        elements.append(Paragraph(customer_phone, normal_style))
+    
+    elements.append(Spacer(1, 15))
+    
+    # Trip details
+    elements.append(Paragraph("Trip Details:", heading_style))
+    
+    trip_data = [
+        ['Pickup Date', booking.get('pickup_date', 'N/A')],
+        ['Pickup Time', booking.get('pickup_time', 'N/A')],
+        ['Pickup Location', booking.get('pickup_location', 'N/A')],
+        ['Drop-off Location', booking.get('dropoff_location', 'N/A')],
+        ['Vehicle', booking.get('vehicle_name', 'Standard')],
+        ['Passengers', str(booking.get('passengers', 1))],
+    ]
+    
+    if booking.get('flight_number'):
+        trip_data.append(['Flight Number', booking.get('flight_number')])
+    
+    if booking.get('assigned_driver_name'):
+        trip_data.append(['Driver', booking.get('assigned_driver_name')])
+    
+    trip_table = Table(trip_data, colWidths=[150, 350])
+    trip_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#666666')),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#333333')),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#eeeeee')),
+    ]))
+    elements.append(trip_table)
+    elements.append(Spacer(1, 20))
+    
+    # Pricing breakdown
+    elements.append(Paragraph("Charges:", heading_style))
+    
+    price = booking.get('customer_price', booking.get('price', 0))
+    currency_symbol = '£'
+    currency = booking.get('currency', 'GBP')
+    if currency == 'EUR':
+        currency_symbol = '€'
+    elif currency == 'USD':
+        currency_symbol = '$'
+    elif currency == 'CAD':
+        currency_symbol = 'CA$'
+    
+    pricing_data = [
+        ['Description', 'Amount'],
+        ['Transfer Service', f'{currency_symbol}{price:.2f}'],
+    ]
+    
+    # Child seats if any
+    child_seats = booking.get('child_seats', [])
+    if child_seats:
+        for seat in child_seats:
+            seat_type = seat.get('type', 'Child Seat')
+            seat_qty = seat.get('quantity', 1)
+            seat_price = seat.get('price', 0)
+            if seat_qty > 0 and seat_price > 0:
+                pricing_data.append([f'{seat_type} x{seat_qty}', f'{currency_symbol}{seat_price * seat_qty:.2f}'])
+    
+    # Add total row
+    pricing_data.append(['', ''])
+    pricing_data.append(['TOTAL', f'{currency_symbol}{price:.2f}'])
+    
+    pricing_table = Table(pricing_data, colWidths=[350, 150])
+    pricing_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#ffffff')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0A0F1C')),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('LINEBELOW', (0, 1), (-1, -3), 0.5, colors.HexColor('#eeeeee')),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 14),
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#D4AF37')),
+        ('LINEABOVE', (0, -1), (-1, -1), 1, colors.HexColor('#0A0F1C')),
+    ]))
+    elements.append(pricing_table)
+    elements.append(Spacer(1, 30))
+    
+    # Payment status
+    payment_status = booking.get('payment_status', 'pending')
+    status_color = colors.HexColor('#16a34a') if payment_status == 'paid' else colors.HexColor('#f59e0b')
+    status_text = 'PAID' if payment_status == 'paid' else 'PAYMENT PENDING'
+    
+    status_style = ParagraphStyle(
+        'StatusStyle',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=status_color,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    elements.append(Paragraph(status_text, status_style))
+    elements.append(Spacer(1, 30))
+    
+    # Footer
+    footer_style = ParagraphStyle(
+        'FooterStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.HexColor('#999999'),
+        alignment=TA_CENTER
+    )
+    
+    elements.append(Paragraph("Thank you for choosing Aircabio!", footer_style))
+    elements.append(Spacer(1, 5))
+    elements.append(Paragraph(f"{COMPANY_NAME} | {COMPANY_PHONE} | {COMPANY_EMAIL}", footer_style))
+    elements.append(Spacer(1, 5))
+    elements.append(Paragraph("www.aircabio.com", footer_style))
+    
+    doc.build(elements)
+    return buffer.getvalue()
+
+
+# ==================== COMPLETION WITH INVOICE ====================
+
+async def send_completion_with_invoice(booking: Dict):
+    """Send trip completion email with PDF invoice attached"""
+    customer_email = booking.get("customer_email")
+    if not customer_email:
+        return
+    
+    # Generate PDF invoice
+    try:
+        pdf_bytes = generate_invoice_pdf(booking)
+        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+    except Exception as e:
+        logger.error(f"Failed to generate PDF invoice: {str(e)}")
+        # Fall back to simple completion email
+        await send_booking_completed(booking)
+        return
+    
+    booking_ref = booking.get('booking_ref', 'N/A')
+    
+    content = f"""
+    <h2 style="color: #16a34a; margin: 0 0 24px 0;">Trip Completed - Invoice Attached</h2>
+    <p style="color: #333;">Dear {booking.get('customer_name', 'Customer')},</p>
+    <p style="color: #333;">Thank you for traveling with Aircabio! Your trip has been successfully completed.</p>
+    
+    <table width="100%" cellpadding="12" cellspacing="0" style="background-color: #f0fdf4; border-radius: 8px; margin: 24px 0; border: 1px solid #16a34a;">
+        <tr>
+            <td style="text-align: center;">
+                <span style="color: #16a34a; font-size: 14px; font-weight: bold;">✓ TRIP COMPLETED</span>
+            </td>
+        </tr>
+    </table>
+    
+    <table width="100%" cellpadding="12" cellspacing="0" style="background-color: #f8f8f8; border-radius: 8px; margin: 24px 0;">
+        <tr>
+            <td style="border-bottom: 1px solid #eee;">
+                <strong style="color: #666;">Booking Reference</strong><br>
+                <span style="color: #0A0F1C; font-size: 18px; font-weight: bold;">{booking_ref}</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="border-bottom: 1px solid #eee;">
+                <strong style="color: #666;">Date</strong><br>
+                <span style="color: #333;">{booking.get('pickup_date', 'N/A')}</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="border-bottom: 1px solid #eee;">
+                <strong style="color: #666;">Route</strong><br>
+                <span style="color: #333;">{booking.get('pickup_location', 'N/A')} → {booking.get('dropoff_location', 'N/A')}</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <strong style="color: #666;">Total</strong><br>
+                <span style="color: #D4AF37; font-size: 24px; font-weight: bold;">£{booking.get('customer_price', booking.get('price', 0)):.2f}</span>
+            </td>
+        </tr>
+    </table>
+    
+    <table width="100%" cellpadding="16" cellspacing="0" style="background-color: #fef3c7; border-radius: 8px; margin: 24px 0;">
+        <tr>
+            <td style="text-align: center;">
+                <span style="color: #92400e; font-size: 14px;">📎 Your branded invoice is attached to this email as a PDF.</span>
+            </td>
+        </tr>
+    </table>
+    
+    <p style="color: #333;">We hope you had a pleasant journey and look forward to serving you again!</p>
+    """
+    
+    html = get_base_template(content, "Trip Completed - Invoice")
+    
+    # Send with PDF attachment
+    if EMAIL_AVAILABLE:
+        try:
+            params = {
+                "from": f"{COMPANY_NAME} <{SENDER_EMAIL}>",
+                "to": [customer_email],
+                "subject": f"Trip Completed - Invoice {booking_ref}",
+                "html": html,
+                "attachments": [
+                    {
+                        "filename": f"Aircabio_Invoice_{booking_ref}.pdf",
+                        "content": pdf_base64
+                    }
+                ]
+            }
+            result = await asyncio.to_thread(resend.Emails.send, params)
+            logger.info(f"Completion email with invoice sent to {customer_email}")
+            return {"status": "success", "email_id": result.get("id")}
+        except Exception as e:
+            logger.error(f"Failed to send completion email with invoice: {str(e)}")
+            return {"status": "error", "message": str(e)}
+    else:
+        logger.info(f"[EMAIL LOG] Completion with invoice to: {customer_email}, Ref: {booking_ref}")
+        return {"status": "logged", "message": "Email logged (Resend not configured)"}
+
+
+# ==================== REVIEW INVITATION ====================
+
+async def send_review_invitation(booking: Dict, driver: Dict = None):
+    """Send review invitation email to customer after trip completion"""
+    customer_email = booking.get("customer_email")
+    if not customer_email:
+        return
+    
+    frontend_url = os.environ.get("FRONTEND_URL", "https://aircabio.com")
+    booking_ref = booking.get("booking_ref", "")
+    review_url = f"{frontend_url}/review/{booking_ref}"
+    
+    driver_name = driver.get('name', 'your driver') if driver else booking.get('assigned_driver_name', 'your driver')
+    
+    content = f"""
+    <h2 style="color: #0A0F1C; margin: 0 0 24px 0;">How Was Your Trip?</h2>
+    <p style="color: #333;">Dear {booking.get('customer_name', 'Customer')},</p>
+    <p style="color: #333;">We hope you enjoyed your recent journey with Aircabio! Your feedback helps us maintain our high standards and recognize our best drivers.</p>
+    
+    <table width="100%" cellpadding="16" cellspacing="0" style="background-color: #f8f8f8; border-radius: 8px; margin: 24px 0;">
+        <tr>
+            <td style="text-align: center;">
+                <span style="color: #666; font-size: 14px;">Your trip on</span><br>
+                <span style="color: #0A0F1C; font-size: 18px; font-weight: bold;">{booking.get('pickup_date', 'N/A')}</span><br>
+                <span style="color: #666; font-size: 12px; margin-top: 8px; display: block;">
+                    {booking.get('pickup_location', '')} → {booking.get('dropoff_location', '')}
+                </span>
+            </td>
+        </tr>
+    </table>
+    
+    <p style="color: #333; text-align: center; font-size: 16px;">
+        Please take a moment to rate <strong>{driver_name}</strong> and share your experience.
+    </p>
+    
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 32px 0;">
+        <tr>
+            <td align="center">
+                <a href="{review_url}" 
+                   style="display: inline-block; background-color: #D4AF37; color: #0A0F1C; 
+                          padding: 16px 48px; text-decoration: none; border-radius: 8px; 
+                          font-weight: bold; font-size: 16px;">
+                    ⭐ Rate Your Experience
+                </a>
+            </td>
+        </tr>
+    </table>
+    
+    <p style="color: #666; text-align: center; font-size: 14px;">
+        Or copy this link: <a href="{review_url}" style="color: #3b82f6;">{review_url}</a>
+    </p>
+    
+    <table width="100%" cellpadding="12" cellspacing="0" style="background-color: #f0fdf4; border-radius: 8px; margin: 24px 0;">
+        <tr>
+            <td style="text-align: center;">
+                <span style="color: #16a34a; font-size: 13px;">
+                    Your review helps us improve and rewards exceptional drivers. Thank you!
+                </span>
+            </td>
+        </tr>
+    </table>
+    """
+    
+    html = get_base_template(content, "Rate Your Trip")
+    await send_email(customer_email, f"How Was Your Trip? - {booking_ref}", html)
