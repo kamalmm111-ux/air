@@ -19,14 +19,16 @@ const FleetLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [impersonationReady, setImpersonationReady] = useState(false);
+  const [impersonationProcessed, setImpersonationProcessed] = useState(false);
+  
+  // Check if this is an impersonation request with data in URL
+  const hasImpersonationData = searchParams.get("impersonate") === "true" && searchParams.get("data");
   
   // Handle impersonation data from URL on mount
   useEffect(() => {
-    const impersonateParam = searchParams.get("impersonate");
     const dataParam = searchParams.get("data");
     
-    if (impersonateParam === "true" && dataParam) {
+    if (hasImpersonationData && dataParam && !impersonationProcessed) {
       try {
         const impersonationData = JSON.parse(decodeURIComponent(dataParam));
         
@@ -36,19 +38,23 @@ const FleetLayout = () => {
         sessionStorage.setItem("impersonation_id", impersonationData.impersonation_id || "");
         sessionStorage.setItem("admin_token", impersonationData.admin_token || "");
         
-        // Clean URL
+        // Clean URL and mark as processed
         window.history.replaceState({}, document.title, "/fleet/dashboard?impersonate=true");
-        setImpersonationReady(true);
+        setImpersonationProcessed(true);
       } catch (e) {
         console.error("Failed to parse impersonation data:", e);
+        setImpersonationProcessed(true);
       }
-    } else if (sessionStorage.getItem("impersonation_token")) {
-      setImpersonationReady(true);
+    } else if (!hasImpersonationData) {
+      setImpersonationProcessed(true);
     }
-  }, [searchParams]);
+  }, [searchParams, hasImpersonationData, impersonationProcessed]);
   
-  // Check for impersonation mode
-  const isImpersonating = searchParams.get("impersonate") === "true" || sessionStorage.getItem("impersonation_token");
+  // Check for impersonation mode - must check sessionStorage fresh each render after processing
+  const isImpersonating = impersonationProcessed && (
+    searchParams.get("impersonate") === "true" || 
+    !!sessionStorage.getItem("impersonation_token")
+  );
   const impersonationToken = sessionStorage.getItem("impersonation_token");
   const impersonationFleet = JSON.parse(sessionStorage.getItem("impersonation_fleet") || "{}");
   const impersonationId = sessionStorage.getItem("impersonation_id");
@@ -58,11 +64,11 @@ const FleetLayout = () => {
   const isAuthenticated = isImpersonating ? !!impersonationToken : isFleetAdmin;
 
   useEffect(() => {
-    // Only redirect if not loading and not authenticated AND not impersonating
-    if (!loading && !isFleetAdmin && !isImpersonating) {
+    // Only redirect if processing is complete and not authenticated
+    if (impersonationProcessed && !loading && !isFleetAdmin && !isImpersonating) {
       navigate("/fleet/login");
     }
-  }, [user, isFleetAdmin, loading, navigate, isImpersonating]);
+  }, [user, isFleetAdmin, loading, navigate, isImpersonating, impersonationProcessed]);
 
   useEffect(() => {
     const fetchNotifications = async () => {
