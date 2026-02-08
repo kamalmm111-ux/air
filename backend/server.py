@@ -1503,9 +1503,12 @@ async def create_manual_booking(booking_data: ManualBookingCreate, background_ta
 @api_router.post("/bookings/{booking_id}/assign")
 async def assign_booking(booking_id: str, assignment: JobAssignment, background_tasks: BackgroundTasks, user: dict = Depends(get_super_admin)):
     """Assign a booking to a fleet and/or driver"""
+    print(f"[ASSIGN DEBUG] Starting assign_booking for {booking_id}", flush=True)
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    
+    print(f"[ASSIGN DEBUG] Found booking: {booking.get('booking_ref')}, customer_email: {booking.get('customer_email')}", flush=True)
     
     update_data = {
         "updated_at": datetime.now(timezone.utc).isoformat()
