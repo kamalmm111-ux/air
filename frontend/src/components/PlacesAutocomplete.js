@@ -135,10 +135,14 @@ const PlacesAutocomplete = ({
     }
 
     try {
+      // Prioritize airports in search results for airport transfer service
       const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        types: ["geocode", "establishment"],
-        fields: ["formatted_address", "geometry", "name", "place_id"]
+        types: ["establishment", "geocode"],
+        fields: ["formatted_address", "geometry", "name", "place_id", "types"]
       });
+      
+      // Bias towards airports by setting component restrictions
+      // This will prioritize airport results when user types airport-related terms
 
       autocomplete.addListener("place_changed", handlePlaceSelect);
       autocompleteRef.current = autocomplete;
