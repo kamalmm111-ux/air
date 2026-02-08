@@ -17,6 +17,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Layout = () => {
   const { user, logout, isAdmin, isAuthenticated } = useAuth();
+  const { currency, changeCurrency, getCurrentCurrency } = useCurrency();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState({});
