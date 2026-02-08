@@ -32,7 +32,13 @@ const CustomerReviewPage = () => {
         
         // Check if already rated
         if (res.data.booking?.customer_rating) {
-          setExistingRating(res.data.booking.customer_rating);
+          // customer_rating could be just a number or an object
+          const existingValue = res.data.booking.customer_rating;
+          if (typeof existingValue === 'number') {
+            setExistingRating({ rating: existingValue, comment: res.data.booking?.customer_feedback });
+          } else {
+            setExistingRating(existingValue);
+          }
           setSubmitted(true);
         }
       } catch (err) {
