@@ -65,6 +65,9 @@ function App() {
               {/* Driver Tracking Page (public - accessed via token) */}
               <Route path="/driver-tracking/:token" element={<DriverTrackingPage />} />
               
+              {/* Customer Tracking Page (public - accessed via booking reference) */}
+              <Route path="/track/:bookingRef" element={<CustomerTrackingPage />} />
+              
               {/* Fleet Dashboard Routes */}
               <Route path="/fleet/dashboard" element={<FleetLayout />}>
                 <Route index element={<FleetDashboard />} />
