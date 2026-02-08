@@ -4,21 +4,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Camera, User } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Driver Dialog
+// Driver Dialog with Photo Upload
 const DriverDialog = ({ open, onClose, driver, headers, onSuccess }) => {
-  const [formData, setFormData] = useState({ name: "", phone: "", email: "", license_number: "", license_expiry: "", notes: "", status: "active" });
+  const [formData, setFormData] = useState({ name: "", phone: "", email: "", license_number: "", license_expiry: "", photo_url: "", notes: "", status: "active" });
   const [loading, setLoading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   useEffect(() => {
-    if (driver) setFormData({ ...driver });
-    else setFormData({ name: "", phone: "", email: "", license_number: "", license_expiry: "", notes: "", status: "active" });
+    if (driver) {
+      setFormData({ ...driver });
+      setPhotoPreview(driver.photo_url || null);
+    } else {
+      setFormData({ name: "", phone: "", email: "", license_number: "", license_expiry: "", photo_url: "", notes: "", status: "active" });
+      setPhotoPreview(null);
+    }
   }, [driver, open]);
+
+  // Handle photo URL input
+  const handlePhotoUrl = (url) => {
+    setFormData({ ...formData, photo_url: url });
+    setPhotoPreview(url);
+  };
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.phone) { toast.error("Name and phone required"); return; }
@@ -34,9 +46,33 @@ const DriverDialog = ({ open, onClose, driver, headers, onSuccess }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md" data-testid="driver-dialog">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-testid="driver-dialog">
         <DialogHeader><DialogTitle>{driver ? "Edit Driver" : "Add Driver"}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-4">
+          {/* Driver Photo Section */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-24 h-24 rounded-full bg-zinc-100 overflow-hidden border-2 border-dashed border-zinc-300 flex items-center justify-center">
+              {photoPreview ? (
+                <img src={photoPreview} alt="Driver" className="w-full h-full object-cover" onError={() => setPhotoPreview(null)} />
+              ) : (
+                <User className="w-10 h-10 text-zinc-400" />
+              )}
+            </div>
+            <div className="w-full">
+              <Label className="text-sm flex items-center gap-1 mb-1">
+                <Camera className="w-3 h-3" /> Photo URL
+              </Label>
+              <Input 
+                type="url"
+                placeholder="https://example.com/photo.jpg" 
+                value={formData.photo_url || ""} 
+                onChange={(e) => handlePhotoUrl(e.target.value)} 
+                data-testid="driver-photo-input"
+              />
+              <p className="text-xs text-zinc-500 mt-1">Paste a URL to the driver's photo</p>
+            </div>
+          </div>
+          
           <div><Label>Name *</Label><Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} data-testid="driver-name-input" /></div>
           <div><Label>Phone *</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} data-testid="driver-phone-input" /></div>
           <div><Label>Email</Label><Input type="email" value={formData.email || ""} onChange={(e) => setFormData({...formData, email: e.target.value})} data-testid="driver-email-input" /></div>
