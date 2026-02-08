@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBooking } from "../context/BookingContext";
 import { useAuth } from "../context/AuthContext";
@@ -16,11 +16,11 @@ import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Child seat types with age ranges and pricing
-const CHILD_SEAT_TYPES = [
-  { id: "infant", name: "Infant Seat", ageRange: "0-12 months", price: 10 },
-  { id: "toddler", name: "Toddler Seat", ageRange: "1-4 years", price: 10 },
-  { id: "booster", name: "Booster Seat", ageRange: "4-8 years", price: 8 }
+// Default child seat types (fallback)
+const DEFAULT_CHILD_SEAT_TYPES = [
+  { id: "infant", name: "Infant Seat", age_range: "0-12 months", price: 10 },
+  { id: "toddler", name: "Toddler Seat", age_range: "1-4 years", price: 10 },
+  { id: "booster", name: "Booster Seat", age_range: "4-8 years", price: 8 }
 ];
 
 const CheckoutPage = () => {
@@ -42,7 +42,25 @@ const CheckoutPage = () => {
   
   // Child seats state - array of {type, qty}
   const [childSeats, setChildSeats] = useState([]);
+  const [childSeatTypes, setChildSeatTypes] = useState(DEFAULT_CHILD_SEAT_TYPES);
   const [loading, setLoading] = useState(false);
+
+  // Fetch child seat pricing from API
+  const fetchChildSeatPricing = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/settings/child-seats`);
+      if (response.data.child_seats && response.data.child_seats.length > 0) {
+        setChildSeatTypes(response.data.child_seats);
+      }
+    } catch (error) {
+      console.error("Failed to fetch child seat pricing:", error);
+      // Use defaults on error
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchChildSeatPricing();
+  }, [fetchChildSeatPricing]);
 
   useEffect(() => {
     if (!selectedVehicle) {
