@@ -4190,12 +4190,15 @@ async def update_job_status_from_driver(token: str, status_update: StatusUpdate,
     
     # Send email notifications for status changes
     updated_booking = await db.bookings.find_one({"id": session["booking_id"]}, {"_id": 0})
+    print(f"[TRACKING DEBUG] Status: {status_update.status}, Customer email: {updated_booking.get('customer_email') if updated_booking else 'no booking'}", flush=True)
     if updated_booking and updated_booking.get("customer_email"):
         if status_update.status in ["en_route", "arrived", "in_progress"]:
             # Send status update email with tracking link
+            print(f"[TRACKING DEBUG] Sending {status_update.status} email to {updated_booking.get('customer_email')}", flush=True)
             background_tasks.add_task(send_status_update, updated_booking, status_update.status)
         elif status_update.status == "completed":
             # Send completion email with PDF invoice
+            print(f"[TRACKING DEBUG] Sending completion + invoice + review emails to {updated_booking.get('customer_email')}", flush=True)
             background_tasks.add_task(send_completion_with_invoice, updated_booking)
             # Send review invitation email
             driver = None
