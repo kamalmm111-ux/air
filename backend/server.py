@@ -26,7 +26,7 @@ from email_service import (
     send_job_alert_to_fleet, send_driver_assigned_to_customer, send_status_update,
     send_fleet_suspended, send_fleet_reactivated, send_fleet_password_reset,
     send_invoice_issued, send_payment_success, send_payment_failed,
-    send_admin_alert
+    send_admin_alert, send_completion_with_invoice, send_review_invitation
 )
 
 # MongoDB connection
