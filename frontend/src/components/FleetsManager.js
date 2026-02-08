@@ -105,7 +105,7 @@ const FleetsManager = ({ token, onViewFleet }) => {
 
   const handleLoginAsFleet = async (fleetId) => {
     try {
-      const response = await axios.post(`${API}/auth/login-as-fleet/${fleetId}`, {}, { headers });
+      const response = await axios.post(`${API}/admin/fleets/${fleetId}/impersonate`, {}, { headers });
       const fleetToken = response.data.access_token;
       // Open in new window with the fleet token
       window.open(`/fleet?token=${fleetToken}`, "_blank");
