@@ -5374,37 +5374,79 @@ async def get_public_currency_rates():
 @api_router.get("/admin/ratings")
 async def get_all_ratings(
     driver_id: Optional[str] = None,
+    fleet_id: Optional[str] = None,
     min_stars: Optional[int] = None,
     limit: int = 100,
     current_user: dict = Depends(get_super_admin)
 ):
-    """Get all trip ratings for admin dashboard"""
-    query = {"rating": {"$exists": True}}
-    
-    if driver_id:
-        query["driver_id"] = driver_id
-    
-    if min_stars:
-        query["rating.stars"] = {"$gte": min_stars}
-    
-    sessions = await db.tracking_sessions.find(query, {"_id": 0}).sort("completed_at", -1).to_list(limit)
-    
-    # Enrich with booking and driver info
+    """Get all trip ratings for admin dashboard - combines tracking_sessions and driver_ratings"""
     enriched_ratings = []
+    
+    # Get ratings from driver_ratings collection (from customer review page)
+    dr_query = {}
+    if driver_id:
+        dr_query["driver_id"] = driver_id
+    if min_stars:
+        dr_query["rating"] = {"$gte": min_stars}
+    
+    driver_ratings = await db.driver_ratings.find(dr_query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    
+    for rating in driver_ratings:
+        booking = await db.bookings.find_one({"id": rating.get("booking_id")}, {"_id": 0})
+        driver = await db.drivers.find_one({"id": rating.get("driver_id")}, {"_id": 0})
+        
+        # Skip if filtering by fleet and driver doesn't belong to it
+        if fleet_id and driver and driver.get("fleet_id") != fleet_id:
+            continue
+        
+        enriched_ratings.append({
+            "id": rating.get("id"),
+            "source": "customer_review",
+            "booking_id": rating.get("booking_id"),
+            "booking_ref": booking.get("booking_ref") if booking else None,
+            "driver_id": rating.get("driver_id"),
+            "driver_name": driver.get("name") if driver else "Unknown",
+            "driver_photo": driver.get("photo_url") if driver else None,
+            "fleet_id": driver.get("fleet_id") if driver else None,
+            "customer_name": booking.get("customer_name") if booking else None,
+            "stars": rating.get("rating"),
+            "comment": rating.get("feedback"),
+            "rated_at": rating.get("created_at"),
+            "pickup_location": booking.get("pickup_location") if booking else None,
+            "dropoff_location": booking.get("dropoff_location") if booking else None,
+            "pickup_date": booking.get("pickup_date") if booking else None
+        })
+    
+    # Also get ratings from tracking_sessions (from tracking page ratings)
+    ts_query = {"rating": {"$exists": True}}
+    if driver_id:
+        ts_query["driver_id"] = driver_id
+    if min_stars:
+        ts_query["rating.stars"] = {"$gte": min_stars}
+    
+    sessions = await db.tracking_sessions.find(ts_query, {"_id": 0}).sort("completed_at", -1).to_list(limit)
+    
+    # Track booking IDs already added to avoid duplicates
+    added_booking_ids = {r.get("booking_id") for r in enriched_ratings}
+    
     for session in sessions:
-        if session.get("rating"):
-            # Get booking info
+        if session.get("rating") and session.get("booking_id") not in added_booking_ids:
             booking = await db.bookings.find_one({"id": session.get("booking_id")}, {"_id": 0})
-            # Get driver info
             driver = await db.drivers.find_one({"id": session.get("driver_id")}, {"_id": 0})
+            
+            # Skip if filtering by fleet and driver doesn't belong to it
+            if fleet_id and driver and driver.get("fleet_id") != fleet_id:
+                continue
             
             enriched_ratings.append({
                 "id": session.get("id"),
+                "source": "tracking_page",
                 "booking_id": session.get("booking_id"),
                 "booking_ref": booking.get("booking_ref") if booking else None,
                 "driver_id": session.get("driver_id"),
                 "driver_name": driver.get("name") if driver else "Unknown",
                 "driver_photo": driver.get("photo_url") if driver else None,
+                "fleet_id": driver.get("fleet_id") if driver else None,
                 "customer_name": booking.get("customer_name") if booking else None,
                 "stars": session["rating"].get("stars"),
                 "comment": session["rating"].get("comment"),
@@ -5414,34 +5456,56 @@ async def get_all_ratings(
                 "pickup_date": booking.get("pickup_date") if booking else None
             })
     
-    return enriched_ratings
+    # Sort by rated_at descending
+    enriched_ratings.sort(key=lambda x: x.get("rated_at") or "", reverse=True)
+    
+    return enriched_ratings[:limit]
 
 @api_router.get("/admin/ratings/summary")
 async def get_ratings_summary(current_user: dict = Depends(get_super_admin)):
-    """Get ratings summary statistics"""
-    # Get all ratings
+    """Get ratings summary statistics - combines all rating sources"""
+    # Get ratings from driver_ratings collection
+    driver_ratings = await db.driver_ratings.find({}, {"_id": 0}).to_list(1000)
+    
+    # Get ratings from tracking_sessions
     sessions = await db.tracking_sessions.find(
         {"rating": {"$exists": True}}, 
         {"_id": 0}
     ).to_list(1000)
     
-    if not sessions:
+    # Combine ratings (avoiding duplicates by booking_id)
+    all_ratings = []
+    booking_ids_seen = set()
+    
+    for r in driver_ratings:
+        bid = r.get("booking_id")
+        if bid not in booking_ids_seen:
+            all_ratings.append({"stars": r.get("rating"), "comment": r.get("feedback")})
+            booking_ids_seen.add(bid)
+    
+    for s in sessions:
+        bid = s.get("booking_id")
+        if s.get("rating") and bid not in booking_ids_seen:
+            all_ratings.append({"stars": s["rating"].get("stars"), "comment": s["rating"].get("comment")})
+            booking_ids_seen.add(bid)
+    
+    if not all_ratings:
         return {
             "total_ratings": 0,
             "average_rating": 0,
             "rating_distribution": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
-            "recent_ratings": []
+            "ratings_with_comments": 0
         }
     
     # Calculate stats
-    total_ratings = len(sessions)
-    total_stars = sum(s["rating"].get("stars", 0) for s in sessions)
+    total_ratings = len(all_ratings)
+    total_stars = sum(r.get("stars", 0) for r in all_ratings)
     avg_rating = round(total_stars / total_ratings, 2) if total_ratings > 0 else 0
     
     # Distribution
     distribution = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
-    for session in sessions:
-        stars = str(session["rating"].get("stars", 0))
+    for rating in all_ratings:
+        stars = str(rating.get("stars", 0))
         if stars in distribution:
             distribution[stars] += 1
     
