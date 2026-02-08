@@ -378,15 +378,23 @@ const CheckoutPage = () => {
                     <span className="text-zinc-600">Vehicle ({selectedVehicle.vehicle_name})</span>
                     <span>£{selectedVehicle.price.toFixed(2)}</span>
                   </div>
-                  {bookingData.meet_greet && (
+                  {formData.meet_greet && (
                     <div className="flex justify-between text-sm">
                       <span className="text-zinc-600">Meet & Greet</span>
-                      <span>Included</span>
+                      <span>+£15.00</span>
                     </div>
                   )}
-                  {bookingData.flight_number && (
+                  {formData.child_seats > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-zinc-600">Flight Tracking</span>
+                      <span className="text-zinc-600">Child Seat(s) × {formData.child_seats}</span>
+                      <span className="flex items-center gap-1 text-green-600">
+                        <Check className="w-4 h-4" /> Free
+                      </span>
+                    </div>
+                  )}
+                  {formData.flight_number && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-zinc-600">Flight Tracking ({formData.flight_number})</span>
                       <span className="flex items-center gap-1 text-green-600">
                         <Check className="w-4 h-4" /> Free
                       </span>
@@ -399,7 +407,7 @@ const CheckoutPage = () => {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-lg">Total</span>
                   <span className="text-2xl font-black text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                    £{selectedVehicle.price.toFixed(2)}
+                    £{(selectedVehicle.price + (formData.meet_greet ? 15 : 0)).toFixed(2)}
                   </span>
                 </div>
 
