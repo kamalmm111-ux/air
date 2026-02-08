@@ -24,6 +24,7 @@ import BookingViewDialog from "../components/BookingViewDialog";
 import CustomerAccounts from "../components/CustomerAccounts";
 import FleetViewDialog from "../components/FleetViewDialog";
 import InvoiceManager from "../components/InvoiceManager";
+import AdminSettings from "../components/AdminSettings";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
