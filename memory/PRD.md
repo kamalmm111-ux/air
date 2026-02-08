@@ -28,6 +28,8 @@ Build a complete airport transfer booking website for Aircabio with:
   - Public API `/api/settings/child-seats` for frontend to fetch prices
 - **Currency Exchange Rate Management**
   - Admin can configure GBP, EUR, USD, CAD rates
+  - **NEW: Automatic Live Rate Fetching** from exchangerate-api.com
+  - "Sync Live Rates" button fetches and saves real-time rates
   - Rates stored in database with active/inactive status
   - Public API `/api/settings/currencies` for frontend to fetch rates
 - **Ratings Dashboard**
