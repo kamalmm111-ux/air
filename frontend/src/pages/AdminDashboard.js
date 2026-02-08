@@ -902,7 +902,7 @@ const AdminDashboard = () => {
     dashboard: renderDashboard(),
     bookings: renderBookings(),
     customers: <CustomerAccounts token={token} />,
-    fleets: <FleetsManager token={token} onViewFleet={(fleet) => { setSelectedFleet(fleet); setFleetViewDialogOpen(true); }} />,
+    fleets: <FleetsManager token={token} onViewFleet={(fleet) => { setSelectedFleet(fleet); setViewFleetDialogOpen(true); }} />,
     drivers: <DriversManager token={token} fleets={fleets} vehicles={allVehicles} />,
     vehicles: <VehiclesManager token={token} fleets={fleets} drivers={drivers} categories={vehicles} />,
     pricing: renderPricing(),
