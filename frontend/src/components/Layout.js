@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useCurrency, SUPPORTED_CURRENCIES } from "../context/CurrencyContext";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -8,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Car, Menu, X, User, LogOut, LayoutDashboard, Phone, Mail } from "lucide-react";
+import { Car, Menu, X, User, LogOut, LayoutDashboard, Phone, Mail, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import axios from "axios";
 
