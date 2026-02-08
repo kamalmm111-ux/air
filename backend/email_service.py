@@ -418,7 +418,9 @@ async def send_status_update(booking: Dict, status: str, message: str = ""):
     {tracking_button}
     """
     html = get_base_template(content, title)
-    await send_email(customer_email, f"{title} - {booking_ref}", html)
+    result = await send_email(customer_email, f"{title} - {booking_ref}", html)
+    logger.info(f"send_status_update: Email sent to {customer_email}, status: {status}, result: {result}")
+    return result
 
 
 # ==================== FLEET MANAGEMENT NOTIFICATIONS ====================
