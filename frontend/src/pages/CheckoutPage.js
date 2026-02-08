@@ -471,6 +471,10 @@ const CheckoutPage = () => {
 
                 {/* Trip Details */}
                 <div className="space-y-4">
+                  {/* Outbound Journey */}
+                  {bookingData.is_return && (
+                    <p className="text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Outbound Journey</p>
+                  )}
                   <div className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-[#D4AF37] mt-0.5" />
                     <div>
@@ -492,6 +496,35 @@ const CheckoutPage = () => {
                       <p className="text-sm font-medium">{bookingData.pickup_date} at {bookingData.pickup_time}</p>
                     </div>
                   </div>
+                  
+                  {/* Return Journey (if applicable) */}
+                  {bookingData.is_return && (
+                    <>
+                      <Separator className="my-3" />
+                      <p className="text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Return Journey</p>
+                      <div className="flex items-start gap-3">
+                        <MapPin className="w-5 h-5 text-[#D4AF37] mt-0.5" />
+                        <div>
+                          <p className="text-xs text-zinc-500 uppercase">Pickup</p>
+                          <p className="text-sm font-medium">{bookingData.dropoff_location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <MapPin className="w-5 h-5 text-[#D4AF37] mt-0.5" />
+                        <div>
+                          <p className="text-xs text-zinc-500 uppercase">Drop-off</p>
+                          <p className="text-sm font-medium">{bookingData.pickup_location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Clock className="w-5 h-5 text-[#D4AF37] mt-0.5" />
+                        <div>
+                          <p className="text-xs text-zinc-500 uppercase">Date & Time</p>
+                          <p className="text-sm font-medium">{bookingData.return_date} at {bookingData.return_time}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <Separator />
