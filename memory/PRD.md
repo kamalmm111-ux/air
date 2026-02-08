@@ -364,6 +364,7 @@ Public:
   - [x] **Remove Meet & Greet** - Completely removed from booking engine, checkout, and all UI
   - [x] **Airport Search Priority** - Created airports database (~150 major international airports) with IATA codes
   - [x] **Airport Display Format** - Shows "London Heathrow Airport (LHR)" with terminal selection
+  - [x] **Multi-Terminal Airports** - Main airports show "(All Terminals)" for clarity
   - [x] **Structured Location Data** - Stores place_id, type, iata_code, airport_name, terminal
   - [x] **Multi-Currency Selection** - Currency selector in header (GBP, EUR, USD, CAD)
   - [x] **FX Conversion** - Real-time rates from exchangerate-api.com with 1-hour cache
@@ -375,6 +376,19 @@ Public:
   - [x] **Flight Details on Checkout** - Flight Number and Flight Arriving From fields
   - [x] **Special Instructions** - Notes/instructions textarea for customer requirements
   - [x] 100% test coverage verified by testing agent (26/26 tests passed)
+
+- [x] **Enhanced Live Driver Tracking for Customers (Feb 8, 2026)**:
+  - [x] **Customer Tracking Page** (`/track/{booking_ref}`) - Public page for customers to track their ride
+  - [x] **Status Banner** - Shows current journey status (Assigned, En Route, Arrived, In Progress, Complete)
+  - [x] **ETA Display** - Shows "Driver arrives in X minutes" when driver is en route
+  - [x] **Driver Info Card** - Driver name, photo, rating, "Call Driver" button
+  - [x] **Vehicle Details Card** - Vehicle type, plate number, make/model/color
+  - [x] **Live Location Map** - OpenStreetMap showing real-time driver location
+  - [x] **Trip Details** - Pickup, drop-off, date, time, passengers
+  - [x] **Post-Trip Rating** - 5-star rating system with feedback textarea
+  - [x] **Driver Photo Upload** - Fleet Dashboard now supports driver photo URL
+  - [x] **Auto-Refresh** - Page refreshes every 10 seconds for live updates
+  - [x] Backend endpoints: `/customer/tracking/{booking_ref}`, `/customer/rating/{booking_ref}`
 
 ### P1 - High Priority
 - [ ] Get valid Resend API key to enable actual email sending
