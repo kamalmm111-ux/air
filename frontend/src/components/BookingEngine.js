@@ -377,69 +377,7 @@ const BookingEngine = () => {
             </SelectContent>
           </Select>
         </div>
-
-        {/* Outbound Flight Number */}
-        <div className="space-y-2">
-          <Label htmlFor="flight" className="text-sm font-medium flex items-center gap-2">
-            <Plane className="w-4 h-4 text-[#D4AF37]" />
-            {tripType === "return" ? "Outbound Flight (Optional)" : "Flight Number (Optional)"}
-          </Label>
-          <Input
-            id="flight"
-            placeholder="e.g., BA1234"
-            value={bookingData.flight_number}
-            onChange={(e) => updateBookingData({ flight_number: e.target.value })}
-            className="h-12 bg-zinc-50 border-zinc-200 focus:border-[#0A0F1C] focus:ring-[#0A0F1C]"
-            data-testid="flight-input"
-          />
-        </div>
-
-        {/* Return Flight Number - Only shown when return is selected */}
-        {tripType === "return" ? (
-          <div className="space-y-2">
-            <Label htmlFor="return_flight" className="text-sm font-medium flex items-center gap-2">
-              <Plane className="w-4 h-4 text-[#D4AF37]" />
-              Return Flight (Optional)
-            </Label>
-            <Input
-              id="return_flight"
-              placeholder="e.g., BA5678"
-              value={bookingData.return_flight_number}
-              onChange={(e) => updateBookingData({ return_flight_number: e.target.value })}
-              className="h-12 bg-zinc-50 border-zinc-200 focus:border-[#0A0F1C] focus:ring-[#0A0F1C]"
-              data-testid="return-flight-input"
-            />
-          </div>
-        ) : (
-          /* Meet & Greet */
-          <div className="flex items-center space-x-3 pt-6">
-            <Checkbox
-              id="meet_greet"
-              checked={bookingData.meet_greet}
-              onCheckedChange={(checked) => updateBookingData({ meet_greet: checked })}
-              data-testid="meet-greet-checkbox"
-            />
-            <Label htmlFor="meet_greet" className="text-sm font-medium cursor-pointer">
-              Meet & Greet Service (+£15)
-            </Label>
-          </div>
-        )}
       </div>
-
-      {/* Meet & Greet for return trips */}
-      {tripType === "return" && (
-        <div className="flex items-center space-x-3 mt-4">
-          <Checkbox
-            id="meet_greet"
-            checked={bookingData.meet_greet}
-            onCheckedChange={(checked) => updateBookingData({ meet_greet: checked })}
-            data-testid="meet-greet-checkbox"
-          />
-          <Label htmlFor="meet_greet" className="text-sm font-medium cursor-pointer">
-            Meet & Greet Service (+£15 per trip)
-          </Label>
-        </div>
-      )}
 
       {/* Return Journey Notice */}
       {tripType === "return" && (
