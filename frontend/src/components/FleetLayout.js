@@ -21,43 +21,48 @@ const FleetLayout = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [impersonationProcessed, setImpersonationProcessed] = useState(false);
   
-  // Check if this is an impersonation request with data in URL
-  const hasImpersonationData = searchParams.get("impersonate") === "true" && searchParams.get("data");
-  
-  // Handle impersonation data from URL on mount
+  // Handle impersonation initialization from localStorage
   useEffect(() => {
-    const dataParam = searchParams.get("data");
+    const impersonateParam = searchParams.get("impersonate");
     
-    if (hasImpersonationData && dataParam && !impersonationProcessed) {
-      try {
-        const impersonationData = JSON.parse(decodeURIComponent(dataParam));
-        
-        // Store in sessionStorage
-        sessionStorage.setItem("impersonation_token", impersonationData.token);
-        sessionStorage.setItem("impersonation_fleet", JSON.stringify(impersonationData.fleet || {}));
-        sessionStorage.setItem("impersonation_id", impersonationData.impersonation_id || "");
-        sessionStorage.setItem("admin_token", impersonationData.admin_token || "");
-        
-        // Clean URL and mark as processed
-        window.history.replaceState({}, document.title, "/fleet/dashboard?impersonate=true");
-        setImpersonationProcessed(true);
-      } catch (e) {
-        console.error("Failed to parse impersonation data:", e);
-        setImpersonationProcessed(true);
+    // Check for pending impersonation in localStorage (set by admin panel)
+    if (impersonateParam === "init") {
+      const pendingData = localStorage.getItem("pending_impersonation");
+      if (pendingData) {
+        try {
+          const impersonationData = JSON.parse(pendingData);
+          
+          // Validate it's recent (within 30 seconds)
+          if (Date.now() - impersonationData.created_at < 30000) {
+            // Move to sessionStorage for this window
+            sessionStorage.setItem("impersonation_token", impersonationData.token);
+            sessionStorage.setItem("impersonation_fleet", JSON.stringify(impersonationData.fleet || {}));
+            sessionStorage.setItem("impersonation_id", impersonationData.impersonation_id || "");
+            sessionStorage.setItem("admin_token", impersonationData.admin_token || "");
+          }
+          
+          // Clear from localStorage
+          localStorage.removeItem("pending_impersonation");
+        } catch (e) {
+          console.error("Failed to parse pending impersonation:", e);
+        }
       }
-    } else if (!hasImpersonationData) {
-      setImpersonationProcessed(true);
+      
+      // Clean URL
+      window.history.replaceState({}, document.title, "/fleet/dashboard?impersonate=true");
     }
-  }, [searchParams, hasImpersonationData, impersonationProcessed]);
+    
+    setImpersonationProcessed(true);
+  }, [searchParams]);
   
-  // Check for impersonation mode - must check sessionStorage fresh each render after processing
-  const isImpersonating = impersonationProcessed && (
-    searchParams.get("impersonate") === "true" || 
-    !!sessionStorage.getItem("impersonation_token")
-  );
+  // Check for impersonation mode from sessionStorage
   const impersonationToken = sessionStorage.getItem("impersonation_token");
   const impersonationFleet = JSON.parse(sessionStorage.getItem("impersonation_fleet") || "{}");
   const impersonationId = sessionStorage.getItem("impersonation_id");
+  const isImpersonating = impersonationProcessed && (
+    searchParams.get("impersonate") === "true" || 
+    !!impersonationToken
+  );
   
   // Use impersonation token if available
   const effectiveToken = isImpersonating ? impersonationToken : token;
