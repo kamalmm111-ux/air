@@ -1050,7 +1050,21 @@ const FixedRouteBuilder = ({ open, onClose, vehicleId, vehicleName, editingRoute
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-5xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent dialog from closing when clicking on Google Places autocomplete dropdown
+          if (e.target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          // Also prevent on interact outside for good measure
+          if (e.target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Map className="w-5 h-5" />
