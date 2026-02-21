@@ -57,10 +57,10 @@ const VehiclesManager = ({ token, fleets = [], drivers = [], categories = [] }) 
   const handleSaveVehicle = async () => {
     try {
       if (editingVehicle?.id) {
-        await axios.put(`${API}/vehicles/${editingVehicle.id}`, editingVehicle, { headers });
+        await axios.put(`${API}/admin/vehicles/${editingVehicle.id}`, editingVehicle, { headers });
         toast.success("Vehicle updated successfully");
       } else {
-        await axios.post(`${API}/vehicles`, editingVehicle, { headers });
+        await axios.post(`${API}/admin/vehicles`, editingVehicle, { headers });
         toast.success("Vehicle created successfully");
       }
       setDialogOpen(false);
