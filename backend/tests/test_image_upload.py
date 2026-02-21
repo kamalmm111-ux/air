@@ -246,8 +246,9 @@ class TestImageUploadIntegration:
             "status": "active"
         }
         
+        # Use the admin/vehicles endpoint
         response = requests.post(
-            f"{BASE_URL}/api/vehicles",
+            f"{BASE_URL}/api/admin/vehicles",
             json=vehicle_data,
             headers=admin_headers
         )
@@ -259,7 +260,7 @@ class TestImageUploadIntegration:
         
         # Cleanup
         if vehicle.get("id"):
-            requests.delete(f"{BASE_URL}/api/vehicles/{vehicle['id']}", headers=admin_headers)
+            requests.delete(f"{BASE_URL}/api/admin/vehicles/{vehicle['id']}", headers=admin_headers)
     
     def test_cms_settings_can_have_images(self, admin_headers):
         """Test CMS website settings can store image URLs"""
