@@ -76,6 +76,7 @@ const AdminDashboard = () => {
   const [dateTo, setDateTo] = useState("");
   const [fleetFilter, setFleetFilter] = useState("all");
   const [driverFilter, setDriverFilter] = useState("all");
+  const [customerAccountFilter, setCustomerAccountFilter] = useState("all");
   
   // Fleet filters
   const [fleetSearchTerm, setFleetSearchTerm] = useState("");
