@@ -1586,14 +1586,12 @@ const AmendInvoiceDialog = ({ open, onClose, invoice, token, onSuccess }) => {
     
     setLoading(true);
     try {
-      await axios.post(`${API}/invoices/${invoice.id}/amend`, null, {
-        headers,
-        params: {
-          line_items: lineItems.length > 0 ? JSON.stringify(lineItems) : null,
-          adjustment_amount: adjustmentAmount || null,
-          adjustment_reason: adjustmentReason
-        }
-      });
+      await axios.post(`${API}/invoices/${invoice.id}/amend`, {
+        line_items: lineItems.length > 0 ? lineItems : null,
+        adjustment_amount: adjustmentAmount || null,
+        adjustment_reason: adjustmentReason,
+        notes: null
+      }, { headers });
       
       toast.success("Invoice amended successfully");
       onClose();
