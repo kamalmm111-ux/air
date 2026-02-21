@@ -458,8 +458,8 @@ const CustomerTrackingPage = () => {
                   <p className="text-sm text-zinc-500">Contact our 24/7 support</p>
                 </div>
               </div>
-              <a href="tel:+447890123456" className="text-[#D4AF37] font-bold">
-                +44 7890 123456
+              <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`} className="text-[#D4AF37] font-bold">
+                {SUPPORT_PHONE}
               </a>
             </div>
           </CardContent>
