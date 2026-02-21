@@ -764,10 +764,9 @@ const VehicleDialog = ({ open, onClose, vehicle, onSave, mediaLibrary }) => {
           <ImageUpload
             value={formData.image_url}
             onChange={(url) => setFormData({...formData, image_url: url})}
-            category="blog"
-            label="Blog Post Image"
-            placeholder="Upload blog post featured image"
-            headers={headers}
+            category="vehicles"
+            label="Vehicle Image"
+            placeholder="Upload vehicle category image"
           />
           {mediaLibrary.length > 0 && (
             <div className="mt-2">
