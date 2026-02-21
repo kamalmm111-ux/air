@@ -1205,10 +1205,10 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
                 </div>
                 <div>
                   <Label>B2B Source</Label>
-                  <Select value={formData.b2b_source} onValueChange={(v) => setFormData({...formData, b2b_source: v})}>
+                  <Select value={formData.b2b_source || "none"} onValueChange={(v) => setFormData({...formData, b2b_source: v === "none" ? "" : v})}>
                     <SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       <SelectItem value="mozio">Mozio</SelectItem>
                       <SelectItem value="jayride">Jayride</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
