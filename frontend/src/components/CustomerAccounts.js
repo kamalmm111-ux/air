@@ -279,7 +279,8 @@ const CustomerDialog = ({ open, onClose, customer, token, onSuccess }) => {
     try {
       const data = {
         ...formData,
-        credit_limit: formData.credit_limit ? parseFloat(formData.credit_limit) : null
+        credit_limit: formData.credit_limit ? parseFloat(formData.credit_limit) : null,
+        accounts_email: formData.accounts_email || null
       };
 
       if (customer) {
