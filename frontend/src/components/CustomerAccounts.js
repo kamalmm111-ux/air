@@ -229,6 +229,8 @@ const CustomerDialog = ({ open, onClose, customer, token, onSuccess }) => {
     notes: "",
     payment_terms: "",
     credit_limit: "",
+    send_invoice_email: true,
+    accounts_email: "",
     status: "active"
   });
   const [loading, setLoading] = useState(false);
@@ -246,6 +248,8 @@ const CustomerDialog = ({ open, onClose, customer, token, onSuccess }) => {
         notes: customer.notes || "",
         payment_terms: customer.payment_terms || "",
         credit_limit: customer.credit_limit || "",
+        send_invoice_email: customer.send_invoice_email !== false,
+        accounts_email: customer.accounts_email || "",
         status: customer.status || "active"
       });
     } else {
@@ -258,6 +262,8 @@ const CustomerDialog = ({ open, onClose, customer, token, onSuccess }) => {
         notes: "",
         payment_terms: "",
         credit_limit: "",
+        send_invoice_email: true,
+        accounts_email: "",
         status: "active"
       });
     }
