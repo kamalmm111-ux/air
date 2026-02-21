@@ -222,25 +222,22 @@ const CMSManager = ({ token }) => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Logo URL</Label>
-                  <Input 
-                    value={settings.logo_url || ""} 
-                    onChange={(e) => setSettings({...settings, logo_url: e.target.value})}
-                    placeholder="https://example.com/logo.png"
-                  />
-                  {settings.logo_url && (
-                    <img src={settings.logo_url} alt="Logo preview" className="h-12 mt-2" />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Favicon URL</Label>
-                  <Input 
-                    value={settings.favicon_url || ""} 
-                    onChange={(e) => setSettings({...settings, favicon_url: e.target.value})}
-                    placeholder="https://example.com/favicon.ico"
-                  />
-                </div>
+                <ImageUpload
+                  value={settings.logo_url || ""}
+                  onChange={(url) => setSettings({...settings, logo_url: url})}
+                  category="branding"
+                  label="Company Logo"
+                  placeholder="Upload your company logo"
+                  headers={headers}
+                />
+                <ImageUpload
+                  value={settings.favicon_url || ""}
+                  onChange={(url) => setSettings({...settings, favicon_url: url})}
+                  category="branding"
+                  label="Favicon"
+                  placeholder="Upload favicon (recommended 32x32)"
+                  headers={headers}
+                />
               </div>
             </CardContent>
           </Card>
