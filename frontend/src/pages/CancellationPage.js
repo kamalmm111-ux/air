@@ -51,8 +51,8 @@ const CancellationPage = () => {
             <p>You can cancel your booking through any of the following methods:</p>
             <ul>
               <li><strong>Online:</strong> Log into your account and cancel through your booking dashboard</li>
-              <li><strong>Email:</strong> Send a cancellation request to bookings@aircabio.com</li>
-              <li><strong>Phone:</strong> Call our 24/7 support line at +44 20 1234 5678</li>
+              <li><strong>Email:</strong> Send a cancellation request to info@aircabio.com</li>
+              <li><strong>Phone:</strong> Call our 24/7 support line at +44 330 058 5676</li>
             </ul>
 
             <h2>Refund Process</h2>
