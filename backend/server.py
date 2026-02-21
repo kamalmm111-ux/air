@@ -2069,6 +2069,10 @@ async def fleet_assign_driver_to_job(booking_id: str, assignment: FleetDriverAss
     if updated_booking.get("customer_email"):
         background_tasks.add_task(send_driver_assigned_to_customer, updated_booking, driver, vehicle)
     
+    # Sync to Mozio if this is a Mozio booking
+    if updated_booking.get("mozio_external_id"):
+        background_tasks.add_task(sync_booking_to_mozio, updated_booking, driver, vehicle)
+    
     return {"message": "Driver assigned to job successfully"}
 
 # ==================== JOB COMMENTS ROUTES ====================
