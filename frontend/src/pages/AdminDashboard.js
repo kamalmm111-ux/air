@@ -28,6 +28,7 @@ import AdminSettings from "../components/AdminSettings";
 import DriversManager from "../components/DriversManager";
 import VehiclesManager from "../components/VehiclesManager";
 import FleetsManager from "../components/FleetsManager";
+import ImageUpload from "../components/ImageUpload";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
