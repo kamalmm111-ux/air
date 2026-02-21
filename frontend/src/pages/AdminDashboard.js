@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import { 
   Calendar, DollarSign, Users, Car, Download, Eye, Edit, Plus, Search, Filter,
   Clock, CheckCircle, Building2, Truck, FileText, MapPin, Send, X, Minus,
-  Plane, User, Phone, Mail, Hash, AlertTriangle, TrendingUp, UserCheck, LogIn, ExternalLink, Key
+  Plane, User, Phone, Mail, Hash, AlertTriangle, TrendingUp, UserCheck, LogIn, ExternalLink, Key, BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -29,6 +29,7 @@ import DriversManager from "../components/DriversManager";
 import VehiclesManager from "../components/VehiclesManager";
 import FleetsManager from "../components/FleetsManager";
 import ImageUpload from "../components/ImageUpload";
+import CRMReports from "../components/CRMReports";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
