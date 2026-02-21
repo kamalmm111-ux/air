@@ -109,8 +109,8 @@ const PrivacyPage = () => {
               If you have questions about this Privacy Policy or wish to exercise your rights, please contact our Data Protection Officer at:
             </p>
             <ul>
-              <li>Email: privacy@aircabio.com</li>
-              <li>Phone: +44 20 1234 5678</li>
+              <li>Email: info@aircabio.com</li>
+              <li>Phone: +44 330 058 5676</li>
               <li>Address: 123 Transport House, London, EC1A 1BB</li>
             </ul>
           </div>
