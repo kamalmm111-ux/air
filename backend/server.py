@@ -572,6 +572,31 @@ class InvoiceUpdate(BaseModel):
     tax: Optional[float] = None
     total: Optional[float] = None
 
+# Custom Invoice Creation Model
+class CustomLineItem(BaseModel):
+    description: str
+    quantity: int = 1
+    unit_price: float = 0
+    total: Optional[float] = None
+
+class CustomInvoiceCreate(BaseModel):
+    invoice_type: str = "custom"  # customer, fleet, driver, custom
+    entity_name: str
+    entity_email: str
+    entity_phone: Optional[str] = None
+    entity_address: Optional[str] = None
+    line_items: List[CustomLineItem]
+    tax_rate: float = 0
+    due_days: int = 30
+    notes: Optional[str] = None
+
+# Invoice Amendment Model
+class InvoiceAmendment(BaseModel):
+    line_items: Optional[List[Dict]] = None
+    adjustment_amount: Optional[float] = None
+    adjustment_reason: str
+    notes: Optional[str] = None
+
 # ==================== COMPREHENSIVE PRICING MODELS ====================
 
 # Mileage Bracket (distance-based pricing tier)
