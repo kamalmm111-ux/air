@@ -14,7 +14,7 @@ import sys
 # Add backend to path for email_service import
 sys.path.insert(0, '/app/backend')
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://media-hub-344.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://billing-hub-63.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@aircabio.com"
