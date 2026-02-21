@@ -109,7 +109,12 @@ const HomePage = () => {
                   {tagline}
                 </p>
                 <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-6" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                  {heroTitle.includes("Style") ? (
+                  {heroTitle.includes("Journey") ? (
+                    <>
+                      Your <span className="text-[#D4AF37]">Journey</span>,<br />
+                      Our Priority
+                    </>
+                  ) : heroTitle.includes("Style") ? (
                     <>
                       Travel in <br />
                       <span className="text-[#D4AF37]">Style</span> & Comfort
