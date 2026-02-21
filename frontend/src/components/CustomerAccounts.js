@@ -494,6 +494,30 @@ const CustomerViewDialog = ({ open, onClose, customer }) => {
               <p className="font-medium">{customer.credit_limit ? `£${customer.credit_limit.toLocaleString()}` : "-"}</p>
             </div>
           </div>
+
+          {/* Invoice Email Status */}
+          <div className="bg-zinc-50 p-3 rounded-lg border">
+            <p className="text-xs text-zinc-500 mb-2">Invoice Email Status</p>
+            <div className="flex items-center gap-2">
+              {customer.send_invoice_email !== false ? (
+                <>
+                  <MailCheck className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700 font-medium">Enabled</span>
+                </>
+              ) : (
+                <>
+                  <MailX className="w-4 h-4 text-red-500" />
+                  <span className="text-red-600 font-medium">Disabled</span>
+                </>
+              )}
+            </div>
+            {customer.accounts_email && (
+              <p className="text-xs text-zinc-500 mt-2">
+                Accounts Email: <span className="font-medium text-zinc-700">{customer.accounts_email}</span>
+              </p>
+            )}
+          </div>
+
           <div>
             <p className="text-xs text-zinc-500">Status</p>
             <Badge className={
