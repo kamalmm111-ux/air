@@ -270,9 +270,6 @@ class ManualBookingCreate(BaseModel):
     customer_email: Optional[str] = None
     customer_phone: str
     customer_reference: Optional[str] = None
-    # B2B Provider Integration (Mozio, etc.)
-    mozio_external_id: Optional[str] = None  # Mozio booking reference
-    b2b_source: Optional[str] = None  # e.g., "mozio", "jayride", etc.
     # Trip details
     pickup_date: str
     pickup_time: str
