@@ -5577,8 +5577,74 @@ async def get_vehicles():
 async def root():
     return {"message": "Aircabio Airport Transfers API", "version": "4.0.0"}
 
+
+# ==================== IMAGE UPLOAD ENDPOINTS ====================
+
+@api_router.post("/upload/image")
+async def upload_image(
+    file: UploadFile = File(...),
+    category: str = Query(default="general", description="Image category (drivers, vehicles, banners, etc.)"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Upload an image file with automatic compression and optimization
+    
+    Categories: general, drivers, vehicles, banners, fleet, blog, partners, cities
+    """
+    # Read file content
+    content = await file.read()
+    
+    # Process and save
+    success, message, image_url = process_and_save_image(
+        file_content=content,
+        filename=file.filename,
+        category=category
+    )
+    
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    
+    return {
+        "success": True,
+        "message": message,
+        "image_url": image_url,
+        "filename": file.filename
+    }
+
+
+@api_router.delete("/upload/image")
+async def delete_uploaded_image(
+    image_url: str = Query(..., description="URL of the image to delete"),
+    current_user: dict = Depends(get_super_admin)
+):
+    """Delete an uploaded image (Super Admin only)"""
+    success = delete_image(image_url)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Image not found or could not be deleted")
+    
+    return {"success": True, "message": "Image deleted successfully"}
+
+
+@api_router.get("/upload/image/info")
+async def get_uploaded_image_info(
+    image_url: str = Query(..., description="URL of the image"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get information about an uploaded image"""
+    info = get_image_info(image_url)
+    
+    if not info:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    return info
+
+
 # Include the router in the main app
 app.include_router(api_router)
+
+# Mount static files for uploaded images
+app.mount("/api/uploads/images", StaticFiles(directory=str(UPLOAD_DIR)), name="uploaded_images")
 
 app.add_middleware(
     CORSMiddleware,
