@@ -14,6 +14,9 @@ import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Official Company Contact Details
+const SUPPORT_PHONE = "+44 330 058 5676";
+
 // Status display configuration
 const STATUS_CONFIG = {
   pending: { label: "Driver Assigned", color: "bg-blue-500", icon: User, message: "Your driver has been assigned and will depart soon." },
