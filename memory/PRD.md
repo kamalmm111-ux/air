@@ -197,6 +197,46 @@ Replaced all "Image URL" inputs with direct upload functionality:
 - `customer_accounts.accounts_email`: String (optional)
 
 ## Session Complete - Feb 21, 2026 (CRM & Reports System)
+### Advanced Invoicing & Statements System (NEW - Feb 21, 2026)
+
+**Backend Endpoints Created:**
+- `POST /api/invoices/custom` - Create custom ad-hoc invoices with line items
+- `POST /api/invoices/{id}/amend` - Amend invoice with audit trail
+- `GET /api/invoices/{id}/amendments` - Get amendment history
+- `POST /api/invoices/{id}/approve` - Approve draft invoice
+- `POST /api/invoices/{id}/issue` - Issue invoice
+- `POST /api/invoices/{id}/mark-paid` - Mark as paid
+- `GET /api/statements/driver/{id}/summary` - Driver earnings preview
+- `POST /api/statements/driver/generate` - Generate driver statement
+- `GET /api/statements/fleet/{id}/summary` - Fleet earnings preview
+- `POST /api/statements/fleet/generate` - Generate fleet statement
+- `POST /api/statements/customer/generate` - Generate customer invoice
+
+**Frontend InvoicingStatements.js Component:**
+- ✅ **Generate Statements Tab**: 
+  - Driver Statement card with dialog (driver select, date range, preview, generate)
+  - Fleet Statement card with dialog (fleet select, date range, preview, generate)
+  - Customer Invoice card with dialog (customer select, date range, generate)
+  - Recent Statements table
+- ✅ **All Invoices Tab**:
+  - Search by invoice # or name
+  - Filter by Type (Driver, Fleet, Customer, Custom)
+  - Filter by Status (Draft, Pending, Approved, Issued, Paid)
+  - Actions: View, Edit, Amend, Approve, Issue, Mark Paid, Download PDF, Delete
+- ✅ **Custom Invoice Tab**:
+  - Invoice Type selector
+  - Due In (Days) selector
+  - Bill To fields (Name, Email, Phone, Address)
+  - Line Items (add/remove, description, quantity, unit price)
+  - VAT Rate calculation
+  - Notes field
+  - Auto-calculated totals
+
+**Data Models Added:**
+- `CustomInvoiceCreate` - Pydantic model for custom invoice creation
+- `InvoiceAmendment` - Pydantic model for invoice amendments
+- `CustomLineItem` - Pydantic model for line items
+
 ### Comprehensive CRM & Reporting System Built
 
 **Backend Report Endpoints Created:**
