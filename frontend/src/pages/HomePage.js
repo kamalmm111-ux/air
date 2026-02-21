@@ -32,10 +32,10 @@ const HomePage = () => {
   // Get content from CMS or use defaults - Use empty string initially to prevent flash
   const [imageLoaded, setImageLoaded] = useState(false);
   const heroTitle = siteSettings.hero_title || pageContent?.sections?.find(s => s.type === "hero")?.title || "Your Journey, Our Priority";
-  const heroSubtitle = siteSettings.hero_subtitle || pageContent?.sections?.find(s => s.type === "hero")?.subtitle || "Reliable airport and hospital transfers across the UK. From standard to executive vehicles, we have the perfect ride for every journey.";
+  const heroSubtitle = siteSettings.hero_subtitle || pageContent?.sections?.find(s => s.type === "hero")?.subtitle || "Professional global airport transfers with a range of vehicles to suit every need. From standard to executive, we ensure reliable, on-time service worldwide.";
   const heroImage = siteSettings.hero_background_url || pageContent?.sections?.find(s => s.type === "hero")?.image_url || "";
   const heroCtaText = siteSettings.hero_cta_text || "Book Now";
-  const tagline = siteSettings.tagline || "Airport & Hospital Transfers";
+  const tagline = siteSettings.tagline || "Global Airport Transfers";
   const siteName = siteSettings.site_name || "Aircabio";
   const contactPhone = siteSettings.contact_phone || "+44 20 1234 5678";
 
