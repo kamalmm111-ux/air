@@ -374,6 +374,7 @@ const AdminDashboard = () => {
                 <TableHead className="w-[80px]">Ref</TableHead>
                 <TableHead>Date/Time</TableHead>
                 <TableHead>Customer</TableHead>
+                <TableHead>Account</TableHead>
                 <TableHead>Pickup</TableHead>
                 <TableHead>Dropoff</TableHead>
                 <TableHead>Class</TableHead>
@@ -396,8 +397,14 @@ const AdminDashboard = () => {
                   <TableCell>
                     <div className="text-sm font-medium">{booking.customer_name}</div>
                     <div className="text-xs text-zinc-500">{booking.customer_phone}</div>
-                    {booking.customer_account_name && (
-                      <Badge className="mt-1 bg-blue-100 text-blue-800 text-xs">{booking.customer_account_name}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {booking.customer_account_name ? (
+                      <Badge className="bg-blue-100 text-blue-800 text-xs" data-testid="customer-account-badge">
+                        {booking.customer_account_name}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-zinc-400">Direct Customer</span>
                     )}
                   </TableCell>
                   <TableCell className="max-w-[120px]">
