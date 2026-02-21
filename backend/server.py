@@ -3283,11 +3283,6 @@ async def amend_invoice(
     data: InvoiceAmendment,
     user: dict = Depends(get_super_admin)
 ):
-    notes: Optional[str] = None,
-    adjustment_amount: Optional[float] = None,
-    adjustment_reason: Optional[str] = None,
-    user: dict = Depends(get_super_admin)
-):
     """Amend an existing invoice - creates amendment record"""
     invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not invoice:
@@ -3306,7 +3301,7 @@ async def amend_invoice(
         "original_subtotal": invoice.get("subtotal"),
         "original_total": invoice.get("total"),
         "original_line_items": invoice.get("line_items"),
-        "reason": adjustment_reason or notes
+        "reason": data.adjustment_reason
     }
     
     # Update invoice
