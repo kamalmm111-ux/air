@@ -681,6 +681,7 @@ const CMSManager = ({ token }) => {
         open={mediaDialogOpen}
         onClose={() => setMediaDialogOpen(false)}
         onAdd={addMedia}
+        headers={headers}
       />
     </div>
   );
