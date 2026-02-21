@@ -29,14 +29,24 @@ const HomePage = () => {
     fetchCMSContent();
   }, []);
 
-  // Get content from CMS or use defaults
-  const heroTitle = siteSettings.hero_title || pageContent?.sections?.find(s => s.type === "hero")?.title || "Travel in Style & Comfort";
-  const heroSubtitle = siteSettings.hero_subtitle || pageContent?.sections?.find(s => s.type === "hero")?.subtitle || "Book your airport transfer with Aircabio. Professional drivers, premium vehicles, and guaranteed on-time service worldwide.";
-  const heroImage = siteSettings.hero_background_url || pageContent?.sections?.find(s => s.type === "hero")?.image_url || "https://static.prod-images.emergentagent.com/jobs/68887b85-c3d3-4afe-979a-9b9ddd545cf8/images/facff77b3c11c784727a5d26fb4131bda3e849eca07f283bc05065b7e833a42e.png";
+  // Get content from CMS or use defaults - Use empty string initially to prevent flash
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const heroTitle = siteSettings.hero_title || pageContent?.sections?.find(s => s.type === "hero")?.title || "Your Journey, Our Priority";
+  const heroSubtitle = siteSettings.hero_subtitle || pageContent?.sections?.find(s => s.type === "hero")?.subtitle || "Reliable airport and hospital transfers across the UK. From standard to executive vehicles, we have the perfect ride for every journey.";
+  const heroImage = siteSettings.hero_background_url || pageContent?.sections?.find(s => s.type === "hero")?.image_url || "";
   const heroCtaText = siteSettings.hero_cta_text || "Book Now";
-  const tagline = siteSettings.tagline || "Premium Airport Transfers";
+  const tagline = siteSettings.tagline || "Airport & Hospital Transfers";
   const siteName = siteSettings.site_name || "Aircabio";
   const contactPhone = siteSettings.contact_phone || "+44 20 1234 5678";
+
+  // Preload hero image
+  useEffect(() => {
+    if (heroImage) {
+      const img = new Image();
+      img.onload = () => setImageLoaded(true);
+      img.src = heroImage;
+    }
+  }, [heroImage]);
 
   const features = [
     {
