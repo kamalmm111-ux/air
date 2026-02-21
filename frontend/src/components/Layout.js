@@ -117,21 +117,24 @@ const Layout = () => {
       </div>
 
       {/* Main Header */}
-      <header className="bg-white border-b border-zinc-200 sticky top-0 z-50">
+      <header className="bg-white border-b border-zinc-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-24">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2" data-testid="logo-link">
-              {logoUrl ? (
-                <img src={logoUrl} alt={siteName} className="h-20 md:h-24 w-auto object-contain" />
-              ) : (
-                <>
-                  <Car className="w-8 h-8 text-[#0A0F1C]" />
-                  <span className="text-2xl font-black tracking-tight text-[#0A0F1C]" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                    {siteName}
-                  </span>
-                </>
-              )}
+          <div className="flex justify-between items-center h-20 md:h-24">
+            {/* Logo - Fixed size container to prevent CLS */}
+            <Link 
+              to="/" 
+              className="flex items-center gap-3 flex-shrink-0" 
+              data-testid="logo-link"
+              style={{ minWidth: '160px', minHeight: '48px' }}
+            >
+              <img 
+                src={logoUrl} 
+                alt={siteName} 
+                className="h-12 md:h-14 lg:h-16 w-auto object-contain drop-shadow-sm" 
+                style={{ maxWidth: '220px' }}
+                loading="eager"
+                fetchpriority="high"
+              />
             </Link>
 
             {/* Desktop Navigation */}
