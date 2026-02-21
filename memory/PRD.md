@@ -27,6 +27,7 @@ Build a complete airport transfer booking website for Aircabio with comprehensiv
 - ✅ **Image Upload System** - Direct file upload replacing all URL inputs
 - ✅ **B2B Corporate Customers** - Assign bookings to corporate accounts
 - ✅ **Invoice Email Control** - Per-customer toggle for automatic invoices
+- ✅ **CRM & Reports System** - Comprehensive analytics and business intelligence
 
 ### Fleet Portal
 - ✅ View and manage assigned jobs
