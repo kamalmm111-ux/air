@@ -1,0 +1,98 @@
+{
+  "summary": "Completed testing of Invoicing & Statements feature. Backend: 21/21 tests passed for all invoice/statement endpoints. Frontend: InvoicingStatements component renders correctly with all 3 tabs, statement generation dialogs, search/filter functionality, and custom invoice form.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_invoicing_statements.py",
+    "/app/test_reports/pytest/pytest_invoicing_statements.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_invoicing_statements.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": {
+    "admin_email": "admin@aircabio.com",
+    "admin_password": "Aircabio@2024!"
+  },
+  "seed_data_creation": "Custom invoices created during backend testing (TEST_ prefixed) - auto-cleaned",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Invoicing & Statements feature fully functional. All statement generation dialogs (Driver, Fleet, Customer) work correctly. Custom Invoice creation with line items tested. Invoice CRUD operations (approve, issue, mark-paid, amend) all working.",
+  "features_verified": {
+    "backend_endpoints": {
+      "GET /api/invoices": "PASS - Returns list of all invoices",
+      "GET /api/invoices/{id}": "PASS - Returns single invoice by ID",
+      "POST /api/invoices/custom": "PASS - Creates custom invoice with line items",
+      "POST /api/invoices/{id}/approve": "PASS - Approves draft invoice",
+      "POST /api/invoices/{id}/issue": "PASS - Issues invoice",
+      "POST /api/invoices/{id}/mark-paid": "PASS - Marks invoice as paid",
+      "POST /api/invoices/{id}/amend": "PASS - Amends invoice with audit trail",
+      "GET /api/invoices/{id}/amendments": "PASS - Returns amendment history",
+      "GET /api/statements/driver/{id}/summary": "PASS - Returns driver earning summary",
+      "POST /api/statements/driver/generate": "PASS - Generates driver statement",
+      "GET /api/statements/fleet/{id}/summary": "PASS - Returns fleet earning summary",
+      "POST /api/statements/fleet/generate": "PASS - Generates fleet statement",
+      "POST /api/statements/customer/generate": "PASS - Generates customer invoice",
+      "GET /api/drivers": "PASS - Returns drivers for selection",
+      "GET /api/fleets": "PASS - Returns fleets for selection",
+      "GET /api/admin/customers": "PASS - Returns customer accounts for selection"
+    },
+    "frontend_ui_components": {
+      "sidebar_navigation": {
+        "status": "PASS",
+        "nav_item": "Invoicing & Statements",
+        "data_testid": "admin-nav-invoicing"
+      },
+      "generate_statements_tab": {
+        "status": "PASS",
+        "driver_statement_card": {
+          "button_testid": "generate-driver-statement",
+          "dialog_elements": ["driver-select", "date-from", "date-to", "Preview Statement", "Generate & Save Statement"]
+        },
+        "fleet_statement_card": {
+          "button_testid": "generate-fleet-statement",
+          "dialog_elements": ["fleet-select", "date-from", "date-to", "Preview Statement", "Generate & Save Statement"]
+        },
+        "customer_invoice_card": {
+          "button_testid": "generate-customer-invoice",
+          "dialog_elements": ["customer-select", "date-from", "date-to", "Generate Invoice"]
+        }
+      },
+      "all_invoices_tab": {
+        "status": "PASS",
+        "search_testid": "invoice-search",
+        "type_filter_testid": "invoice-type-filter",
+        "status_filter_testid": "invoice-status-filter",
+        "table_columns": ["Invoice #", "Type", "Entity", "Period/Jobs", "Subtotal", "Commission", "Total", "Due Date", "Status", "Actions"]
+      },
+      "custom_invoice_tab": {
+        "status": "PASS",
+        "form_fields": ["Invoice Type", "Due In (Days)", "Bill To (Name)", "Email", "Phone", "Address", "Line Items", "VAT Rate (%)", "Notes"],
+        "name_testid": "custom-invoice-name",
+        "email_testid": "custom-invoice-email",
+        "submit_testid": "create-custom-invoice-btn"
+      }
+    }
+  },
+  "backend_tests_summary": {
+    "total_tests": 21,
+    "passed": 21,
+    "skipped": 0,
+    "failed": 0,
+    "test_file": "/app/backend/tests/test_invoicing_statements.py",
+    "xml_report": "/app/test_reports/pytest/pytest_invoicing_statements.xml"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  }
+}
