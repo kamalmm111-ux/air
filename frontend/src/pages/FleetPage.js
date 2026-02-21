@@ -13,7 +13,7 @@ const FleetPage = () => {
       description: "Perfect for business travelers or couples. Comfortable ride with professional service.",
       passengers: 3,
       luggage: 2,
-      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600",
+      image: "https://images.pexels.com/photos/12152812/pexels-photo-12152812.jpeg?auto=compress&cs=tinysrgb&w=600",
       features: ["Air Conditioning", "Leather Seats", "Free WiFi", "Bottled Water", "Phone Charger"]
     },
     {
@@ -22,7 +22,7 @@ const FleetPage = () => {
       description: "Premium vehicles for discerning travelers. Make a statement at your destination.",
       passengers: 3,
       luggage: 2,
-      image: "https://images.unsplash.com/photo-1563720360172-67b8f3dce741?w=600",
+      image: "https://images.unsplash.com/photo-1653673790585-4cf265dbdc79?crop=entropy&cs=srgb&fm=jpg&w=600",
       features: ["Air Conditioning", "Premium Leather", "Free WiFi", "Newspapers", "Bottled Water", "USB Charging"]
     },
     {
@@ -31,7 +31,7 @@ const FleetPage = () => {
       description: "Spacious and comfortable. Ideal for families or those with extra luggage.",
       passengers: 5,
       luggage: 4,
-      image: "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=600",
+      image: "https://images.unsplash.com/photo-1653641305372-a084f9b78858?crop=entropy&cs=srgb&fm=jpg&w=600",
       features: ["Air Conditioning", "Leather Seats", "Free WiFi", "Extra Luggage Space", "Child Seats Available"]
     },
     {
@@ -40,7 +40,7 @@ const FleetPage = () => {
       description: "Multi-purpose vehicle for larger groups. Combines space with comfort.",
       passengers: 6,
       luggage: 5,
-      image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=600",
+      image: "https://images.pexels.com/photos/28496683/pexels-photo-28496683.jpeg?auto=compress&cs=tinysrgb&w=600",
       features: ["Air Conditioning", "Spacious Interior", "Free WiFi", "Child Seats", "Privacy Glass"]
     },
     {
