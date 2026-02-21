@@ -31,9 +31,12 @@ logger = logging.getLogger(__name__)
 # Initialize Email Service
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+
+# Official Company Contact Details (Centralized Configuration)
+# These are the permanent contact details that should be used system-wide
 COMPANY_NAME = "Aircabio"
-COMPANY_PHONE = "+44 20 1234 5678"
-COMPANY_EMAIL = "info@aircabio.com"
+COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "+44 330 058 5676")
+COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "info@aircabio.com")
 
 # Try to import resend
 EMAIL_AVAILABLE = False
