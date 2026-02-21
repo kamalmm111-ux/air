@@ -361,7 +361,20 @@ const AdminDashboard = () => {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => { setSearchTerm(""); setDateFrom(""); setDateTo(""); setStatusFilter("all"); setFleetFilter("all"); setDriverFilter("all"); }} variant="ghost" size="sm">
+        <div className="w-[160px]">
+          <Label className="text-xs text-zinc-500">Customer Account</Label>
+          <Select value={customerAccountFilter} onValueChange={setCustomerAccountFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Accounts</SelectItem>
+              <SelectItem value="direct">Direct Customers</SelectItem>
+              {customers.filter(c => c.status === "active").map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button onClick={() => { setSearchTerm(""); setDateFrom(""); setDateTo(""); setStatusFilter("all"); setFleetFilter("all"); setDriverFilter("all"); setCustomerAccountFilter("all"); }} variant="ghost" size="sm">
           Clear
         </Button>
         <Button onClick={() => setNewJobDialogOpen(true)} className="bg-[#0A0F1C]">
