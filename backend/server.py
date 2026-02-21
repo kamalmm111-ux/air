@@ -3311,26 +3311,26 @@ async def amend_invoice(
         "last_amendment": amendment["id"]
     }
     
-    if line_items:
-        update_data["line_items"] = line_items
-        subtotal = sum(item.get("total", item.get("quantity", 1) * item.get("unit_price", 0)) for item in line_items)
+    if data.line_items:
+        update_data["line_items"] = data.line_items
+        subtotal = sum(item.get("total", item.get("quantity", 1) * item.get("unit_price", 0)) for item in data.line_items)
         update_data["subtotal"] = round(subtotal, 2)
         tax = subtotal * (invoice.get("tax_rate", 0) / 100)
         update_data["tax"] = round(tax, 2)
         update_data["total"] = round(subtotal + tax - invoice.get("commission", 0), 2)
         amendment["new_subtotal"] = update_data["subtotal"]
         amendment["new_total"] = update_data["total"]
-        amendment["new_line_items"] = line_items
+        amendment["new_line_items"] = data.line_items
     
-    if adjustment_amount:
+    if data.adjustment_amount:
         current_total = update_data.get("total", invoice.get("total", 0))
-        update_data["adjustment_amount"] = adjustment_amount
-        update_data["adjustment_reason"] = adjustment_reason
-        update_data["total"] = round(current_total + adjustment_amount, 2)
-        amendment["adjustment_amount"] = adjustment_amount
+        update_data["adjustment_amount"] = data.adjustment_amount
+        update_data["adjustment_reason"] = data.adjustment_reason
+        update_data["total"] = round(current_total + data.adjustment_amount, 2)
+        amendment["adjustment_amount"] = data.adjustment_amount
     
-    if notes:
-        update_data["notes"] = notes
+    if data.notes:
+        update_data["notes"] = data.notes
     
     # Save amendment record
     await db.invoice_amendments.insert_one(amendment)
