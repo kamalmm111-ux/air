@@ -35,9 +35,9 @@ const Layout = () => {
     fetchSettings();
   }, []);
 
-  // CMS values with fallbacks
+  // CMS values with fallbacks - Official Company Contact Details
   const siteName = siteSettings.site_name || "AIRCABIO";
-  const contactPhone = siteSettings.contact_phone || "+44 20 1234 5678";
+  const contactPhone = siteSettings.contact_phone || "+44 330 058 5676";
   const contactEmail = siteSettings.contact_email || "info@aircabio.com";
   const contactAddress = siteSettings.contact_address || "";
   const tagline = siteSettings.tagline || "24/7 Airport Transfers Worldwide";
