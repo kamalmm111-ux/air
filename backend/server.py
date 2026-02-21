@@ -3220,44 +3220,47 @@ async def generate_customer_invoice(
 
 @api_router.post("/invoices/custom")
 async def create_custom_invoice(
-    invoice_type: str,  # customer, fleet, driver, custom
-    entity_name: str,
-    entity_email: str,
-    line_items: List[dict],
-    entity_phone: Optional[str] = None,
-    entity_address: Optional[str] = None,
-    notes: Optional[str] = None,
-    due_days: int = 30,
-    tax_rate: float = 0,
+    data: CustomInvoiceCreate,
     user: dict = Depends(get_super_admin)
 ):
     """Create a custom manual invoice with custom line items"""
     
-    # Calculate totals
-    subtotal = sum(item.get("total", item.get("quantity", 1) * item.get("unit_price", 0)) for item in line_items)
-    tax = subtotal * (tax_rate / 100)
+    # Convert line items and calculate totals
+    line_items = []
+    for item in data.line_items:
+        item_total = (item.quantity or 1) * (item.unit_price or 0)
+        line_items.append({
+            "description": item.description,
+            "quantity": item.quantity or 1,
+            "unit_price": item.unit_price or 0,
+            "total": item_total
+        })
+    
+    subtotal = sum(item["total"] for item in line_items)
+    tax = subtotal * (data.tax_rate / 100)
     total = subtotal + tax
     
     invoice = {
         "id": str(uuid.uuid4()),
-        "invoice_number": await generate_invoice_number(invoice_type),
-        "invoice_type": invoice_type,
+        "invoice_number": await generate_invoice_number(data.invoice_type),
+        "invoice_type": data.invoice_type,
         "entity_id": None,  # Custom invoice not linked to entity
-        "entity_name": entity_name,
-        "entity_email": entity_email,
-        "entity_phone": entity_phone,
-        "entity_address": entity_address,
+        "entity_name": data.entity_name,
+        "entity_email": data.entity_email,
+        "entity_phone": data.entity_phone,
+        "entity_address": data.entity_address,
         "booking_ids": [],
         "line_items": line_items,
         "subtotal": round(subtotal, 2),
         "tax": round(tax, 2),
-        "tax_rate": tax_rate,
+        "tax_rate": data.tax_rate,
         "commission": 0,
         "total": round(total, 2),
         "status": "draft",
         "is_custom": True,
-        "due_date": (datetime.now(timezone.utc) + timedelta(days=due_days)).isoformat(),
-        "notes": notes,
+        "payment_terms": f"Net {data.due_days}",
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=data.due_days)).isoformat(),
+        "notes": data.notes,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user.get("id")
     }
@@ -3277,7 +3280,9 @@ async def create_custom_invoice(
 @api_router.post("/invoices/{invoice_id}/amend")
 async def amend_invoice(
     invoice_id: str,
-    line_items: Optional[List[dict]] = None,
+    data: InvoiceAmendment,
+    user: dict = Depends(get_super_admin)
+):
     notes: Optional[str] = None,
     adjustment_amount: Optional[float] = None,
     adjustment_reason: Optional[str] = None,
