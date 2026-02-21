@@ -139,3 +139,34 @@ Replaced all "Image URL" inputs with direct upload functionality:
 - `GET /api/uploads/images/{category}/{filename}` - Serve static images
 
 **Test Results:** 16/16 backend tests passed, all frontend components verified
+
+## Session Complete - Feb 21, 2026 (Contact Configuration)
+### Centralized Contact Details System Implemented
+
+**Official Company Contact Details (Permanent):**
+- Phone: +44 330 058 5676
+- Email: info@aircabio.com
+
+**Implementation:**
+- ✅ **Backend .env**: Added COMPANY_PHONE and COMPANY_EMAIL environment variables
+- ✅ **email_service.py**: Updated to use centralized contact configuration
+- ✅ **server.py WebsiteSettings**: Default values set to official contact details
+- ✅ **MongoDB website_settings**: Updated with official contact details
+- ✅ **Layout.js**: Header and footer pull from CMS with official defaults
+- ✅ **ContactPage.js**: Fetches from centralized API with fallbacks
+- ✅ **CustomerTrackingPage.js**: Uses SUPPORT_PHONE constant
+- ✅ **BookingCancelPage.js**: Updated support phone number
+- ✅ **BookingSuccessPage.js**: Updated support phone number
+- ✅ **CancellationPage.js**: Updated contact info in policy text
+- ✅ **PrivacyPage.js**: Updated contact info
+
+**Locations Updated:**
+- Website Header (top navigation)
+- Website Footer (Contact Us section)
+- Contact Page (Phone & Email cards)
+- Booking Success/Confirmation Page
+- Customer Tracking Page (support line)
+- Booking Cancellation Page
+- Privacy Policy Page
+- Cancellation Policy Page
+- All automated email templates (via email_service.py)
