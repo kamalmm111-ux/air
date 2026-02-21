@@ -15,12 +15,16 @@ import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Single source of truth for brand logo - prevents flicker by having a default
+const BRAND_LOGO_URL = "https://static.prod-images.emergentagent.com/jobs/88eedf38-75be-4d9e-99ba-6ac61a77965c/images/67267e24776277c25b9b0049c7b9fe2b30b548158bfebd035399a53439cdcf4d.png";
+
 const Layout = () => {
   const { user, logout, isAdmin, isAuthenticated } = useAuth();
   const { currency, changeCurrency, getCurrentCurrency, SUPPORTED_CURRENCIES } = useCurrency();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState({});
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Fetch CMS settings for header/footer
   useEffect(() => {
@@ -30,6 +34,8 @@ const Layout = () => {
         setSiteSettings(res.data || {});
       } catch (error) {
         console.log("Using default site settings");
+      } finally {
+        setSettingsLoaded(true);
       }
     };
     fetchSettings();
@@ -40,8 +46,9 @@ const Layout = () => {
   const contactPhone = siteSettings.contact_phone || "+44 330 058 5676";
   const contactEmail = siteSettings.contact_email || "info@aircabio.com";
   const contactAddress = siteSettings.contact_address || "";
-  const tagline = siteSettings.tagline || "24/7 Airport Transfers Worldwide";
-  const logoUrl = siteSettings.logo_url || "";
+  const tagline = siteSettings.tagline || "Global Airport Transfers";
+  // Use CMS logo if available, otherwise use brand constant - NEVER show fallback icon
+  const logoUrl = siteSettings.logo_url || BRAND_LOGO_URL;
   const footerText = siteSettings.footer_text || "Premium airport transfer services worldwide. Travel in comfort and style.";
   const facebookUrl = siteSettings.facebook_url || "";
   const twitterUrl = siteSettings.twitter_url || "";
