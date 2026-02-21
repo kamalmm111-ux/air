@@ -431,6 +431,8 @@ class CustomerAccount(BaseModel):
     notes: Optional[str] = None
     payment_terms: Optional[str] = None  # e.g., "Net 30", "Net 15", "On Booking"
     credit_limit: Optional[float] = None
+    send_invoice_email: bool = True  # Control automatic invoice emails
+    accounts_email: Optional[str] = None  # Separate email for invoices/accounts
     status: str = "active"  # active, inactive, suspended
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -444,6 +446,8 @@ class CustomerAccountCreate(BaseModel):
     notes: Optional[str] = None
     payment_terms: Optional[str] = None
     credit_limit: Optional[float] = None
+    send_invoice_email: bool = True
+    accounts_email: Optional[str] = None
 
 class CustomerAccountUpdate(BaseModel):
     company_name: Optional[str] = None
@@ -454,6 +458,8 @@ class CustomerAccountUpdate(BaseModel):
     notes: Optional[str] = None
     payment_terms: Optional[str] = None
     credit_limit: Optional[float] = None
+    send_invoice_email: Optional[bool] = None
+    accounts_email: Optional[str] = None
     status: Optional[str] = None
 
 # Booking History/Audit Model
