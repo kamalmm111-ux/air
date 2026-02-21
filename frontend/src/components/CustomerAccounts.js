@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Textarea } from "./ui/textarea";
-import { Building2, Plus, Edit, Trash2, Search, Eye, Phone, Mail, MapPin } from "lucide-react";
+import { Switch } from "./ui/switch";
+import { Building2, Plus, Edit, Trash2, Search, Eye, Phone, Mail, MapPin, FileText, MailCheck, MailX } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 
