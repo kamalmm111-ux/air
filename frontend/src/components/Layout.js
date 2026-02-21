@@ -116,7 +116,7 @@ const Layout = () => {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2" data-testid="logo-link">
               {logoUrl ? (
-                <img src={logoUrl} alt={siteName} className="h-10 object-contain" />
+                <img src={logoUrl} alt={siteName} className="h-12 md:h-14 object-contain" />
               ) : (
                 <>
                   <Car className="w-8 h-8 text-[#0A0F1C]" />
