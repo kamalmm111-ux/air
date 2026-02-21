@@ -24,6 +24,7 @@ import BookingViewDialog from "../components/BookingViewDialog";
 import CustomerAccounts from "../components/CustomerAccounts";
 import FleetViewDialog from "../components/FleetViewDialog";
 import InvoiceManager from "../components/InvoiceManager";
+import InvoicingStatements from "../components/InvoicingStatements";
 import AdminSettings from "../components/AdminSettings";
 import DriversManager from "../components/DriversManager";
 import VehiclesManager from "../components/VehiclesManager";
