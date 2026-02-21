@@ -3859,9 +3859,9 @@ class WebsiteSettings(BaseModel):
     hero_cta_text: str = "Book Now"
     hero_cta_link: str = "#booking-section"
     
-    # Contact
-    contact_email: str = ""
-    contact_phone: str = ""
+    # Contact - Official Company Details (Permanent)
+    contact_email: str = "info@aircabio.com"
+    contact_phone: str = "+44 330 058 5676"
     contact_address: str = ""
     whatsapp_number: str = ""
     
