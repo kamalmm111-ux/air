@@ -934,6 +934,7 @@ const AdminDashboard = () => {
     vehicles: <VehiclesManager token={token} fleets={fleets} drivers={drivers} categories={vehicles} />,
     pricing: renderPricing(),
     invoices: <InvoiceManager token={token} />,
+    invoicing: <InvoicingStatements token={token} />,
     "system-settings": <AdminSettings token={token} />,
     settings: <CMSManager token={token} />,
     "crm-reports": <CRMReports token={token} />
@@ -947,6 +948,7 @@ const AdminDashboard = () => {
            activeTab === "vehicle-categories" ? "Vehicle Categories" : 
            activeTab === "customers" ? "Customer Accounts (B2B)" : 
            activeTab === "invoices" ? "Invoice Management" : 
+           activeTab === "invoicing" ? "Invoicing & Statements" :
            activeTab === "system-settings" ? "System Settings" :
            activeTab === "crm-reports" ? "CRM & Reports" :
            activeTab.replace("-", " ")}
