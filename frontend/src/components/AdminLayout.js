@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
-  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin, Briefcase, Key, Cog
+  Car, LayoutDashboard, CalendarDays, DollarSign, Settings, LogOut, ChevronLeft, Users, Route, Truck, Building2, FileText, MapPin, Briefcase, Key, Cog, BarChart3
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
