@@ -4213,9 +4213,15 @@ async def update_job_status_from_driver(token: str, status_update: StatusUpdate,
             print(f"[TRACKING DEBUG] Sending {status_update.status} email to {updated_booking.get('customer_email')}", flush=True)
             background_tasks.add_task(send_status_update, updated_booking, status_update.status)
         elif status_update.status == "completed":
-            # Send completion email with PDF invoice
+            # Get customer account if this is a B2B booking
+            customer_account = None
+            if updated_booking.get("customer_account_id"):
+                customer_account = await db.customer_accounts.find_one(
+                    {"id": updated_booking["customer_account_id"]}, {"_id": 0}
+                )
+            # Send completion email with PDF invoice (checks customer account settings)
             print(f"[TRACKING DEBUG] Sending completion + invoice + review emails to {updated_booking.get('customer_email')}", flush=True)
-            background_tasks.add_task(send_completion_with_invoice, updated_booking)
+            background_tasks.add_task(send_completion_with_invoice, updated_booking, customer_account)
             # Send review invitation email
             driver = None
             if updated_booking.get("assigned_driver_id"):
