@@ -1196,24 +1196,6 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
                 <Label>Customer Reference</Label>
                 <Input value={formData.customer_reference} onChange={(e) => setFormData({...formData, customer_reference: e.target.value})} placeholder="PO Number, etc." />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Mozio Booking ID</Label>
-                  <Input value={formData.mozio_external_id} onChange={(e) => setFormData({...formData, mozio_external_id: e.target.value, b2b_source: e.target.value ? "mozio" : ""})} placeholder="Mozio reference" />
-                </div>
-                <div>
-                  <Label>B2B Source</Label>
-                  <Select value={formData.b2b_source || "none"} onValueChange={(v) => setFormData({...formData, b2b_source: v === "none" ? "" : v})}>
-                    <SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="mozio">Mozio</SelectItem>
-                      <SelectItem value="jayride">Jayride</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
             </div>
           </div>
 
