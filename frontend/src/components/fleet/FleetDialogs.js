@@ -4,9 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { AlertTriangle, Camera, User } from "lucide-react";
+import { AlertTriangle, User } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import ImageUpload from "../ImageUpload";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 

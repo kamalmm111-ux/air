@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Textarea } from "./ui/textarea";
-import { Users, Edit, Plus, Search, Phone, Mail, Star, Car, Image } from "lucide-react";
+import { Users, Edit, Plus, Search, Phone, Mail, Star, Car } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import ImageUpload from "./ImageUpload";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
