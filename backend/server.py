@@ -2796,6 +2796,765 @@ async def delete_invoice(invoice_id: str, user: dict = Depends(get_super_admin))
         raise HTTPException(status_code=404, detail="Invoice not found")
     return {"message": "Invoice deleted"}
 
+
+# ==================== DRIVER STATEMENTS ====================
+
+@api_router.post("/statements/driver/generate")
+async def generate_driver_statement(
+    driver_id: str,
+    date_from: str,
+    date_to: str,
+    user: dict = Depends(get_super_admin)
+):
+    """Generate earning statement for a driver"""
+    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    # Get completed bookings for the driver in the period
+    bookings = await db.bookings.find({
+        "assigned_driver_id": driver_id,
+        "status": "completed",
+        "pickup_date": {"$gte": date_from, "$lte": date_to}
+    }, {"_id": 0}).to_list(1000)
+    
+    if not bookings:
+        raise HTTPException(status_code=400, detail="No completed jobs found for this period")
+    
+    # Calculate totals
+    line_items = []
+    total_earnings = 0
+    total_jobs = len(bookings)
+    
+    for b in bookings:
+        earning = b.get("driver_price", 0) or 0
+        total_earnings += earning
+        line_items.append({
+            "description": f"Job {b.get('booking_ref')} - {b.get('pickup_date')}",
+            "details": f"{b.get('pickup_location', '')[:30]}... → {b.get('dropoff_location', '')[:30]}...",
+            "quantity": 1,
+            "unit_price": earning,
+            "total": earning,
+            "booking_id": b.get("id")
+        })
+    
+    # Create statement/invoice
+    statement = {
+        "id": str(uuid.uuid4()),
+        "invoice_number": await generate_invoice_number("driver"),
+        "invoice_type": "driver",
+        "entity_id": driver_id,
+        "entity_name": driver.get("name"),
+        "entity_email": driver.get("email"),
+        "entity_phone": driver.get("phone"),
+        "booking_ids": [b.get("id") for b in bookings],
+        "line_items": line_items,
+        "subtotal": total_earnings,
+        "commission": 0,
+        "tax": 0,
+        "total": total_earnings,
+        "total_jobs": total_jobs,
+        "status": "draft",
+        "period_start": date_from,
+        "period_end": date_to,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "notes": f"Driver earning statement for period {date_from} to {date_to}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("id")
+    }
+    
+    await db.invoices.insert_one(statement)
+    
+    return {
+        "message": "Driver statement generated",
+        "invoice_id": statement["id"],
+        "invoice_number": statement["invoice_number"],
+        "total_jobs": total_jobs,
+        "total_earnings": total_earnings
+    }
+
+
+@api_router.get("/statements/driver/{driver_id}/summary")
+async def get_driver_earning_summary(
+    driver_id: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get driver earning summary with weekly breakdown"""
+    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    date_filter = {"assigned_driver_id": driver_id, "status": "completed"}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(5000)
+    
+    # Weekly breakdown
+    weekly_earnings = {}
+    total_earnings = 0
+    
+    for b in bookings:
+        earning = b.get("driver_price", 0) or 0
+        total_earnings += earning
+        
+        try:
+            date = datetime.strptime(b.get("pickup_date", ""), "%Y-%m-%d")
+            week_key = f"{date.year}-W{date.isocalendar()[1]:02d}"
+        except:
+            week_key = "unknown"
+        
+        if week_key not in weekly_earnings:
+            weekly_earnings[week_key] = {"earnings": 0, "jobs": 0}
+        weekly_earnings[week_key]["earnings"] += earning
+        weekly_earnings[week_key]["jobs"] += 1
+    
+    # Get existing statements
+    statements = await db.invoices.find({
+        "invoice_type": "driver",
+        "entity_id": driver_id
+    }, {"_id": 0}).sort("created_at", -1).to_list(20)
+    
+    return {
+        "driver": {
+            "id": driver_id,
+            "name": driver.get("name"),
+            "phone": driver.get("phone"),
+            "email": driver.get("email")
+        },
+        "summary": {
+            "total_jobs": len(bookings),
+            "total_earnings": round(total_earnings, 2),
+            "avg_earning_per_job": round(total_earnings / len(bookings), 2) if bookings else 0
+        },
+        "weekly_breakdown": [{"week": k, **v} for k, v in sorted(weekly_earnings.items(), reverse=True)],
+        "recent_statements": statements[:10]
+    }
+
+
+# ==================== FLEET STATEMENTS ====================
+
+@api_router.post("/statements/fleet/generate")
+async def generate_fleet_statement(
+    fleet_id: str,
+    date_from: str,
+    date_to: str,
+    user: dict = Depends(get_super_admin)
+):
+    """Generate earning statement for a fleet partner"""
+    fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0})
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+    
+    # Get completed bookings for the fleet in the period
+    bookings = await db.bookings.find({
+        "assigned_fleet_id": fleet_id,
+        "status": "completed",
+        "pickup_date": {"$gte": date_from, "$lte": date_to}
+    }, {"_id": 0}).to_list(1000)
+    
+    if not bookings:
+        raise HTTPException(status_code=400, detail="No completed jobs found for this period")
+    
+    # Calculate totals
+    line_items = []
+    total_revenue = 0
+    total_cost = 0
+    
+    for b in bookings:
+        revenue = b.get("customer_price", b.get("price", 0)) or 0
+        cost = b.get("driver_price", 0) or 0
+        total_revenue += revenue
+        total_cost += cost
+        
+        line_items.append({
+            "description": f"Job {b.get('booking_ref')} - {b.get('pickup_date')}",
+            "details": f"{b.get('pickup_location', '')[:30]}... → {b.get('dropoff_location', '')[:30]}...",
+            "quantity": 1,
+            "unit_price": cost,
+            "customer_price": revenue,
+            "total": cost,
+            "profit": revenue - cost,
+            "booking_id": b.get("id")
+        })
+    
+    commission_rate = fleet.get("commission_rate", 15) / 100
+    commission = total_cost * commission_rate
+    net_payment = total_cost - commission
+    
+    # Create statement
+    statement = {
+        "id": str(uuid.uuid4()),
+        "invoice_number": await generate_invoice_number("fleet"),
+        "invoice_type": "fleet",
+        "entity_id": fleet_id,
+        "entity_name": fleet.get("name"),
+        "entity_email": fleet.get("email"),
+        "entity_phone": fleet.get("phone"),
+        "booking_ids": [b.get("id") for b in bookings],
+        "line_items": line_items,
+        "subtotal": total_cost,
+        "commission": round(commission, 2),
+        "commission_rate": fleet.get("commission_rate", 15),
+        "tax": 0,
+        "total": round(net_payment, 2),
+        "total_jobs": len(bookings),
+        "total_revenue": round(total_revenue, 2),
+        "profit_total": round(total_revenue - total_cost, 2),
+        "status": "draft",
+        "period_start": date_from,
+        "period_end": date_to,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
+        "notes": f"Fleet partner statement for period {date_from} to {date_to}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("id")
+    }
+    
+    await db.invoices.insert_one(statement)
+    
+    return {
+        "message": "Fleet statement generated",
+        "invoice_id": statement["id"],
+        "invoice_number": statement["invoice_number"],
+        "total_jobs": len(bookings),
+        "subtotal": total_cost,
+        "commission": round(commission, 2),
+        "net_payment": round(net_payment, 2)
+    }
+
+
+@api_router.get("/statements/fleet/{fleet_id}/summary")
+async def get_fleet_earning_summary(
+    fleet_id: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get fleet partner earning summary"""
+    fleet = await db.fleets.find_one({"id": fleet_id}, {"_id": 0})
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+    
+    date_filter = {"assigned_fleet_id": fleet_id, "status": "completed"}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(5000)
+    
+    total_revenue = sum(b.get("customer_price", b.get("price", 0)) or 0 for b in bookings)
+    total_cost = sum(b.get("driver_price", 0) or 0 for b in bookings)
+    total_profit = total_revenue - total_cost
+    
+    # Get existing statements
+    statements = await db.invoices.find({
+        "invoice_type": "fleet",
+        "entity_id": fleet_id
+    }, {"_id": 0}).sort("created_at", -1).to_list(20)
+    
+    # Driver breakdown
+    driver_earnings = {}
+    for b in bookings:
+        did = b.get("assigned_driver_id")
+        if did:
+            if did not in driver_earnings:
+                driver_earnings[did] = {"name": "", "earnings": 0, "jobs": 0}
+            driver_earnings[did]["earnings"] += b.get("driver_price", 0) or 0
+            driver_earnings[did]["jobs"] += 1
+    
+    # Get driver names
+    for did in driver_earnings:
+        driver = await db.drivers.find_one({"id": did}, {"_id": 0, "name": 1})
+        if driver:
+            driver_earnings[did]["name"] = driver.get("name", "Unknown")
+    
+    return {
+        "fleet": {
+            "id": fleet_id,
+            "name": fleet.get("name"),
+            "email": fleet.get("email"),
+            "commission_rate": fleet.get("commission_rate", 15)
+        },
+        "summary": {
+            "total_jobs": len(bookings),
+            "total_revenue": round(total_revenue, 2),
+            "total_cost": round(total_cost, 2),
+            "total_profit": round(total_profit, 2)
+        },
+        "driver_breakdown": list(driver_earnings.values()),
+        "recent_statements": statements[:10]
+    }
+
+
+# ==================== CUSTOMER CONSOLIDATED INVOICES ====================
+
+@api_router.post("/statements/customer/generate")
+async def generate_customer_invoice(
+    customer_id: str,
+    date_from: str,
+    date_to: str,
+    user: dict = Depends(get_super_admin)
+):
+    """Generate consolidated invoice for a B2B customer"""
+    customer = await db.customer_accounts.find_one({"id": customer_id}, {"_id": 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer account not found")
+    
+    # Get completed bookings for the customer in the period
+    bookings = await db.bookings.find({
+        "customer_account_id": customer_id,
+        "status": "completed",
+        "pickup_date": {"$gte": date_from, "$lte": date_to}
+    }, {"_id": 0}).to_list(1000)
+    
+    if not bookings:
+        raise HTTPException(status_code=400, detail="No completed bookings found for this period")
+    
+    # Calculate totals
+    line_items = []
+    subtotal = 0
+    total_cost = 0
+    
+    for b in bookings:
+        price = b.get("customer_price", b.get("price", 0)) or 0
+        cost = b.get("driver_price", 0) or 0
+        subtotal += price
+        total_cost += cost
+        
+        line_items.append({
+            "description": f"Job {b.get('booking_ref')} - {b.get('pickup_date')} {b.get('pickup_time', '')}",
+            "details": f"{b.get('customer_name', '')} | {b.get('pickup_location', '')[:40]}... → {b.get('dropoff_location', '')[:40]}...",
+            "quantity": 1,
+            "unit_price": price,
+            "total": price,
+            "cost": cost,
+            "profit": price - cost,
+            "booking_id": b.get("id")
+        })
+    
+    # Tax calculation (if applicable)
+    tax_rate = 0  # Can be configured per customer
+    tax = subtotal * tax_rate
+    total = subtotal + tax
+    
+    # Create invoice
+    invoice = {
+        "id": str(uuid.uuid4()),
+        "invoice_number": await generate_invoice_number("customer"),
+        "invoice_type": "customer",
+        "entity_id": customer_id,
+        "entity_name": customer.get("company_name"),
+        "entity_email": customer.get("accounts_email") or customer.get("email"),
+        "entity_phone": customer.get("phone"),
+        "entity_address": customer.get("billing_address"),
+        "booking_ids": [b.get("id") for b in bookings],
+        "line_items": line_items,
+        "subtotal": round(subtotal, 2),
+        "tax": round(tax, 2),
+        "tax_rate": tax_rate,
+        "commission": 0,
+        "total": round(total, 2),
+        "cost_total": round(total_cost, 2),
+        "profit_total": round(subtotal - total_cost, 2),
+        "total_jobs": len(bookings),
+        "status": "draft",
+        "period_start": date_from,
+        "period_end": date_to,
+        "payment_terms": customer.get("payment_terms", "Net 30"),
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "notes": f"Monthly invoice for {customer.get('company_name')} - Period: {date_from} to {date_to}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("id")
+    }
+    
+    await db.invoices.insert_one(invoice)
+    
+    return {
+        "message": "Customer invoice generated",
+        "invoice_id": invoice["id"],
+        "invoice_number": invoice["invoice_number"],
+        "total_jobs": len(bookings),
+        "subtotal": round(subtotal, 2),
+        "total": round(total, 2),
+        "profit": round(subtotal - total_cost, 2)
+    }
+
+
+# ==================== CUSTOM INVOICES ====================
+
+@api_router.post("/invoices/custom")
+async def create_custom_invoice(
+    invoice_type: str,  # customer, fleet, driver, custom
+    entity_name: str,
+    entity_email: str,
+    line_items: List[dict],
+    entity_phone: Optional[str] = None,
+    entity_address: Optional[str] = None,
+    notes: Optional[str] = None,
+    due_days: int = 30,
+    tax_rate: float = 0,
+    user: dict = Depends(get_super_admin)
+):
+    """Create a custom manual invoice with custom line items"""
+    
+    # Calculate totals
+    subtotal = sum(item.get("total", item.get("quantity", 1) * item.get("unit_price", 0)) for item in line_items)
+    tax = subtotal * (tax_rate / 100)
+    total = subtotal + tax
+    
+    invoice = {
+        "id": str(uuid.uuid4()),
+        "invoice_number": await generate_invoice_number(invoice_type),
+        "invoice_type": invoice_type,
+        "entity_id": None,  # Custom invoice not linked to entity
+        "entity_name": entity_name,
+        "entity_email": entity_email,
+        "entity_phone": entity_phone,
+        "entity_address": entity_address,
+        "booking_ids": [],
+        "line_items": line_items,
+        "subtotal": round(subtotal, 2),
+        "tax": round(tax, 2),
+        "tax_rate": tax_rate,
+        "commission": 0,
+        "total": round(total, 2),
+        "status": "draft",
+        "is_custom": True,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=due_days)).isoformat(),
+        "notes": notes,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("id")
+    }
+    
+    await db.invoices.insert_one(invoice)
+    
+    return {
+        "message": "Custom invoice created",
+        "invoice_id": invoice["id"],
+        "invoice_number": invoice["invoice_number"],
+        "total": round(total, 2)
+    }
+
+
+# ==================== INVOICE AMENDMENTS ====================
+
+@api_router.post("/invoices/{invoice_id}/amend")
+async def amend_invoice(
+    invoice_id: str,
+    line_items: Optional[List[dict]] = None,
+    notes: Optional[str] = None,
+    adjustment_amount: Optional[float] = None,
+    adjustment_reason: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Amend an existing invoice - creates amendment record"""
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    if invoice.get("status") == "paid":
+        raise HTTPException(status_code=400, detail="Cannot amend a paid invoice")
+    
+    # Store original values
+    amendment = {
+        "id": str(uuid.uuid4()),
+        "invoice_id": invoice_id,
+        "amendment_date": datetime.now(timezone.utc).isoformat(),
+        "amended_by": user.get("id"),
+        "amended_by_name": user.get("name", user.get("email")),
+        "original_subtotal": invoice.get("subtotal"),
+        "original_total": invoice.get("total"),
+        "original_line_items": invoice.get("line_items"),
+        "reason": adjustment_reason or notes
+    }
+    
+    # Update invoice
+    update_data = {
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "amendment_count": invoice.get("amendment_count", 0) + 1,
+        "last_amendment": amendment["id"]
+    }
+    
+    if line_items:
+        update_data["line_items"] = line_items
+        subtotal = sum(item.get("total", item.get("quantity", 1) * item.get("unit_price", 0)) for item in line_items)
+        update_data["subtotal"] = round(subtotal, 2)
+        tax = subtotal * (invoice.get("tax_rate", 0) / 100)
+        update_data["tax"] = round(tax, 2)
+        update_data["total"] = round(subtotal + tax - invoice.get("commission", 0), 2)
+        amendment["new_subtotal"] = update_data["subtotal"]
+        amendment["new_total"] = update_data["total"]
+        amendment["new_line_items"] = line_items
+    
+    if adjustment_amount:
+        current_total = update_data.get("total", invoice.get("total", 0))
+        update_data["adjustment_amount"] = adjustment_amount
+        update_data["adjustment_reason"] = adjustment_reason
+        update_data["total"] = round(current_total + adjustment_amount, 2)
+        amendment["adjustment_amount"] = adjustment_amount
+    
+    if notes:
+        update_data["notes"] = notes
+    
+    # Save amendment record
+    await db.invoice_amendments.insert_one(amendment)
+    
+    # Update invoice
+    await db.invoices.update_one({"id": invoice_id}, {"$set": update_data})
+    
+    return {
+        "message": "Invoice amended successfully",
+        "amendment_id": amendment["id"],
+        "new_total": update_data.get("total", invoice.get("total"))
+    }
+
+
+@api_router.get("/invoices/{invoice_id}/amendments")
+async def get_invoice_amendments(invoice_id: str, user: dict = Depends(get_super_admin)):
+    """Get amendment history for an invoice"""
+    amendments = await db.invoice_amendments.find(
+        {"invoice_id": invoice_id}, {"_id": 0}
+    ).sort("amendment_date", -1).to_list(50)
+    return amendments
+
+
+# ==================== ADDITIONAL REPORTS ====================
+
+@api_router.get("/reports/driver-earnings-weekly")
+async def get_driver_earnings_weekly(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get weekly driver earnings report"""
+    date_filter = {"status": "completed"}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    drivers = {d["id"]: d for d in await db.drivers.find({}, {"_id": 0}).to_list(500)}
+    
+    # Group by driver and week
+    earnings_data = {}
+    for b in bookings:
+        driver_id = b.get("assigned_driver_id")
+        if not driver_id:
+            continue
+        
+        try:
+            date = datetime.strptime(b.get("pickup_date", ""), "%Y-%m-%d")
+            week = f"{date.year}-W{date.isocalendar()[1]:02d}"
+        except:
+            week = "unknown"
+        
+        key = f"{driver_id}_{week}"
+        if key not in earnings_data:
+            earnings_data[key] = {
+                "driver_id": driver_id,
+                "driver_name": drivers.get(driver_id, {}).get("name", "Unknown"),
+                "week": week,
+                "jobs": 0,
+                "earnings": 0
+            }
+        
+        earnings_data[key]["jobs"] += 1
+        earnings_data[key]["earnings"] += b.get("driver_price", 0) or 0
+    
+    # Sort by week and driver
+    result = sorted(earnings_data.values(), key=lambda x: (x["week"], x["driver_name"]), reverse=True)
+    
+    return {
+        "data": result,
+        "summary": {
+            "total_drivers": len(set(e["driver_id"] for e in result)),
+            "total_jobs": sum(e["jobs"] for e in result),
+            "total_earnings": round(sum(e["earnings"] for e in result), 2)
+        }
+    }
+
+
+@api_router.get("/reports/route-profit-loss")
+async def get_route_profit_loss(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get profit/loss analysis by route"""
+    date_filter = {"status": "completed"}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    route_data = {}
+    for b in bookings:
+        pickup = (b.get("pickup_location", "Unknown") or "Unknown")[:40]
+        dropoff = (b.get("dropoff_location", "Unknown") or "Unknown")[:40]
+        route = f"{pickup} → {dropoff}"
+        
+        if route not in route_data:
+            route_data[route] = {"route": route, "jobs": 0, "revenue": 0, "cost": 0, "profit": 0}
+        
+        revenue = b.get("customer_price", b.get("price", 0)) or 0
+        cost = b.get("driver_price", 0) or 0
+        
+        route_data[route]["jobs"] += 1
+        route_data[route]["revenue"] += revenue
+        route_data[route]["cost"] += cost
+        route_data[route]["profit"] += revenue - cost
+    
+    # Calculate margins and sort
+    for r in route_data.values():
+        r["margin"] = round((r["profit"] / r["revenue"] * 100) if r["revenue"] > 0 else 0, 1)
+        r["revenue"] = round(r["revenue"], 2)
+        r["cost"] = round(r["cost"], 2)
+        r["profit"] = round(r["profit"], 2)
+    
+    result = sorted(route_data.values(), key=lambda x: x["profit"], reverse=True)
+    
+    return {
+        "routes": result[:50],
+        "summary": {
+            "total_routes": len(route_data),
+            "total_revenue": round(sum(r["revenue"] for r in route_data.values()), 2),
+            "total_profit": round(sum(r["profit"] for r in route_data.values()), 2),
+            "most_profitable": result[0] if result else None,
+            "least_profitable": result[-1] if result else None
+        }
+    }
+
+
+@api_router.get("/reports/job-mileage")
+async def get_job_mileage_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get mileage report for jobs"""
+    date_filter = {"status": "completed"}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    jobs = []
+    total_miles = 0
+    total_revenue = 0
+    
+    for b in bookings:
+        miles = b.get("distance_miles", b.get("total_distance", 0)) or 0
+        revenue = b.get("customer_price", b.get("price", 0)) or 0
+        
+        total_miles += miles
+        total_revenue += revenue
+        
+        jobs.append({
+            "booking_ref": b.get("booking_ref"),
+            "date": b.get("pickup_date"),
+            "pickup": b.get("pickup_location", "")[:50],
+            "dropoff": b.get("dropoff_location", "")[:50],
+            "miles": round(miles, 1),
+            "revenue": round(revenue, 2),
+            "revenue_per_mile": round(revenue / miles, 2) if miles > 0 else 0,
+            "driver": b.get("assigned_driver_name", "-"),
+            "vehicle": b.get("vehicle_category_id", "-")
+        })
+    
+    return {
+        "jobs": sorted(jobs, key=lambda x: x["date"], reverse=True)[:100],
+        "summary": {
+            "total_jobs": len(jobs),
+            "total_miles": round(total_miles, 1),
+            "total_revenue": round(total_revenue, 2),
+            "avg_miles_per_job": round(total_miles / len(jobs), 1) if jobs else 0,
+            "avg_revenue_per_mile": round(total_revenue / total_miles, 2) if total_miles > 0 else 0
+        }
+    }
+
+
+@api_router.get("/reports/document-expiry")
+async def get_document_expiry_report(
+    days_ahead: int = 30,
+    user: dict = Depends(get_super_admin)
+):
+    """Get drivers and vehicles with expiring documents"""
+    cutoff_date = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Get drivers with expiring licenses
+    drivers = await db.drivers.find({}, {"_id": 0}).to_list(500)
+    expiring_drivers = []
+    
+    for d in drivers:
+        expiry = d.get("license_expiry", "")
+        if expiry and expiry <= cutoff_date:
+            expiring_drivers.append({
+                "type": "driver_license",
+                "entity_id": d.get("id"),
+                "entity_name": d.get("name"),
+                "document": "Driving License",
+                "expiry_date": expiry,
+                "is_expired": expiry < today,
+                "days_until_expiry": (datetime.strptime(expiry, "%Y-%m-%d") - datetime.now()).days if expiry >= today else 0
+            })
+    
+    # Get vehicles with expiring documents (if tracked)
+    vehicles = await db.fleet_vehicles.find({}, {"_id": 0}).to_list(500)
+    expiring_vehicles = []
+    
+    for v in vehicles:
+        for doc_type in ["mot_expiry", "insurance_expiry", "tax_expiry"]:
+            expiry = v.get(doc_type, "")
+            if expiry and expiry <= cutoff_date:
+                expiring_vehicles.append({
+                    "type": f"vehicle_{doc_type}",
+                    "entity_id": v.get("id"),
+                    "entity_name": f"{v.get('make', '')} {v.get('model', '')} - {v.get('plate_number', '')}",
+                    "document": doc_type.replace("_", " ").title(),
+                    "expiry_date": expiry,
+                    "is_expired": expiry < today,
+                    "days_until_expiry": (datetime.strptime(expiry, "%Y-%m-%d") - datetime.now()).days if expiry >= today else 0
+                })
+    
+    all_expiring = sorted(expiring_drivers + expiring_vehicles, key=lambda x: x["expiry_date"])
+    
+    return {
+        "items": all_expiring,
+        "summary": {
+            "total_expiring": len(all_expiring),
+            "already_expired": len([x for x in all_expiring if x["is_expired"]]),
+            "expiring_this_week": len([x for x in all_expiring if 0 <= x["days_until_expiry"] <= 7]),
+            "expiring_this_month": len([x for x in all_expiring if 0 <= x["days_until_expiry"] <= 30])
+        }
+    }
+
+
 @api_router.get("/invoices/{invoice_id}/pdf")
 async def download_invoice_pdf(invoice_id: str, user: dict = Depends(get_admin_or_fleet)):
     invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
