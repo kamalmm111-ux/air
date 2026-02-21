@@ -91,8 +91,8 @@ const ContactPage = () => {
                     <div>
                       <h3 className="font-bold text-[#0A0F1C] mb-1">Phone</h3>
                       <p className="text-zinc-600">24/7 Booking Line</p>
-                      <a href="tel:+442012345678" className="text-lg font-bold text-[#0A0F1C] hover:text-[#D4AF37]">
-                        +44 20 1234 5678
+                      <a href={`tel:${contactInfo.phone.replace(/\s/g, '')}`} className="text-lg font-bold text-[#0A0F1C] hover:text-[#D4AF37]">
+                        {contactInfo.phone}
                       </a>
                     </div>
                   </CardContent>
@@ -106,8 +106,8 @@ const ContactPage = () => {
                     <div>
                       <h3 className="font-bold text-[#0A0F1C] mb-1">Email</h3>
                       <p className="text-zinc-600">General Inquiries</p>
-                      <a href="mailto:info@aircabio.com" className="text-lg font-bold text-[#0A0F1C] hover:text-[#D4AF37]">
-                        info@aircabio.com
+                      <a href={`mailto:${contactInfo.email}`} className="text-lg font-bold text-[#0A0F1C] hover:text-[#D4AF37]">
+                        {contactInfo.email}
                       </a>
                     </div>
                   </CardContent>
