@@ -771,33 +771,30 @@ const VehicleDialog = ({ open, onClose, vehicle, onSave, mediaLibrary }) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Image URL</Label>
-            <Input 
-              value={formData.image_url} 
-              onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-              placeholder="https://example.com/vehicle.jpg"
-            />
-            {formData.image_url && (
-              <img src={formData.image_url} alt="Preview" className="h-32 mt-2 rounded object-cover" />
-            )}
-            {mediaLibrary.length > 0 && (
-              <div className="mt-2">
-                <p className="text-xs text-zinc-500 mb-2">Or select from Media Library:</p>
-                <div className="flex gap-2 flex-wrap">
-                  {mediaLibrary.slice(0, 6).map((media) => (
-                    <img 
-                      key={media.id}
-                      src={media.url} 
-                      alt={media.name}
-                      className={`w-16 h-16 rounded cursor-pointer object-cover border-2 ${formData.image_url === media.url ? 'border-[#D4AF37]' : 'border-transparent'}`}
-                      onClick={() => setFormData({...formData, image_url: media.url})}
-                    />
-                  ))}
-                </div>
+          <ImageUpload
+            value={formData.image_url}
+            onChange={(url) => setFormData({...formData, image_url: url})}
+            category="blog"
+            label="Blog Post Image"
+            placeholder="Upload blog post featured image"
+            headers={headers}
+          />
+          {mediaLibrary.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs text-zinc-500 mb-2">Or select from Media Library:</p>
+              <div className="flex gap-2 flex-wrap">
+                {mediaLibrary.slice(0, 6).map((media) => (
+                  <img 
+                    key={media.id}
+                    src={media.url} 
+                    alt={media.name}
+                    className={`w-16 h-16 rounded cursor-pointer object-cover border-2 ${formData.image_url === media.url ? 'border-[#D4AF37]' : 'border-transparent'}`}
+                    onClick={() => setFormData({...formData, image_url: media.url})}
+                  />
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
