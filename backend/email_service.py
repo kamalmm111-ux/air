@@ -931,11 +931,29 @@ def generate_invoice_pdf(booking: Dict) -> bytes:
 
 # ==================== COMPLETION WITH INVOICE ====================
 
-async def send_completion_with_invoice(booking: Dict):
-    """Send trip completion email with PDF invoice attached"""
+async def send_completion_with_invoice(booking: Dict, customer_account: Dict = None):
+    """Send trip completion email with PDF invoice attached
+    
+    Args:
+        booking: Booking data
+        customer_account: B2B customer account data (optional). If provided and 
+                         send_invoice_email is False, invoice will be skipped.
+    """
     customer_email = booking.get("customer_email")
     if not customer_email:
         return
+    
+    # Check if B2B customer has disabled invoice emails
+    if customer_account and customer_account.get("send_invoice_email") is False:
+        logger.info(f"Invoice email skipped for booking {booking.get('booking_ref')} - customer account has disabled invoice emails")
+        # Send simple completion email without invoice
+        await send_booking_completed(booking)
+        return {"status": "skipped", "message": "Invoice email disabled for this customer account"}
+    
+    # Use accounts email if set, otherwise use customer email
+    invoice_email = customer_email
+    if customer_account and customer_account.get("accounts_email"):
+        invoice_email = customer_account.get("accounts_email")
     
     # Generate PDF invoice
     try:
