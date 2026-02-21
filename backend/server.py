@@ -5561,8 +5561,15 @@ async def get_public_website_settings():
     settings = await db.website_settings.find_one({"_id": "main"})
     if settings:
         del settings["_id"]
+        # Ensure official contact details are always returned
+        settings["contact_phone"] = settings.get("contact_phone") or "+44 330 058 5676"
+        settings["contact_email"] = settings.get("contact_email") or "info@aircabio.com"
         return settings
-    return WebsiteSettings().model_dump()
+    # Return defaults with official contact details
+    default_settings = WebsiteSettings().model_dump()
+    default_settings["contact_phone"] = "+44 330 058 5676"
+    default_settings["contact_email"] = "info@aircabio.com"
+    return default_settings
 
 # Get active vehicles for public
 @api_router.get("/vehicles")
