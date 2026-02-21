@@ -24,6 +24,7 @@ Build a complete airport transfer booking website for Aircabio with comprehensiv
 - ✅ Customer ratings dashboard
 - ✅ Invoice generation
 - ✅ **Mozio B2B Integration** - Link bookings to Mozio
+- ✅ **Image Upload System** - Direct file upload replacing all URL inputs
 
 ### Fleet Portal
 - ✅ View and manage assigned jobs
@@ -106,7 +107,35 @@ REACT_APP_GOOGLE_MAPS_API_KEY=xxx
 - `mozio_sync_status` - Sync status ("pending", "synced", "error")
 - `mozio_last_sync` - Last sync timestamp
 
-## Session Complete - Feb 21, 2026
+## Session Complete - Feb 21, 2026 (Earlier)
 - Mozio B2B integration implemented
 - Driver info auto-syncs to Mozio when assigned or en_route
 - Ready for testing with Mozio staging API
+
+## Session Complete - Feb 21, 2026 (Current)
+### Global Image Upload System Implemented
+Replaced all "Image URL" inputs with direct upload functionality:
+
+**Components Updated:**
+- ✅ **DriversManager.js** - Driver photo upload
+- ✅ **VehiclesManager.js** - Vehicle photo upload  
+- ✅ **CMSManager.js** - Logo, Favicon, Hero Background, Media Library, Vehicle categories
+- ✅ **FleetDialogs.js** - Fleet portal driver photo upload
+
+**Features:**
+- Drag & drop file upload
+- Click to browse files
+- Camera capture on mobile devices
+- Instant image preview with success indicator
+- File validation (JPG, PNG, WebP, GIF - max 5MB)
+- Automatic image compression and optimization
+- URL fallback input for backward compatibility
+- Files stored locally in `/app/backend/uploads/images/`
+
+**Backend Endpoints:**
+- `POST /api/upload/image` - Upload image (returns URL)
+- `DELETE /api/upload/image` - Delete image
+- `GET /api/upload/image/info` - Get image info
+- `GET /api/uploads/images/{category}/{filename}` - Serve static images
+
+**Test Results:** 16/16 backend tests passed, all frontend components verified
