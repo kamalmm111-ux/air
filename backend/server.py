@@ -1698,8 +1698,14 @@ async def update_booking_status(booking_id: str, status: str, background_tasks: 
         if status in ["en_route", "arrived", "in_progress"]:
             background_tasks.add_task(send_status_update, updated_booking, status)
         elif status == "completed":
-            # Send completion email with PDF invoice
-            background_tasks.add_task(send_completion_with_invoice, updated_booking)
+            # Get customer account if this is a B2B booking
+            customer_account = None
+            if updated_booking.get("customer_account_id"):
+                customer_account = await db.customer_accounts.find_one(
+                    {"id": updated_booking["customer_account_id"]}, {"_id": 0}
+                )
+            # Send completion email with PDF invoice (checks customer account settings)
+            background_tasks.add_task(send_completion_with_invoice, updated_booking, customer_account)
             # Send review invitation after a short delay (handled in background)
             # Get driver details for review email
             driver = None
