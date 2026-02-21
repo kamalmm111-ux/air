@@ -366,24 +366,14 @@ const CMSManager = ({ token }) => {
                   rows={2}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Hero Background Image URL</Label>
-                <Input 
-                  value={settings.hero_background_url || ""} 
-                  onChange={(e) => setSettings({...settings, hero_background_url: e.target.value})}
-                  placeholder="https://example.com/hero-image.jpg"
-                />
-                {settings.hero_background_url && (
-                  <div className="relative aspect-video rounded-lg overflow-hidden border">
-                    <img 
-                      src={settings.hero_background_url} 
-                      alt="Hero preview" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => e.target.style.display = 'none'}
-                    />
-                  </div>
-                )}
-              </div>
+              <ImageUpload
+                value={settings.hero_background_url || ""}
+                onChange={(url) => setSettings({...settings, hero_background_url: url})}
+                category="banners"
+                label="Hero Background Image"
+                placeholder="Upload hero background image"
+                headers={headers}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Hero Button Text</Label>
