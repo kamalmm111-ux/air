@@ -16,7 +16,7 @@ import axios from "axios";
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Single source of truth for brand logo - prevents flicker by having a default
-const BRAND_LOGO_URL = "https://static.prod-images.emergentagent.com/jobs/296f0d6c-0a8c-444a-9b2a-bb767926de6b/images/c8d1144371651290264a790222d3304d6aad2d5faa4d3d7034e6c37220a292cd.png";
+const BRAND_LOGO_URL = "https://static.prod-images.emergentagent.com/jobs/296f0d6c-0a8c-444a-9b2a-bb767926de6b/images/cf8d2c900120df579d64704c7bf4026bcc81933f03fe669d6cd80040a50588e3.png";
 
 const Layout = () => {
   const { user, logout, isAdmin, isAuthenticated } = useAuth();
