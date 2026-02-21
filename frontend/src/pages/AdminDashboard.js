@@ -204,7 +204,10 @@ const AdminDashboard = () => {
     const matchesDateTo = !dateTo || b.pickup_date <= dateTo;
     const matchesFleet = fleetFilter === "all" || b.assigned_fleet_id === fleetFilter;
     const matchesDriver = driverFilter === "all" || b.assigned_driver_id === driverFilter;
-    return matchesStatus && matchesSearch && matchesDateFrom && matchesDateTo && matchesFleet && matchesDriver;
+    const matchesCustomerAccount = customerAccountFilter === "all" || 
+      (customerAccountFilter === "direct" && !b.customer_account_id) ||
+      (customerAccountFilter !== "direct" && b.customer_account_id === customerAccountFilter);
+    return matchesStatus && matchesSearch && matchesDateFrom && matchesDateTo && matchesFleet && matchesDriver && matchesCustomerAccount;
   });
 
   // Quick filters
