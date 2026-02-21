@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import ImageUpload from "./ImageUpload";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
