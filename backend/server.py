@@ -5651,6 +5651,647 @@ async def delete_uploaded_image(
     return {"success": True, "message": "Image deleted successfully"}
 
 
+# ==================== CRM & REPORTING ENDPOINTS ====================
+
+@api_router.get("/reports/dashboard")
+async def get_dashboard_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get comprehensive dashboard KPIs and metrics"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Build date filter
+    date_filter = {}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    # Get all bookings for the period
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    # Calculate KPIs
+    total_bookings = len(bookings)
+    completed_bookings = len([b for b in bookings if b.get("status") == "completed"])
+    cancelled_bookings = len([b for b in bookings if b.get("status") == "cancelled"])
+    no_show_bookings = len([b for b in bookings if b.get("status") in ["no_show", "customer_no_show", "driver_no_show"]])
+    
+    total_revenue = sum(b.get("customer_price", b.get("price", 0)) or 0 for b in bookings if b.get("status") == "completed")
+    total_driver_cost = sum(b.get("driver_price", 0) or 0 for b in bookings if b.get("status") == "completed")
+    total_profit = total_revenue - total_driver_cost
+    
+    avg_booking_value = total_revenue / completed_bookings if completed_bookings > 0 else 0
+    completion_rate = (completed_bookings / total_bookings * 100) if total_bookings > 0 else 0
+    
+    # B2B vs B2C breakdown
+    b2b_bookings = [b for b in bookings if b.get("customer_account_id")]
+    b2c_bookings = [b for b in bookings if not b.get("customer_account_id")]
+    b2b_revenue = sum(b.get("customer_price", b.get("price", 0)) or 0 for b in b2b_bookings if b.get("status") == "completed")
+    b2c_revenue = sum(b.get("customer_price", b.get("price", 0)) or 0 for b in b2c_bookings if b.get("status") == "completed")
+    
+    # Today's stats
+    today_bookings = [b for b in bookings if b.get("pickup_date") == today]
+    today_revenue = sum(b.get("customer_price", b.get("price", 0)) or 0 for b in today_bookings if b.get("status") == "completed")
+    
+    # Customer stats
+    unique_customers = len(set(b.get("customer_email", "") for b in bookings if b.get("customer_email")))
+    
+    # Get customer counts for new vs returning
+    all_customer_emails = [b.get("customer_email") for b in await db.bookings.find({}, {"customer_email": 1, "_id": 0}).to_list(50000) if b.get("customer_email")]
+    email_counts = {}
+    for email in all_customer_emails:
+        email_counts[email] = email_counts.get(email, 0) + 1
+    
+    period_emails = set(b.get("customer_email", "") for b in bookings if b.get("customer_email"))
+    new_customers = len([e for e in period_emails if email_counts.get(e, 0) == 1])
+    returning_customers = len(period_emails) - new_customers
+    
+    # Fleet stats
+    fleets = await db.fleets.find({"status": "active"}, {"_id": 0}).to_list(100)
+    drivers = await db.drivers.find({"status": "active"}, {"_id": 0}).to_list(500)
+    
+    return {
+        "kpis": {
+            "total_bookings": total_bookings,
+            "completed_bookings": completed_bookings,
+            "cancelled_bookings": cancelled_bookings,
+            "no_show_bookings": no_show_bookings,
+            "completion_rate": round(completion_rate, 1),
+            "total_revenue": round(total_revenue, 2),
+            "total_driver_cost": round(total_driver_cost, 2),
+            "total_profit": round(total_profit, 2),
+            "profit_margin": round((total_profit / total_revenue * 100) if total_revenue > 0 else 0, 1),
+            "avg_booking_value": round(avg_booking_value, 2),
+            "unique_customers": unique_customers,
+            "new_customers": new_customers,
+            "returning_customers": returning_customers,
+            "b2b_revenue": round(b2b_revenue, 2),
+            "b2c_revenue": round(b2c_revenue, 2),
+            "b2b_bookings": len(b2b_bookings),
+            "b2c_bookings": len(b2c_bookings),
+            "today_bookings": len(today_bookings),
+            "today_revenue": round(today_revenue, 2),
+            "active_fleets": len(fleets),
+            "active_drivers": len(drivers)
+        },
+        "period": {
+            "from": date_from or "all_time",
+            "to": date_to or today
+        }
+    }
+
+
+@api_router.get("/reports/revenue")
+async def get_revenue_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    group_by: str = "day",  # day, week, month
+    user: dict = Depends(get_super_admin)
+):
+    """Get detailed revenue report with trends"""
+    date_filter = {"status": "completed"}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    # Group by date
+    revenue_by_date = {}
+    for b in bookings:
+        date_key = b.get("pickup_date", "unknown")
+        if group_by == "month":
+            date_key = date_key[:7] if date_key else "unknown"
+        elif group_by == "week":
+            try:
+                dt = datetime.strptime(date_key, "%Y-%m-%d")
+                date_key = f"{dt.year}-W{dt.isocalendar()[1]:02d}"
+            except:
+                pass
+        
+        if date_key not in revenue_by_date:
+            revenue_by_date[date_key] = {"revenue": 0, "cost": 0, "profit": 0, "bookings": 0}
+        
+        revenue_by_date[date_key]["revenue"] += b.get("customer_price", b.get("price", 0)) or 0
+        revenue_by_date[date_key]["cost"] += b.get("driver_price", 0) or 0
+        revenue_by_date[date_key]["profit"] += (b.get("customer_price", b.get("price", 0)) or 0) - (b.get("driver_price", 0) or 0)
+        revenue_by_date[date_key]["bookings"] += 1
+    
+    # Convert to sorted list
+    trend_data = [
+        {"date": k, **{key: round(v, 2) for key, v in data.items()}}
+        for k, data in sorted(revenue_by_date.items())
+    ]
+    
+    # Calculate totals
+    total_revenue = sum(d["revenue"] for d in trend_data)
+    total_cost = sum(d["cost"] for d in trend_data)
+    total_profit = sum(d["profit"] for d in trend_data)
+    total_bookings = sum(d["bookings"] for d in trend_data)
+    
+    return {
+        "trend": trend_data,
+        "totals": {
+            "revenue": round(total_revenue, 2),
+            "cost": round(total_cost, 2),
+            "profit": round(total_profit, 2),
+            "bookings": total_bookings,
+            "avg_revenue_per_booking": round(total_revenue / total_bookings, 2) if total_bookings > 0 else 0,
+            "profit_margin": round((total_profit / total_revenue * 100) if total_revenue > 0 else 0, 1)
+        },
+        "group_by": group_by
+    }
+
+
+@api_router.get("/reports/bookings")
+async def get_bookings_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get comprehensive booking status report"""
+    date_filter = {}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    # Status breakdown
+    status_counts = {}
+    for b in bookings:
+        status = b.get("status", "unknown")
+        if status not in status_counts:
+            status_counts[status] = {"count": 0, "revenue": 0}
+        status_counts[status]["count"] += 1
+        if status == "completed":
+            status_counts[status]["revenue"] += b.get("customer_price", b.get("price", 0)) or 0
+    
+    # Vehicle category breakdown
+    category_counts = {}
+    for b in bookings:
+        cat = b.get("vehicle_category_id", b.get("vehicle_name", "unknown"))
+        if cat not in category_counts:
+            category_counts[cat] = {"count": 0, "revenue": 0}
+        category_counts[cat]["count"] += 1
+        if b.get("status") == "completed":
+            category_counts[cat]["revenue"] += b.get("customer_price", b.get("price", 0)) or 0
+    
+    # Payment status
+    payment_counts = {}
+    for b in bookings:
+        payment = b.get("payment_status", "pending")
+        payment_counts[payment] = payment_counts.get(payment, 0) + 1
+    
+    # Hourly distribution
+    hourly_dist = {str(i).zfill(2): 0 for i in range(24)}
+    for b in bookings:
+        time = b.get("pickup_time", "00:00")
+        hour = time[:2] if time else "00"
+        hourly_dist[hour] = hourly_dist.get(hour, 0) + 1
+    
+    return {
+        "total_bookings": len(bookings),
+        "status_breakdown": [{"status": k, **v} for k, v in status_counts.items()],
+        "category_breakdown": [{"category": k, **v} for k, v in sorted(category_counts.items(), key=lambda x: x[1]["count"], reverse=True)],
+        "payment_breakdown": [{"status": k, "count": v} for k, v in payment_counts.items()],
+        "hourly_distribution": [{"hour": k, "count": v} for k, v in sorted(hourly_dist.items())]
+    }
+
+
+@api_router.get("/reports/routes")
+async def get_routes_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = 20,
+    user: dict = Depends(get_super_admin)
+):
+    """Get popular routes analysis"""
+    date_filter = {}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    # Popular pickup locations
+    pickup_counts = {}
+    dropoff_counts = {}
+    route_counts = {}
+    
+    for b in bookings:
+        pickup = b.get("pickup_location", "Unknown")[:50]
+        dropoff = b.get("dropoff_location", "Unknown")[:50]
+        route = f"{pickup} → {dropoff}"
+        
+        pickup_counts[pickup] = pickup_counts.get(pickup, 0) + 1
+        dropoff_counts[dropoff] = dropoff_counts.get(dropoff, 0) + 1
+        
+        if route not in route_counts:
+            route_counts[route] = {"count": 0, "revenue": 0}
+        route_counts[route]["count"] += 1
+        if b.get("status") == "completed":
+            route_counts[route]["revenue"] += b.get("customer_price", b.get("price", 0)) or 0
+    
+    return {
+        "top_pickup_locations": [{"location": k, "count": v} for k, v in sorted(pickup_counts.items(), key=lambda x: x[1], reverse=True)[:limit]],
+        "top_dropoff_locations": [{"location": k, "count": v} for k, v in sorted(dropoff_counts.items(), key=lambda x: x[1], reverse=True)[:limit]],
+        "top_routes": [{"route": k, **v} for k, v in sorted(route_counts.items(), key=lambda x: x[1]["count"], reverse=True)[:limit]]
+    }
+
+
+@api_router.get("/reports/customers")
+async def get_customers_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get customer analytics report"""
+    date_filter = {}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    # Customer lifetime value
+    customer_stats = {}
+    for b in bookings:
+        email = b.get("customer_email", "unknown")
+        if email not in customer_stats:
+            customer_stats[email] = {
+                "name": b.get("customer_name", "Unknown"),
+                "phone": b.get("customer_phone", ""),
+                "total_bookings": 0,
+                "completed_bookings": 0,
+                "total_spend": 0,
+                "first_booking": b.get("pickup_date", ""),
+                "last_booking": b.get("pickup_date", ""),
+                "is_b2b": bool(b.get("customer_account_id"))
+            }
+        
+        customer_stats[email]["total_bookings"] += 1
+        if b.get("status") == "completed":
+            customer_stats[email]["completed_bookings"] += 1
+            customer_stats[email]["total_spend"] += b.get("customer_price", b.get("price", 0)) or 0
+        
+        if b.get("pickup_date", "") > customer_stats[email]["last_booking"]:
+            customer_stats[email]["last_booking"] = b.get("pickup_date", "")
+        if b.get("pickup_date", "") < customer_stats[email]["first_booking"] or not customer_stats[email]["first_booking"]:
+            customer_stats[email]["first_booking"] = b.get("pickup_date", "")
+    
+    # Sort by total spend
+    top_customers = sorted(
+        [{"email": k, **v} for k, v in customer_stats.items()],
+        key=lambda x: x["total_spend"],
+        reverse=True
+    )[:50]
+    
+    # B2B account breakdown
+    b2b_accounts = await db.customer_accounts.find({"status": "active"}, {"_id": 0}).to_list(100)
+    b2b_stats = []
+    for account in b2b_accounts:
+        account_bookings = [b for b in bookings if b.get("customer_account_id") == account.get("id")]
+        completed = [b for b in account_bookings if b.get("status") == "completed"]
+        revenue = sum(b.get("customer_price", b.get("price", 0)) or 0 for b in completed)
+        b2b_stats.append({
+            "id": account.get("id"),
+            "company_name": account.get("company_name"),
+            "contact_person": account.get("contact_person"),
+            "total_bookings": len(account_bookings),
+            "completed_bookings": len(completed),
+            "revenue": round(revenue, 2),
+            "payment_terms": account.get("payment_terms", "-")
+        })
+    
+    b2b_stats.sort(key=lambda x: x["revenue"], reverse=True)
+    
+    return {
+        "total_customers": len(customer_stats),
+        "top_customers": top_customers,
+        "b2b_accounts": b2b_stats,
+        "summary": {
+            "avg_bookings_per_customer": round(len(bookings) / len(customer_stats), 1) if customer_stats else 0,
+            "avg_customer_value": round(sum(c["total_spend"] for c in customer_stats.values()) / len(customer_stats), 2) if customer_stats else 0,
+            "b2b_customer_count": len([c for c in customer_stats.values() if c["is_b2b"]]),
+            "b2c_customer_count": len([c for c in customer_stats.values() if not c["is_b2b"]])
+        }
+    }
+
+
+@api_router.get("/reports/fleets")
+async def get_fleets_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get fleet performance report"""
+    date_filter = {}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    fleets = await db.fleets.find({}, {"_id": 0}).to_list(100)
+    
+    fleet_stats = {}
+    for fleet in fleets:
+        fleet_id = fleet.get("id")
+        fleet_bookings = [b for b in bookings if b.get("assigned_fleet_id") == fleet_id]
+        completed = [b for b in fleet_bookings if b.get("status") == "completed"]
+        cancelled = [b for b in fleet_bookings if b.get("status") == "cancelled"]
+        no_shows = [b for b in fleet_bookings if b.get("status") in ["no_show", "driver_no_show"]]
+        
+        revenue = sum(b.get("customer_price", b.get("price", 0)) or 0 for b in completed)
+        driver_cost = sum(b.get("driver_price", 0) or 0 for b in completed)
+        
+        # Get drivers and vehicles count
+        drivers = await db.drivers.find({"fleet_id": fleet_id}, {"_id": 0}).to_list(100)
+        vehicles = await db.fleet_vehicles.find({"fleet_id": fleet_id}, {"_id": 0}).to_list(100)
+        
+        # Get ratings
+        ratings = await db.driver_ratings.find({"driver_id": {"$in": [d.get("id") for d in drivers]}}, {"_id": 0}).to_list(1000)
+        avg_rating = sum(r.get("rating", 0) for r in ratings) / len(ratings) if ratings else 0
+        
+        fleet_stats[fleet_id] = {
+            "id": fleet_id,
+            "name": fleet.get("name"),
+            "status": fleet.get("status"),
+            "total_bookings": len(fleet_bookings),
+            "completed_bookings": len(completed),
+            "cancelled_bookings": len(cancelled),
+            "no_show_bookings": len(no_shows),
+            "completion_rate": round(len(completed) / len(fleet_bookings) * 100, 1) if fleet_bookings else 0,
+            "revenue": round(revenue, 2),
+            "driver_cost": round(driver_cost, 2),
+            "profit": round(revenue - driver_cost, 2),
+            "commission": round((revenue - driver_cost) / revenue * 100, 1) if revenue > 0 else 0,
+            "driver_count": len(drivers),
+            "vehicle_count": len(vehicles),
+            "avg_rating": round(avg_rating, 1),
+            "total_ratings": len(ratings)
+        }
+    
+    return {
+        "fleets": sorted(fleet_stats.values(), key=lambda x: x["revenue"], reverse=True),
+        "totals": {
+            "total_fleets": len(fleets),
+            "active_fleets": len([f for f in fleets if f.get("status") == "active"]),
+            "total_revenue": round(sum(f["revenue"] for f in fleet_stats.values()), 2),
+            "total_profit": round(sum(f["profit"] for f in fleet_stats.values()), 2)
+        }
+    }
+
+
+@api_router.get("/reports/drivers")
+async def get_drivers_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    fleet_id: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get driver performance and job tracking report"""
+    date_filter = {}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(10000)
+    
+    driver_filter = {}
+    if fleet_id:
+        driver_filter["fleet_id"] = fleet_id
+    
+    drivers = await db.drivers.find(driver_filter, {"_id": 0}).to_list(500)
+    fleets = {f["id"]: f["name"] for f in await db.fleets.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(100)}
+    
+    driver_stats = []
+    for driver in drivers:
+        driver_id = driver.get("id")
+        driver_bookings = [b for b in bookings if b.get("assigned_driver_id") == driver_id]
+        completed = [b for b in driver_bookings if b.get("status") == "completed"]
+        cancelled = [b for b in driver_bookings if b.get("status") == "cancelled"]
+        no_shows = [b for b in driver_bookings if b.get("status") in ["no_show", "driver_no_show"]]
+        
+        earnings = sum(b.get("driver_price", 0) or 0 for b in completed)
+        
+        # Get ratings
+        ratings = await db.driver_ratings.find({"driver_id": driver_id}, {"_id": 0}).to_list(500)
+        avg_rating = sum(r.get("rating", 0) for r in ratings) / len(ratings) if ratings else 0
+        
+        # Get tracking data for on-time analysis
+        on_time_count = 0
+        late_count = 0
+        for b in completed:
+            tracking = await db.tracking_sessions.find_one({"booking_id": b.get("id")}, {"_id": 0})
+            if tracking:
+                # Check if driver was on time (arrived before or at pickup time)
+                if tracking.get("status") in ["completed", "arrived"]:
+                    on_time_count += 1
+                else:
+                    late_count += 1
+        
+        driver_stats.append({
+            "id": driver_id,
+            "name": driver.get("name"),
+            "phone": driver.get("phone"),
+            "email": driver.get("email"),
+            "fleet_id": driver.get("fleet_id"),
+            "fleet_name": fleets.get(driver.get("fleet_id"), "Internal"),
+            "status": driver.get("status"),
+            "total_jobs": len(driver_bookings),
+            "completed_jobs": len(completed),
+            "cancelled_jobs": len(cancelled),
+            "no_show_jobs": len(no_shows),
+            "completion_rate": round(len(completed) / len(driver_bookings) * 100, 1) if driver_bookings else 0,
+            "earnings": round(earnings, 2),
+            "avg_earning_per_job": round(earnings / len(completed), 2) if completed else 0,
+            "avg_rating": round(avg_rating, 1),
+            "total_ratings": len(ratings),
+            "on_time_jobs": on_time_count,
+            "late_jobs": late_count,
+            "on_time_rate": round(on_time_count / (on_time_count + late_count) * 100, 1) if (on_time_count + late_count) > 0 else 100
+        })
+    
+    # Sort by completed jobs
+    driver_stats.sort(key=lambda x: x["completed_jobs"], reverse=True)
+    
+    return {
+        "drivers": driver_stats,
+        "summary": {
+            "total_drivers": len(drivers),
+            "active_drivers": len([d for d in drivers if d.get("status") == "active"]),
+            "total_jobs_assigned": sum(d["total_jobs"] for d in driver_stats),
+            "total_earnings": round(sum(d["earnings"] for d in driver_stats), 2),
+            "avg_rating": round(sum(d["avg_rating"] for d in driver_stats if d["avg_rating"] > 0) / len([d for d in driver_stats if d["avg_rating"] > 0]), 1) if any(d["avg_rating"] > 0 for d in driver_stats) else 0
+        },
+        "leaderboard": {
+            "by_jobs": sorted(driver_stats, key=lambda x: x["completed_jobs"], reverse=True)[:10],
+            "by_earnings": sorted(driver_stats, key=lambda x: x["earnings"], reverse=True)[:10],
+            "by_rating": sorted([d for d in driver_stats if d["total_ratings"] >= 3], key=lambda x: x["avg_rating"], reverse=True)[:10]
+        }
+    }
+
+
+@api_router.get("/reports/driver-tracking/{driver_id}")
+async def get_driver_job_tracking(
+    driver_id: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get detailed job tracking history for a specific driver"""
+    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    date_filter = {"assigned_driver_id": driver_id}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).sort("pickup_date", -1).to_list(500)
+    
+    job_details = []
+    for booking in bookings:
+        # Get tracking session
+        tracking = await db.tracking_sessions.find_one({"booking_id": booking.get("id")}, {"_id": 0})
+        
+        # Get history
+        history = await db.booking_history.find({"booking_id": booking.get("id")}, {"_id": 0}).sort("created_at", 1).to_list(100)
+        
+        # Calculate job timeline
+        timeline = []
+        for h in history:
+            timeline.append({
+                "action": h.get("action"),
+                "description": h.get("description"),
+                "timestamp": h.get("created_at"),
+                "user": h.get("user_name")
+            })
+        
+        # Determine tracking accuracy
+        tracking_status = "no_tracking"
+        if tracking:
+            tracking_status = tracking.get("status", "unknown")
+        
+        job_details.append({
+            "booking_ref": booking.get("booking_ref"),
+            "booking_id": booking.get("id"),
+            "pickup_date": booking.get("pickup_date"),
+            "pickup_time": booking.get("pickup_time"),
+            "pickup_location": booking.get("pickup_location"),
+            "dropoff_location": booking.get("dropoff_location"),
+            "customer_name": booking.get("customer_name"),
+            "status": booking.get("status"),
+            "driver_price": booking.get("driver_price", 0),
+            "customer_price": booking.get("customer_price", booking.get("price", 0)),
+            "tracking_status": tracking_status,
+            "tracking_started": tracking.get("started_at") if tracking else None,
+            "tracking_completed": tracking.get("completed_at") if tracking else None,
+            "timeline": timeline
+        })
+    
+    # Calculate summary stats
+    total_jobs = len(bookings)
+    completed_jobs = len([j for j in job_details if j["status"] == "completed"])
+    tracked_jobs = len([j for j in job_details if j["tracking_status"] not in ["no_tracking", "unknown"]])
+    
+    return {
+        "driver": {
+            "id": driver_id,
+            "name": driver.get("name"),
+            "phone": driver.get("phone"),
+            "status": driver.get("status")
+        },
+        "jobs": job_details,
+        "summary": {
+            "total_jobs": total_jobs,
+            "completed_jobs": completed_jobs,
+            "tracked_jobs": tracked_jobs,
+            "tracking_rate": round(tracked_jobs / total_jobs * 100, 1) if total_jobs > 0 else 0,
+            "total_earnings": round(sum(j["driver_price"] or 0 for j in job_details if j["status"] == "completed"), 2)
+        }
+    }
+
+
+@api_router.get("/reports/cancellations")
+async def get_cancellations_report(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_super_admin)
+):
+    """Get cancellation and no-show analysis"""
+    date_filter = {"status": {"$in": ["cancelled", "no_show", "customer_no_show", "driver_no_show"]}}
+    if date_from:
+        date_filter["pickup_date"] = {"$gte": date_from}
+    if date_to:
+        if "pickup_date" in date_filter:
+            date_filter["pickup_date"]["$lte"] = date_to
+        else:
+            date_filter["pickup_date"] = {"$lte": date_to}
+    
+    bookings = await db.bookings.find(date_filter, {"_id": 0}).to_list(5000)
+    
+    # Group by status
+    status_breakdown = {}
+    for b in bookings:
+        status = b.get("status")
+        if status not in status_breakdown:
+            status_breakdown[status] = {"count": 0, "lost_revenue": 0}
+        status_breakdown[status]["count"] += 1
+        status_breakdown[status]["lost_revenue"] += b.get("customer_price", b.get("price", 0)) or 0
+    
+    # By date trend
+    by_date = {}
+    for b in bookings:
+        date = b.get("pickup_date", "unknown")
+        if date not in by_date:
+            by_date[date] = 0
+        by_date[date] += 1
+    
+    return {
+        "total_cancellations": len(bookings),
+        "status_breakdown": [{"status": k, **v} for k, v in status_breakdown.items()],
+        "by_date": [{"date": k, "count": v} for k, v in sorted(by_date.items())],
+        "total_lost_revenue": round(sum(s["lost_revenue"] for s in status_breakdown.values()), 2),
+        "recent_cancellations": sorted(bookings, key=lambda x: x.get("pickup_date", ""), reverse=True)[:20]
+    }
+
+
 @api_router.get("/upload/image/info")
 async def get_uploaded_image_info(
     image_url: str = Query(..., description="URL of the image"),
