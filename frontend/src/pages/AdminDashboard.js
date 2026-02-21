@@ -1039,6 +1039,8 @@ const NewJobDialog = ({ open, onClose, vehicles, fleets, drivers, customers, hea
     customer_phone: "",
     customer_reference: "",
     customer_account_id: "",
+    mozio_external_id: "",  // Mozio booking reference
+    b2b_source: "",  // B2B provider source
     pickup_date: "",
     pickup_time: "",
     pickup_location: "",
