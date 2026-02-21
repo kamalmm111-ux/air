@@ -80,8 +80,8 @@ const CancellationPage = () => {
               If you have any questions about our cancellation policy, please don't hesitate to contact us:
             </p>
             <ul>
-              <li>Email: support@aircabio.com</li>
-              <li>Phone: +44 20 1234 5678</li>
+              <li>Email: info@aircabio.com</li>
+              <li>Phone: +44 330 058 5676</li>
             </ul>
           </div>
 
