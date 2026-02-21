@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Query, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Query, BackgroundTasks, UploadFile, File
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -28,6 +29,9 @@ from email_service import (
     send_invoice_issued, send_payment_success, send_payment_failed,
     send_admin_alert, send_completion_with_invoice, send_review_invitation
 )
+
+# Import image upload service
+from image_service import process_and_save_image, delete_image, get_image_info, UPLOAD_DIR
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
