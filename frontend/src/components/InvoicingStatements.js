@@ -1086,24 +1086,23 @@ const CustomInvoiceForm = ({ token, headers, onSuccess }) => {
     try {
       // Prepare line items with totals
       const lineItems = formData.line_items.map(item => ({
-        ...item,
+        description: item.description,
+        quantity: item.quantity || 1,
+        unit_price: item.unit_price || 0,
         total: (item.quantity || 1) * (item.unit_price || 0)
       }));
 
-      const res = await axios.post(`${API}/invoices/custom`, null, {
-        headers,
-        params: {
-          invoice_type: formData.invoice_type,
-          entity_name: formData.entity_name,
-          entity_email: formData.entity_email,
-          entity_phone: formData.entity_phone || null,
-          entity_address: formData.entity_address || null,
-          tax_rate: formData.tax_rate,
-          due_days: formData.due_days,
-          notes: formData.notes || null,
-          line_items: JSON.stringify(lineItems)
-        }
-      });
+      const res = await axios.post(`${API}/invoices/custom`, {
+        invoice_type: formData.invoice_type,
+        entity_name: formData.entity_name,
+        entity_email: formData.entity_email,
+        entity_phone: formData.entity_phone || null,
+        entity_address: formData.entity_address || null,
+        line_items: lineItems,
+        tax_rate: formData.tax_rate,
+        due_days: formData.due_days,
+        notes: formData.notes || null
+      }, { headers });
 
       toast.success(`Custom invoice created: ${res.data.invoice_number}`);
       onSuccess();
