@@ -172,3 +172,25 @@ Replaced all "Image URL" inputs with direct upload functionality:
 - Privacy Policy Page
 - Cancellation Policy Page
 - All automated email templates (via email_service.py)
+
+## Session Complete - Feb 21, 2026 (B2B Corporate Features)
+### Corporate Customer & Invoice Control System
+
+**Feature 1: Corporate Customer Assignment in Bookings**
+- ✅ **Job Listing**: Added "Account" column showing company name or "Direct Customer"
+- ✅ **Customer Account Filter**: New dropdown filter to view B2B vs Direct bookings
+- ✅ **Job Details**: Customer Account (B2B) section visible in booking view dialog
+- ✅ **New Job Form**: Already has B2B Customer Account dropdown (pre-existing)
+- ✅ **Internal Only**: Corporate info hidden from Fleet partners
+
+**Feature 2: Invoice Email Control per Customer**
+- ✅ **CustomerAccount Model**: Added `send_invoice_email` (boolean, default true)
+- ✅ **CustomerAccount Model**: Added `accounts_email` (optional separate email for invoices)
+- ✅ **Create/Edit Form**: "Invoice Settings" section with toggle and accounts email field
+- ✅ **View Dialog**: Shows "Invoice Email Status: Enabled/Disabled"
+- ✅ **Email Logic**: `send_completion_with_invoice()` checks customer setting before sending
+- ✅ **Accounts Email**: If set, invoices sent to accounts email AND booking email
+
+**Database Changes:**
+- `customer_accounts.send_invoice_email`: Boolean (default: true)
+- `customer_accounts.accounts_email`: String (optional)
