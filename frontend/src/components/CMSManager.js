@@ -1034,16 +1034,14 @@ const PageEditorDialog = ({ open, onClose, pageId, token, mediaLibrary }) => {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Image URL</Label>
-                      <Input 
-                        value={section.image_url || ""} 
-                        onChange={(e) => updateSection(section.id, 'image_url', e.target.value)}
-                      />
-                      {section.image_url && (
-                        <img src={section.image_url} alt="" className="h-24 rounded object-cover mt-2" />
-                      )}
-                    </div>
+                    <ImageUpload
+                      value={section.image_url || ""}
+                      onChange={(url) => updateSection(section.id, 'image_url', url)}
+                      category="sections"
+                      label="Section Image"
+                      placeholder="Upload section image"
+                      headers={headers}
+                    />
 
                     {(section.type === "hero" || section.type === "cta") && (
                       <div className="grid grid-cols-2 gap-4">
