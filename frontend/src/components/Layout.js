@@ -112,11 +112,11 @@ const Layout = () => {
       {/* Main Header */}
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-20">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2" data-testid="logo-link">
               {logoUrl ? (
-                <img src={logoUrl} alt={siteName} className="h-12 md:h-14 object-contain" />
+                <img src={logoUrl} alt={siteName} className="h-16 md:h-20 w-auto object-contain" />
               ) : (
                 <>
                   <Car className="w-8 h-8 text-[#0A0F1C]" />
