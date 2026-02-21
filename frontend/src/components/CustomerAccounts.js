@@ -376,6 +376,35 @@ const CustomerDialog = ({ open, onClose, customer, token, onSuccess }) => {
               />
             </div>
           </div>
+
+          {/* Invoice Email Control */}
+          <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 space-y-4">
+            <h4 className="font-semibold text-amber-800 flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Invoice Settings
+            </h4>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="font-medium">Send Invoice by Email</Label>
+                <p className="text-xs text-zinc-500">Automatic invoice emails for each booking</p>
+              </div>
+              <Switch
+                checked={formData.send_invoice_email}
+                onCheckedChange={(checked) => setFormData({ ...formData, send_invoice_email: checked })}
+                data-testid="send-invoice-email-toggle"
+              />
+            </div>
+            <div>
+              <Label>Accounts Department Email (Optional)</Label>
+              <Input
+                type="email"
+                value={formData.accounts_email}
+                onChange={(e) => setFormData({ ...formData, accounts_email: e.target.value })}
+                placeholder="accounts@company.com"
+              />
+              <p className="text-xs text-zinc-500 mt-1">Separate email for invoice delivery</p>
+            </div>
+          </div>
+
           <div>
             <Label>Status</Label>
             <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
