@@ -119,7 +119,7 @@ const Layout = () => {
       {/* Main Header */}
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20 md:h-24">
+          <div className="flex justify-between items-center h-24 md:h-28">
             {/* Logo - Bold, Prominent, crisp, fixed container to prevent CLS */}
             <Link 
               to="/" 
