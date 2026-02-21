@@ -1023,9 +1023,14 @@ async def send_completion_with_invoice(booking: Dict, customer_account: Dict = N
     # Send with PDF attachment
     if EMAIL_AVAILABLE:
         try:
+            recipients = [invoice_email]
+            # If accounts email is different, also send to booking contact email
+            if invoice_email != customer_email:
+                recipients.append(customer_email)
+            
             params = {
                 "from": f"{COMPANY_NAME} <{SENDER_EMAIL}>",
-                "to": [customer_email],
+                "to": recipients,
                 "subject": f"Trip Completed - Invoice {booking_ref}",
                 "html": html,
                 "attachments": [
@@ -1036,13 +1041,13 @@ async def send_completion_with_invoice(booking: Dict, customer_account: Dict = N
                 ]
             }
             result = await asyncio.to_thread(resend.Emails.send, params)
-            logger.info(f"Completion email with invoice sent to {customer_email}")
+            logger.info(f"Completion email with invoice sent to {recipients}")
             return {"status": "success", "email_id": result.get("id")}
         except Exception as e:
             logger.error(f"Failed to send completion email with invoice: {str(e)}")
             return {"status": "error", "message": str(e)}
     else:
-        logger.info(f"[EMAIL LOG] Completion with invoice to: {customer_email}, Ref: {booking_ref}")
+        logger.info(f"[EMAIL LOG] Completion with invoice to: {invoice_email}, Ref: {booking_ref}")
         return {"status": "logged", "message": "Email logged (Resend not configured)"}
 
 
