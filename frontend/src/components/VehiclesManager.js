@@ -30,7 +30,7 @@ const VehiclesManager = ({ token, fleets = [], drivers = [], categories = [] }) 
 
   const fetchVehicles = useCallback(async () => {
     try {
-      const response = await axios.get(`${API}/vehicles`, { headers });
+      const response = await axios.get(`${API}/admin/vehicles`, { headers });
       setVehicles(response.data || []);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
