@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -6,6 +6,9 @@ import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent } from "../components/ui/card";
 import { Phone, Mail, MapPin, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
+import axios from "axios";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +19,30 @@ const ContactPage = () => {
     message: ""
   });
   const [loading, setLoading] = useState(false);
+  const [contactInfo, setContactInfo] = useState({
+    phone: "+44 330 058 5676",
+    email: "info@aircabio.com",
+    address: ""
+  });
+
+  // Fetch centralized contact settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get(`${API}/website-settings`);
+        if (res.data) {
+          setContactInfo({
+            phone: res.data.contact_phone || "+44 330 058 5676",
+            email: res.data.contact_email || "info@aircabio.com",
+            address: res.data.contact_address || ""
+          });
+        }
+      } catch (error) {
+        console.log("Using default contact settings");
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
