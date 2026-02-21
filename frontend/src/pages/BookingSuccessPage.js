@@ -146,8 +146,8 @@ const BookingSuccessPage = () => {
         {/* Support Info */}
         <p className="text-center text-sm text-zinc-500 mt-8">
           Need help? Contact us at{" "}
-          <a href="tel:+442012345678" className="text-[#0A0F1C] font-medium hover:underline">
-            +44 20 1234 5678
+          <a href="tel:+443300585676" className="text-[#0A0F1C] font-medium hover:underline">
+            +44 330 058 5676
           </a>
         </p>
       </div>
