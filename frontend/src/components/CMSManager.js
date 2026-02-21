@@ -1070,13 +1070,13 @@ const PageEditorDialog = ({ open, onClose, pageId, token, mediaLibrary }) => {
 };
 
 // Add Media Dialog
-const AddMediaDialog = ({ open, onClose, onAdd }) => {
+const AddMediaDialog = ({ open, onClose, onAdd, headers }) => {
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
 
   const handleAdd = () => {
     if (!url) {
-      toast.error("Image URL is required");
+      toast.error("Please upload an image first");
       return;
     }
     onAdd(url, name || "Untitled");
@@ -1093,14 +1093,14 @@ const AddMediaDialog = ({ open, onClose, onAdd }) => {
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Image URL *</Label>
-            <Input 
-              value={url} 
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-            />
-          </div>
+          <ImageUpload
+            value={url}
+            onChange={(uploadedUrl) => setUrl(uploadedUrl)}
+            category="media"
+            label="Upload Image"
+            placeholder="Upload an image to add to library"
+            headers={headers}
+          />
           <div className="space-y-2">
             <Label>Name</Label>
             <Input 
@@ -1109,17 +1109,6 @@ const AddMediaDialog = ({ open, onClose, onAdd }) => {
               placeholder="Image name"
             />
           </div>
-          {url && (
-            <div className="space-y-2">
-              <Label>Preview</Label>
-              <img 
-                src={url} 
-                alt="Preview" 
-                className="max-h-48 rounded"
-                onError={(e) => e.target.style.display = 'none'}
-              />
-            </div>
-          )}
         </div>
 
         <DialogFooter>
