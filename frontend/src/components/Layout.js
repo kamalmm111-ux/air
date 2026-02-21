@@ -125,13 +125,16 @@ const Layout = () => {
               to="/" 
               className="flex items-center gap-3 flex-shrink-0" 
               data-testid="logo-link"
-              style={{ minWidth: '160px', minHeight: '48px' }}
+              style={{ minWidth: '180px', minHeight: '56px' }}
             >
               <img 
                 src={logoUrl} 
                 alt={siteName} 
-                className="h-12 md:h-14 lg:h-16 w-auto object-contain drop-shadow-sm" 
-                style={{ maxWidth: '220px' }}
+                className="h-14 sm:h-16 md:h-[56px] lg:h-[64px] w-auto object-contain"
+                style={{ 
+                  maxWidth: '280px',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+                }}
                 loading="eager"
                 fetchpriority="high"
               />
