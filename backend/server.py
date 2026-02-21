@@ -1602,6 +1602,10 @@ async def assign_booking(booking_id: str, assignment: JobAssignment, background_
         print(f"[EMAIL DEBUG] Skipping driver assignment email - driver: {bool(driver)}, customer_email: {updated_booking.get('customer_email')}", flush=True)
         logger.warning(f"Skipping driver assignment email - driver: {bool(driver)}, customer_email: {updated_booking.get('customer_email')}")
     
+    # Sync to Mozio if this is a Mozio booking
+    if driver and updated_booking.get("mozio_external_id"):
+        background_tasks.add_task(sync_booking_to_mozio, updated_booking, driver, vehicle)
+    
     # Create notification for fleet
     if assignment.fleet_id:
         await db.notifications.insert_one({
