@@ -4206,15 +4206,6 @@ async def update_job_status_from_driver(token: str, status_update: StatusUpdate,
                 driver = await db.drivers.find_one({"id": updated_booking["assigned_driver_id"]}, {"_id": 0})
             background_tasks.add_task(send_review_invitation, updated_booking, driver)
     
-    # Sync to Mozio when driver goes en_route (send updated driver info)
-    if status_update.status == "en_route" and updated_booking and updated_booking.get("mozio_external_id"):
-        driver = await db.drivers.find_one({"id": updated_booking.get("assigned_driver_id")}, {"_id": 0})
-        vehicle = None
-        if updated_booking.get("assigned_vehicle_id"):
-            vehicle = await db.fleet_vehicles.find_one({"id": updated_booking["assigned_vehicle_id"]}, {"_id": 0})
-        if driver:
-            background_tasks.add_task(sync_booking_to_mozio, updated_booking, driver, vehicle)
-    
     return {"message": f"Status updated to {status_update.status}", "status": status_update.status}
 
 # Fleet endpoint - Get tracking data for a booking (fleet can see their jobs)
