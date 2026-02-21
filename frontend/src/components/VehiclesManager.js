@@ -396,6 +396,14 @@ const VehiclesManager = ({ token, fleets = [], drivers = [], categories = [] }) 
                 </Select>
               </div>
             </div>
+            <ImageUpload
+              value={editingVehicle?.image_url || ""}
+              onChange={(url) => setEditingVehicle({ ...editingVehicle, image_url: url })}
+              category="vehicles"
+              label="Vehicle Photo"
+              placeholder="Upload vehicle photo"
+              headers={headers}
+            />
             <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea

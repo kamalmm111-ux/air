@@ -51,28 +51,17 @@ const DriverDialog = ({ open, onClose, driver, headers, onSuccess }) => {
         <DialogHeader><DialogTitle>{driver ? "Edit Driver" : "Add Driver"}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-4">
           {/* Driver Photo Section */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-24 h-24 rounded-full bg-zinc-100 overflow-hidden border-2 border-dashed border-zinc-300 flex items-center justify-center">
-              {photoPreview ? (
-                <img src={photoPreview} alt="Driver" className="w-full h-full object-cover" onError={() => setPhotoPreview(null)} />
-              ) : (
-                <User className="w-10 h-10 text-zinc-400" />
-              )}
-            </div>
-            <div className="w-full">
-              <Label className="text-sm flex items-center gap-1 mb-1">
-                <Camera className="w-3 h-3" /> Photo URL
-              </Label>
-              <Input 
-                type="url"
-                placeholder="https://example.com/photo.jpg" 
-                value={formData.photo_url || ""} 
-                onChange={(e) => handlePhotoUrl(e.target.value)} 
-                data-testid="driver-photo-input"
-              />
-              <p className="text-xs text-zinc-500 mt-1">Paste a URL to the driver's photo</p>
-            </div>
-          </div>
+          <ImageUpload
+            value={formData.photo_url || ""}
+            onChange={(url) => {
+              setFormData({ ...formData, photo_url: url });
+              setPhotoPreview(url);
+            }}
+            category="drivers"
+            label="Driver Photo"
+            placeholder="Upload driver photo"
+            headers={headers}
+          />
           
           <div><Label>Name *</Label><Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} data-testid="driver-name-input" /></div>
           <div><Label>Phone *</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} data-testid="driver-phone-input" /></div>

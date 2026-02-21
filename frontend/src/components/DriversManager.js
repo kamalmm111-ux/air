@@ -370,21 +370,14 @@ const DriversManager = ({ token, fleets = [], vehicles = [] }) => {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Image className="w-4 h-4" /> Photo URL
-              </Label>
-              <Input
-                value={editingDriver?.photo_url || ""}
-                onChange={(e) => setEditingDriver({ ...editingDriver, photo_url: e.target.value })}
-                placeholder="https://example.com/photo.jpg"
-              />
-              {editingDriver?.photo_url && (
-                <div className="mt-2">
-                  <img src={editingDriver.photo_url} alt="Preview" className="w-20 h-20 rounded-full object-cover border" />
-                </div>
-              )}
-            </div>
+            <ImageUpload
+              value={editingDriver?.photo_url || ""}
+              onChange={(url) => setEditingDriver({ ...editingDriver, photo_url: url })}
+              category="drivers"
+              label="Driver Photo"
+              placeholder="Upload driver photo"
+              headers={headers}
+            />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Status</Label>
