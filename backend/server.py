@@ -29,6 +29,9 @@ from email_service import (
     send_admin_alert, send_completion_with_invoice, send_review_invitation
 )
 
+# Import Mozio B2B integration
+from mozio_service import sync_booking_to_mozio, send_driver_info_to_mozio
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
