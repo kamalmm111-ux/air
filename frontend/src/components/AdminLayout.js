@@ -79,7 +79,7 @@ const AdminLayout = () => {
     { id: "drivers", name: "Drivers", icon: Users },
     { id: "vehicles", name: "Vehicles", icon: Truck },
     { id: "pricing", name: "Pricing", icon: DollarSign },
-    { id: "invoices", name: "Invoices", icon: FileText },
+    { id: "invoicing", name: "Invoicing & Statements", icon: FileText },
     { id: "crm-reports", name: "CRM & Reports", icon: BarChart3 },
     { id: "system-settings", name: "System Settings", icon: Cog },
     { id: "settings", name: "Website CMS", icon: Settings },
