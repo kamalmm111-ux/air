@@ -371,6 +371,11 @@ class Booking(BaseModel):
     customer_invoice_id: Optional[str] = None
     fleet_invoice_id: Optional[str] = None
     driver_invoice_id: Optional[str] = None
+    # B2B Provider Integration (Mozio, etc.)
+    mozio_external_id: Optional[str] = None  # Mozio booking reference
+    b2b_source: Optional[str] = None  # e.g., "mozio", "jayride", etc.
+    mozio_sync_status: Optional[str] = None  # "pending", "synced", "error"
+    mozio_last_sync: Optional[str] = None
     # Distance/duration
     distance_km: Optional[float] = None
     duration_minutes: Optional[int] = None
