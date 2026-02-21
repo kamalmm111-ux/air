@@ -120,23 +120,25 @@ const Layout = () => {
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20 md:h-24">
-            {/* Logo - Fixed size container to prevent CLS */}
+            {/* Logo - Prominent, crisp, fixed container to prevent CLS */}
             <Link 
               to="/" 
               className="flex items-center gap-3 flex-shrink-0" 
               data-testid="logo-link"
-              style={{ minWidth: '180px', minHeight: '56px' }}
+              style={{ minWidth: '200px', minHeight: '52px' }}
             >
               <img 
                 src={logoUrl} 
                 alt={siteName} 
-                className="h-14 sm:h-16 md:h-[56px] lg:h-[64px] w-auto object-contain"
+                className="h-[44px] sm:h-[48px] md:h-[56px] lg:h-[60px] w-auto object-contain"
                 style={{ 
-                  maxWidth: '280px',
-                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+                  maxWidth: '300px',
+                  filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.12))',
+                  imageRendering: 'crisp-edges'
                 }}
                 loading="eager"
                 fetchpriority="high"
+                decoding="sync"
               />
             </Link>
 
