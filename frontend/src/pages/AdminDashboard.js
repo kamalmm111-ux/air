@@ -934,7 +934,8 @@ const AdminDashboard = () => {
     pricing: renderPricing(),
     invoices: <InvoiceManager token={token} />,
     "system-settings": <AdminSettings token={token} />,
-    settings: <CMSManager token={token} />
+    settings: <CMSManager token={token} />,
+    "crm-reports": <CRMReports token={token} />
   };
 
   return (
@@ -946,6 +947,7 @@ const AdminDashboard = () => {
            activeTab === "customers" ? "Customer Accounts (B2B)" : 
            activeTab === "invoices" ? "Invoice Management" : 
            activeTab === "system-settings" ? "System Settings" :
+           activeTab === "crm-reports" ? "CRM & Reports" :
            activeTab.replace("-", " ")}
         </h1>
       </div>
