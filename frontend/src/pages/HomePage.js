@@ -81,16 +81,23 @@ const HomePage = () => {
   return (
     <div data-testid="home-page">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center">
-        {/* Background Image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('${heroImage}')`
-          }}
-        >
-          <div className="absolute inset-0 hero-overlay"></div>
-        </div>
+      <section className="relative min-h-[90vh] flex items-center bg-[#0A0F1C]">
+        {/* Background Image - Only show when loaded */}
+        {heroImage && (
+          <div
+            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            style={{
+              backgroundImage: `url('${heroImage}')`
+            }}
+          >
+            <div className="absolute inset-0 hero-overlay"></div>
+          </div>
+        )}
+        
+        {/* Fallback gradient overlay when no image */}
+        {!heroImage && (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0A0F1C] via-[#1a1f2e] to-[#0A0F1C]"></div>
+        )}
 
         {/* Content */}
         <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 py-20">
