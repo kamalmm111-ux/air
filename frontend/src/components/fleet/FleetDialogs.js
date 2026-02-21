@@ -15,23 +15,14 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const DriverDialog = ({ open, onClose, driver, headers, onSuccess }) => {
   const [formData, setFormData] = useState({ name: "", phone: "", email: "", license_number: "", license_expiry: "", photo_url: "", notes: "", status: "active" });
   const [loading, setLoading] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState(null);
 
   useEffect(() => {
     if (driver) {
       setFormData({ ...driver });
-      setPhotoPreview(driver.photo_url || null);
     } else {
       setFormData({ name: "", phone: "", email: "", license_number: "", license_expiry: "", photo_url: "", notes: "", status: "active" });
-      setPhotoPreview(null);
     }
   }, [driver, open]);
-
-  // Handle photo URL input
-  const handlePhotoUrl = (url) => {
-    setFormData({ ...formData, photo_url: url });
-    setPhotoPreview(url);
-  };
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.phone) { toast.error("Name and phone required"); return; }
@@ -53,10 +44,7 @@ const DriverDialog = ({ open, onClose, driver, headers, onSuccess }) => {
           {/* Driver Photo Section */}
           <ImageUpload
             value={formData.photo_url || ""}
-            onChange={(url) => {
-              setFormData({ ...formData, photo_url: url });
-              setPhotoPreview(url);
-            }}
+            onChange={(url) => setFormData({ ...formData, photo_url: url })}
             category="drivers"
             label="Driver Photo"
             placeholder="Upload driver photo"
