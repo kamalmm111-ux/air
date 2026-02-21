@@ -51,11 +51,11 @@ const BookingCancelPage = () => {
                 <p className="text-sm text-zinc-500 mb-4">Need help completing your booking?</p>
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = 'tel:+442012345678'}
+                  onClick={() => window.location.href = 'tel:+443300585676'}
                   className="text-[#0A0F1C]"
                 >
                   <Phone className="w-4 h-4 mr-2" />
-                  Call +44 20 1234 5678
+                  Call +44 330 058 5676
                 </Button>
               </div>
             </div>
